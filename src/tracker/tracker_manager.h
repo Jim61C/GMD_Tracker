@@ -113,6 +113,9 @@ private:
   // Used to save tracking visualization data.
   cv::VideoWriter video_writer_;
 
+  // fps
+  int fps_;
+
   // Whether to save tracking videos.  Videos take up a lot of space, so use this only when needed.
   bool save_videos_;
 };

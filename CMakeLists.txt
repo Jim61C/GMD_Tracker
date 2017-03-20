@@ -5,6 +5,7 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
     message(STATUS "No build type selected, default to ${CMAKE_BUILD_TYPE}")
 endif()
+message ("CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 
 find_package(Boost COMPONENTS system filesystem regex REQUIRED)
 
@@ -24,8 +25,8 @@ include_directories(${Caffe_INCLUDE_DIRS})
 add_definitions(${Caffe_DEFINITIONS})    # ex. -DCPU_ONLY
 message("Caffe_DIR is ${Caffe_DIR}")	#specify Caffe_DIR in /cmake/Modules/FindCaffe.cmake
 # Note: If can't find Caffe, please uncomment the below line and set the path manually
-# set(Caffe_DIR /path_to_caffe/build/install)
-# set(Caffe_INCLUDE_DIRS /path_to_caffe/build/install/include)
+# set(Caffe_DIR /home/jimxing/Downloads/install_caffe/caffe)
+# set(Caffe_INCLUDE_DIRS /home/jimxing/Downloads/install_caffe/caffe/include)
 
 set(GLOG_LIB glog)
 
