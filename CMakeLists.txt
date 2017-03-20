@@ -30,45 +30,25 @@ message("Caffe_DIR is ${Caffe_DIR}")	#specify Caffe_DIR in /cmake/Modules/FindCa
 
 set(GLOG_LIB glog)
 
-add_library (${PROJECT_NAME}
-src/helper/bounding_box.cpp
-src/train/example_generator.cpp
-src/helper/helper.cpp
-src/helper/high_res_timer.cpp
-src/helper/image_proc.cpp
-src/loader/loader_alov.cpp
-src/loader/loader_imagenet_det.cpp
-src/loader/loader_vot.cpp
-src/network/regressor.cpp
-src/network/regressor_base.cpp
-src/network/regressor_train.cpp
-src/network/regressor_train_base.cpp
-src/tracker/tracker.cpp
-src/tracker/tracker_manager.cpp
-src/train/tracker_trainer.cpp
-src/loader/video.cpp
-src/loader/video_loader.cpp
-src/native/vot.cpp
+file (GLOB_RECURSE SOURCE_FILES
+"src/helper/*.cpp"
+"src/train/example_generator.cpp"
+"src/train/tracker_trainer.cpp"
+"src/loader/*.cpp"
+"src/network/*.cpp"
+"src/tracker/*.cpp"
+"src/native/vot.cpp"
 
-src/helper/bounding_box.h
-src/train/example_generator.h
-src/helper/helper.h
-src/helper/high_res_timer.h
-src/helper/image_proc.h
-src/loader/loader_alov.h
-src/loader/loader_imagenet_det.h
-src/loader/loader_vot.h
-src/network/regressor.h
-src/network/regressor_base.h
-src/network/regressor_train.h
-src/network/regressor_train_base.h
-src/tracker/tracker.h
-src/tracker/tracker_manager.h
-src/train/tracker_trainer.h
-src/loader/video.h
-src/loader/video_loader.h
-src/native/vot.h
+"src/helper/*.h"
+"src/train/example_generator.h"
+"src/train/tracker_trainer.h"
+"src/loader/*.h"
+"src/network/*.h"
+"src/tracker/*.h"
+"src/native/vot.h"
 )
+
+add_library (${PROJECT_NAME} ${SOURCE_FILES})
 
 # Add src to include directories.
 include_directories(src)
@@ -79,11 +59,11 @@ include_directories(src/native)
 #file(GLOB_RECURSE srcs src/*.cpp)
 #add_library (${PROJECT_NAME} ${srcs} ${hdrs})
 
-add_executable (test_tracker_vot src/test/test_tracker_vot.cpp)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${GLOG_LIB})
-target_link_libraries (test_tracker_vot ${PROJECT_NAME})
-# Note: If can't find trax, please download trax and build it, then uncomment the below line and set the path manually
-# target_link_libraries(${PROJECT_NAME} /path_to_trax/build/libtrax.so)
+# add_executable (test_tracker_vot src/test/test_tracker_vot.cpp)
+# target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${GLOG_LIB})
+# target_link_libraries (test_tracker_vot ${PROJECT_NAME})
+# # Note: If can't find trax, please download trax and build it, then uncomment the below line and set the path manually
+# # target_link_libraries(${PROJECT_NAME} /path_to_trax/build/libtrax.so)
 
 add_executable (test_tracker_alov src/test/test_tracker_alov.cpp)
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${GLOG_LIB})
