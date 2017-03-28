@@ -2,7 +2,7 @@
 
 build/
 
-nets/**/*
+nets/*/*
 
 # Compiled Object files
 *.slo
