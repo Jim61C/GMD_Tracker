@@ -33,6 +33,9 @@ public:
   // Draw a white rectangle corresponding to this bbox.
   void DrawBoundingBox(cv::Mat* figure_ptr) const;
 
+  // Get Image Mat region of the bounding box in a frame
+  void CropBoundingBoxOutImage(cv::Mat &image, cv::Mat &out);
+
   // Normalize the size of the bounding box based on the size of the image.
   void Scale(const cv::Mat& image, BoundingBox* bbox_scaled) const;
 
@@ -81,6 +84,15 @@ public:
 
   // Area of intersection between two bounding boxes.
   double compute_intersection(const BoundingBox& bbox) const;
+
+  // Area of Union between two bounding boxes
+  double compute_union(const BoundingBox& bbox);
+
+  // Get Intersection over union between two boxes
+  double compute_IOU(const BoundingBox & bbox);
+
+  // check if bbox within the image range
+  bool check_within_image(cv::Mat &image);
 
   // Bounding box coordiantes: top left, bottom right.
   double x1_, y1_, x2_, y2_;

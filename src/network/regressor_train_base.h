@@ -2,6 +2,7 @@
 #define REGRESSOR_TRAIN_BASE_H
 
 #include <vector>
+#include <string>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -38,6 +39,17 @@ public:
   virtual void Train(const std::vector<cv::Mat>& images,
              const std::vector<cv::Mat>& targets,
              const std::vector<BoundingBox>& bboxes_gt) = 0;
+  
+  // Train the tracker, GOTURN, MDNet
+  virtual void TrainBatch(const std::vector<cv::Mat>& images,
+                           const std::vector<cv::Mat>& targets,
+                           const std::vector<BoundingBox>& bboxes_gt,
+                           const std::vector<std::vector<cv::Mat> > &candidates,
+                           const std::vector<std::vector<double> > &labels,
+                           int k) = 0;
+  
+  // Interface for saving the loss_history, implementation depends on implementing sub-classes
+  virtual void SaveLossHistoryToFile(const std::string &save_path) = 0;
 
 protected:
   MySolver solver_;

@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
 project(GOTURN)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
     message(STATUS "No build type selected, default to ${CMAKE_BUILD_TYPE}")
@@ -8,6 +10,22 @@ endif()
 message ("CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 
 find_package(Boost COMPONENTS system filesystem regex REQUIRED)
+find_package(Protobuf)
+if(${PROTOBUF_FOUND})
+    message("!!found Google Proto Buffer library.")
+else()
+    message("!!Google Proto Buffer library not found.")
+endif()
+
+FIND_PACKAGE(GSL REQUIRED)
+
+if (GSL_FOUND)
+	message("--- found GSL, include directories.")
+	INCLUDE_DIRECTORIES(${GSL_INCLUDE_DIRS} ${GSLCBLAS_INCLUDE_DIRS})
+	SET(GSLLIB ${LIBS} ${GSL_LIBRARIES} ${GSLCBLAS_LIBRARIES})
+else ()
+	message("--- could not find GSL")
+endif ()
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 find_package(TinyXML REQUIRED)
@@ -34,6 +52,7 @@ file (GLOB_RECURSE SOURCE_FILES
 "src/helper/*.cpp"
 "src/train/example_generator.cpp"
 "src/train/tracker_trainer.cpp"
+"src/train/tracker_trainer_multi_domain.cpp"
 "src/loader/*.cpp"
 "src/network/*.cpp"
 "src/tracker/*.cpp"
@@ -42,6 +61,7 @@ file (GLOB_RECURSE SOURCE_FILES
 "src/helper/*.h"
 "src/train/example_generator.h"
 "src/train/tracker_trainer.h"
+"src/train/tracker_trainer_multi_domain.h"
 "src/loader/*.h"
 "src/network/*.h"
 "src/tracker/*.h"
@@ -66,31 +86,39 @@ include_directories(src/native)
 # # target_link_libraries(${PROJECT_NAME} /path_to_trax/build/libtrax.so)
 
 add_executable (test_tracker_alov src/test/test_tracker_alov.cpp)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${GLOG_LIB})
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
 target_link_libraries (test_tracker_alov ${PROJECT_NAME})
 
 add_executable (save_videos_vot src/test/save_videos_vot.cpp)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${GLOG_LIB})
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
 target_link_libraries (save_videos_vot ${PROJECT_NAME})
 
 add_executable (train src/train/train.cpp)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${Caffe_LIBRARIES} ${TinyXML_LIBRARIES} ${GLOG_LIB})
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${Caffe_LIBRARIES} ${TinyXML_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
 target_link_libraries (train ${PROJECT_NAME})
 
+add_executable (train_multi_domain src/train/train_multi_domain.cpp)
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${Caffe_LIBRARIES} ${TinyXML_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
+target_link_libraries (train_multi_domain ${PROJECT_NAME})
+
 add_executable (show_tracker_vot src/visualizer/show_tracker_vot.cpp)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB})
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
 target_link_libraries (show_tracker_vot ${PROJECT_NAME})
 
+add_executable (show_tracker_otb src/visualizer/show_tracker_otb.cpp)
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
+target_link_libraries (show_tracker_otb ${PROJECT_NAME})
+
 add_executable (show_tracker_alov src/visualizer/show_tracker_alov.cpp)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB})
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
 target_link_libraries (show_tracker_alov ${PROJECT_NAME})
 
 add_executable (show_imagenet src/visualizer/show_imagenet.cpp)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${TinyXML_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${TinyXML_LIBRARIES} ${PROTOBUF_LIBRARIES} ${GSLLIB})
 target_link_libraries (show_imagenet ${PROJECT_NAME})
 
 add_executable (show_alov src/visualizer/show_alov.cpp)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${PROTOBUF_LIBRARIES} ${GSLLIB})
 target_link_libraries (show_alov ${PROJECT_NAME})
 
 

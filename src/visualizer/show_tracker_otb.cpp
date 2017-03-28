@@ -54,7 +54,7 @@ int main (int argc, char *argv[]) {
   Tracker tracker(show_intermediate_output);
 
   // Get videos.
-  LoaderVOT loader(videos_folder);
+  LoaderOTB loader(videos_folder);
   std::vector<Video> videos = loader.get_videos();
 
   // Visualize the tracker performance.

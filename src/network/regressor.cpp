@@ -8,10 +8,31 @@
 
 using caffe::Blob;
 using caffe::Net;
+using caffe::Layer;
+using caffe::LayerParameter;
+using caffe::ParamSpec;
 using std::string;
+using namespace std;
+
+// #define DEBUG_FREEZE_LAYER
 
 // We need 2 inputs: one for the current frame and one for the previous frame.
 const int kNumInputs = 2;
+
+Regressor::Regressor(const string& deploy_proto,
+                     const string& caffe_model,
+                     const int gpu_id,
+                     const int num_inputs,
+                     const bool do_train,
+                     const int K)
+  : num_inputs_(num_inputs),
+    caffe_model_(caffe_model),
+    modified_params_(false),
+    K_(K)
+
+{
+  SetupNetwork(deploy_proto, caffe_model, gpu_id, do_train);
+}
 
 Regressor::Regressor(const string& deploy_proto,
                      const string& caffe_model,
@@ -65,7 +86,7 @@ void Regressor::SetupNetwork(const string& deploy_proto,
   }
 
   //CHECK_EQ(net_->num_inputs(), num_inputs_) << "Network should have exactly " << num_inputs_ << " inputs.";
-  CHECK_EQ(net_->num_outputs(), 1) << "Network should have exactly one output.";
+  // CHECK_EQ(net_->num_outputs(), 1) << "Network should have exactly one output.";
 
   Blob<float>* input_layer = net_->input_blobs()[0];
 
@@ -78,6 +99,9 @@ void Regressor::SetupNetwork(const string& deploy_proto,
 
   // Load the binaryproto mean file.
   SetMean();
+
+  // Lock the domain specific layers, will be opened each time during training
+  LockDomainLayers();
 }
 
 void Regressor::SetMean() {
@@ -90,6 +114,29 @@ void Regressor::Init() {
     printf("Reloading new params\n");
     net_->CopyTrainedLayersFrom(caffe_model_);
     modified_params_ = false;
+  }
+}
+
+void Regressor::LockDomainLayers() {
+  // assert K_ is the same as number of loss layers in net_
+  assert (net_->output_blob_indices().size() == K_);
+
+  for (int i = 0; i< K_;i ++) {
+    std::string this_layer_name = FREEZE_LAYER_PREFIX + std::to_string(i);
+    // unlock this layer
+    const boost::shared_ptr<Layer<float> > layer_pt = net_->layer_by_name(this_layer_name);
+
+    cout << "layer_pt->param_propagate_down(0):" << layer_pt->param_propagate_down(0) << endl;
+    cout << "layer_pt->param_propagate_down(1):" << layer_pt->param_propagate_down(1) << endl;
+    if (layer_pt->param_propagate_down(0)) {
+      layer_pt->set_param_propagate_down(0, false);
+    }
+    if (layer_pt->param_propagate_down(1)) {
+      layer_pt->set_param_propagate_down(1, false);
+    }
+    const LayerParameter & layer_parameter = layer_pt->layer_param();
+    cout << "layer_parameter.propagate_down_size():" << layer_parameter.propagate_down_size() << endl;
+    cout << "layer_parameter.param_size():" << layer_parameter.param_size() << endl;
   }
 }
 
@@ -151,11 +198,51 @@ void Regressor::ReshapeImageInputs(const size_t num_images) {
                        input_geometry_.height, input_geometry_.width);
 }
 
+void Regressor::ReshapeCandidateInputs(const size_t num_candidates) {
+    Blob<float>* input_candidates = net_->input_blobs()[2];
+    input_candidates->Reshape(num_candidates, num_channels_,
+                       input_geometry_.height, input_geometry_.width);
+}
+
 void Regressor::GetFeatures(const string& feature_name, std::vector<float>* output) const {
   //printf("Getting %s features\n", feature_name.c_str());
 
   // Get a pointer to the requested layer.
   const boost::shared_ptr<Blob<float> > layer = net_->blob_by_name(feature_name.c_str());
+
+#ifdef DEBUG_FREEZE_LAYER
+  string layer_name = "fc8-shapes";
+  const boost::shared_ptr<Layer<float> > layer_pt = net_->layer_by_name(layer_name);
+  cout << "layer_pt->param_propagate_down(0):" << layer_pt->param_propagate_down(0) << endl;
+  cout << "layer_pt->param_propagate_down(1):" << layer_pt->param_propagate_down(1) << endl;
+  if (layer_pt->param_propagate_down(0)) {
+    layer_pt->set_param_propagate_down(0, false);
+  }
+  if (layer_pt->param_propagate_down(1)) {
+    layer_pt->set_param_propagate_down(1, false);
+  }
+  const LayerParameter & layer_parameter = layer_pt->layer_param();
+  cout << "layer_parameter.propagate_down_size():" << layer_parameter.propagate_down_size() << endl;
+  cout << "layer_parameter.param_size():" << layer_parameter.param_size() << endl;
+  // // set lr_mult and decay_mult to be 0
+  // layer_parameter.param(0).set_lr_mult(0);
+  // layer_parameter.param(0).set_decay_mult(0);
+
+  // layer_parameter.param(1).set_lr_mult(0);
+  // layer_parameter.param(1).set_decay_mult(0);
+
+  cout << "layer_parameter.param(0).lr_mult():" << layer_parameter.param(0).lr_mult() << endl;
+  cout << "layer_parameter.param(0).decay_mult():" << layer_parameter.param(0).decay_mult() << endl;
+  // layer_parameter.mutable_param(0)->set_lr_mult(0);
+
+  const vector< boost::shared_ptr< Blob< float > > > & parameters = net_->params();
+ 
+  const vector< float > & params_lr_mult = net_->params_lr();
+
+  for (int i = 0;i< params_lr_mult.size(); i++) {
+    cout << "params_lr_mult["<< i << "] :" << params_lr_mult[i] << endl;
+  }
+#endif
 
   // Compute the number of elements in this layer.
   int num_elements = 1;
@@ -193,6 +280,21 @@ void Regressor::SetImages(const std::vector<cv::Mat>& images,
   Preprocess(targets, &target_channels);
 }
 
+void Regressor::SetCandidates(const std::vector<cv::Mat>& candidates) {
+
+  const size_t num_candidates = candidates.size();
+
+  // Set network inputs to the appropriate size and number.
+  ReshapeCandidateInputs(num_candidates);
+
+  // Wrap the network inputs with opencv objects.
+  std::vector<std::vector<cv::Mat> > candidate_channels;
+  WrapInputLayer(num_candidates, &candidate_channels);
+
+  // Set the network inputs appropriately.
+  Preprocess(candidates, &candidate_channels);
+}
+
 void Regressor::Estimate(const std::vector<cv::Mat>& images,
                         const std::vector<cv::Mat>& targets,
                         std::vector<float>* output) {
@@ -212,6 +314,12 @@ void Regressor::Estimate(const std::vector<cv::Mat>& images,
 }
 
 void Regressor::GetOutput(std::vector<float>* output) {
+  // Debugging, peep into pool5_concat layer feature size
+  std::vector<float> pool5_concat_feature;
+  GetFeatures("pool5_concat", & pool5_concat_feature);
+
+  cout << "pool5_concat_feature.size():" << pool5_concat_feature.size() << endl;  
+
   // Get the fc8 output features of the network (this contains the estimated bounding box).
   GetFeatures("fc8", output);
 }
@@ -279,6 +387,23 @@ void Regressor::WrapInputLayer(const size_t num_images,
       image_data += image_width * image_height;
     }
   }
+}
+
+void Regressor::WrapInputLayer(const size_t num_candidates, std::vector<std::vector<cv::Mat> >* candidate_channels) {
+    Blob<float>* input_layer_candidate = net_->input_blobs()[2];
+
+    candidate_channels->resize(num_candidates);
+
+    int candidate_width = input_layer_candidate->width();
+    int candidate_height = input_layer_candidate->height();
+    float* candidate_data = input_layer_candidate->mutable_cpu_data();
+    for (int n = 0; n < num_candidates; ++n) {
+      for (int i = 0; i < input_layer_candidate->channels(); ++i) {
+        cv::Mat channel(candidate_height, candidate_width, CV_32FC1, candidate_data);
+        (*candidate_channels)[n].push_back(channel);
+        candidate_data += candidate_width * candidate_height;
+      }
+    }
 }
 
 void Regressor::Preprocess(const cv::Mat& img,

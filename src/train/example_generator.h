@@ -8,6 +8,13 @@
 #include "helper/bounding_box.h"
 #include "loader/loader_imagenet_det.h"
 #include "loader/video.h"
+#include "helper/Common.h"
+#include "helper/CommonCV.h"
+
+#include <stdlib.h>     /* srand, rand */
+#include <time.h>       /* time */
+#include <gsl/gsl_rng.h> 
+#include <gsl/gsl_randist.h> /* GAUSSIAN*/
 
 struct BBParams {
   double lambda_shift;
@@ -48,6 +55,13 @@ public:
                             std::vector<cv::Mat>* targets,
                             std::vector<BoundingBox>* bboxes_gt_scaled);
 
+  // Helper function to generate one moved box, non-gaussian version
+  static BoundingBox GenerateOneRandomCandidate(BoundingBox &bbox, gsl_rng* rng);
+
+  // Make candidates given one frame
+  // candidates: 128 neg and 32 pos candidates 
+  // labels: vector of scalar 1 means pos and 0 means neg 
+  void MakeCandidatesAndLabels(vector<Mat> *candidates, vector<double> *labels);
 
   void set_indices(const int video_index, const int frame_index) {
     video_index_ = video_index; frame_index_ = frame_index;
@@ -91,6 +105,8 @@ private:
   // a unique identifier.
   int video_index_;
   int frame_index_;
+
+  gsl_rng* rng_;
 };
 
 #endif // EXAMPLE_GENERATOR_H

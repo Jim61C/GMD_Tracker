@@ -14,11 +14,24 @@
 #include "helper/bounding_box.h"
 #include "network/regressor_base.h"
 
+using namespace std;
+
+const string FREEZE_LAYER_PREFIX = "fc8_k";
+const string LOSS_LAYER_PREFIX = "loss_k";
+
 class Regressor : public RegressorBase {
  public:
   // Set up a network with the architecture specified in deploy_proto,
   // with the model weights saved in caffe_model.
   // If we are using a model with a
+
+  Regressor(const string& deploy_proto,
+            const string& caffe_model,
+            const int gpu_id,
+            const int num_inputs,
+            const bool do_train,
+            const int K);
+
   Regressor(const std::string& train_deploy_proto,
             const std::string& caffe_model,
             const int gpu_id,
@@ -41,12 +54,17 @@ protected:
   // Set the network inputs.
   void SetImages(const std::vector<cv::Mat>& images,
                  const std::vector<cv::Mat>& targets);
+  
+  // Set the candidates inputs at input[2]
+  void SetCandidates(const std::vector<cv::Mat>& candidates);
 
   // Get the features corresponding to the output of the network.
   virtual void GetOutput(std::vector<float>* output);
 
   // Reshape the image inputs to the network to match the expected size and number of images.
   virtual void ReshapeImageInputs(const size_t num_images);
+
+  virtual void ReshapeCandidateInputs(const size_t num_candidates);
 
   // Get the features in the network with the given name, and copy their values to the output.
   void GetFeatures(const std::string& feature_name, std::vector<float>* output) const;
@@ -68,6 +86,9 @@ protected:
   void WrapInputLayer(const size_t num_images,
                       std::vector<std::vector<cv::Mat> >* target_channels,
                       std::vector<std::vector<cv::Mat> >* image_channels);
+  
+  // Wrap the input of network (candidate) in separate cv::Mat objects
+  void WrapInputLayer(const size_t num_candidates, std::vector<std::vector<cv::Mat> >* candidate_channels);
 
   // Set the inputs to the network.
   void Preprocess(const cv::Mat& img, std::vector<cv::Mat>* input_channels);
@@ -76,6 +97,9 @@ protected:
 
   // If the parameters of the network have been modified, reinitialize the parameters to their original values.
   virtual void Init();
+
+  // lock the domain layers
+  virtual void LockDomainLayers();
 
  private:
   // Set up a network with the architecture specified in deploy_proto,
@@ -106,6 +130,9 @@ protected:
 
   // Whether the model weights has been modified.
   bool modified_params_;
+
+  // Number of Domains
+  int K_;
 };
 
 #endif // REGRESSOR_H

@@ -37,8 +37,8 @@ private:
   virtual void ProcessBatch();
 
   // Data in the current training batch.
-  std::vector<cv::Mat> images_batch_;
-  std::vector<cv::Mat> targets_batch_;
+  std::vector<cv::Mat> images_batch_; // each images_batch_[i] will be repeated according to labels_[i].size()
+  std::vector<cv::Mat> targets_batch_; // each targets_batch_[i] will be repeated according to labels_[i].size()
   std::vector<BoundingBox> bboxes_gt_scaled_batch_;
 
   // Used to generate additional training examples through synthetic transformations.

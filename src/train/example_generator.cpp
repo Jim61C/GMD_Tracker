@@ -8,11 +8,25 @@
 #include "helper/high_res_timer.h"
 #include "helper/helper.h"
 #include "helper/image_proc.h"
+#include <assert.h>
+#include <algorithm> // for shuffling
+#include <random>
+
 
 using std::string;
 
 // Choose whether to shift boxes using the motion model or using a uniform distribution.
 const bool shift_motion_model = true;
+const int POS_CANDIDATES = 50;
+const int NEG_CANDIDATES = 200;
+const double POS_IOU_TH = 0.7;
+const double NEG_IOU_TH = 0.5;
+double POS_LABEL = 1.0;
+double NEG_LABEL = 0.0;
+
+#define SCALE_FACTOR 1.05
+#define SCALE_RANGE 5.0 
+#define TRANS_RANGE 0.5
 
 ExampleGenerator::ExampleGenerator(const double lambda_shift,
                                    const double lambda_scale,
@@ -23,6 +37,10 @@ ExampleGenerator::ExampleGenerator(const double lambda_shift,
     min_scale_(min_scale),
     max_scale_(max_scale)
 {
+
+    gsl_rng_env_setup();
+    rng_ = gsl_rng_alloc(gsl_rng_mt19937);
+    gsl_rng_set(rng_, time(NULL));
 }
 
 void ExampleGenerator::Reset(const BoundingBox& bbox_prev,
@@ -59,6 +77,75 @@ void ExampleGenerator::MakeTrainingExamples(const int num_examples,
     targets->push_back(target_pad);
     bboxes_gt_scaled->push_back(bbox_gt_scaled);
   }
+}
+
+// Randomly generates a new moved BoundingBox from bbox as candidate
+BoundingBox ExampleGenerator::GenerateOneRandomCandidate(BoundingBox &bbox, gsl_rng* rng) {
+  double w = bbox.x2_ - bbox.x1_;
+  double h = bbox.y2_ - bbox.y1_;
+  
+  double centre_x = bbox.x1_ + w/2.0;
+  double centre_y = bbox.y1_ + h/2.0;
+
+  double dx = (gsl_rng_uniform(rng) * 2.0 - 1.0) * w * TRANS_RANGE;
+  double dy = (gsl_rng_uniform(rng) * 2.0 - 1.0) * h * TRANS_RANGE;
+
+  double moved_centre_x = centre_x + dx;
+  double moved_centre_y = centre_y + dy;
+
+  double ds = pow(SCALE_FACTOR, (gsl_rng_uniform(rng) * 2.0 - 1.0) * SCALE_RANGE);
+  double moved_w = w * ds;
+  double moved_h = h * ds;
+
+  BoundingBox moved_bbox;
+  moved_bbox.x1_ = moved_centre_x - moved_w /2.0;
+  moved_bbox.y1_ = moved_centre_y - moved_h /2.0;
+  moved_bbox.x2_ = moved_centre_x + moved_w/2.0;
+  moved_bbox.y2_ = moved_centre_y + moved_h/2.0;
+  
+  return moved_bbox;
+}
+
+void ExampleGenerator::MakeCandidatesAndLabels(vector<Mat> *candidates, vector<double> *labels) {
+  std::vector<pair<double, Mat> > label_candidates;
+  
+  // generate positive examples
+  while (label_candidates.size() < POS_CANDIDATES) {
+    BoundingBox this_box = ExampleGenerator::GenerateOneRandomCandidate(bbox_curr_gt_, rng_);
+    if (this_box.check_within_image(image_curr_) && bbox_curr_gt_.compute_IOU(this_box) >= POS_IOU_TH) {
+      // enqueue this box's rect and label
+      Mat this_candidate;
+      this_box.CropBoundingBoxOutImage(image_curr_, this_candidate);
+      // candidates->push_back(this_candidate);
+      // labels->push_back(POS_LABEL);
+      label_candidates.push_back(std::make_pair(POS_LABEL, this_candidate));
+    }
+  }
+
+
+  // generate negative examples
+  while (label_candidates.size() < POS_CANDIDATES + NEG_CANDIDATES) {
+    BoundingBox this_box = ExampleGenerator::GenerateOneRandomCandidate(bbox_curr_gt_, rng_);
+    if (this_box.check_within_image(image_curr_) && bbox_curr_gt_.compute_IOU(this_box) <= NEG_IOU_TH) {
+      // enqueue this box's rect and label
+      Mat this_candidate;
+      this_box.CropBoundingBoxOutImage(image_curr_, this_candidate);
+      // candidates->push_back(this_candidate);
+      // labels->push_back(NEG_LABEL);
+      label_candidates.push_back(std::make_pair(NEG_LABEL, this_candidate));
+    }
+  }
+  
+  // random shuffle
+  auto engine = std::default_random_engine{};
+  std::shuffle(std::begin(label_candidates), std::end(label_candidates), engine);
+
+  for (int i = 0; i< label_candidates.size(); i++) {
+    candidates->push_back(label_candidates[i].second);
+    labels->push_back(label_candidates[i].first);
+  }
+  assert (candidates->size() == labels->size());
+
 }
 
 void ExampleGenerator::MakeTrueExample(cv::Mat* curr_search_region,

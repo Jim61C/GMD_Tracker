@@ -2,6 +2,7 @@
 
 #include <cstdio>
 #include "helper/image_proc.h"
+#include <math.h>
 
 // Uncomment line below if you want to use rectangles
 #define VOT_RECTANGLE
@@ -230,6 +231,11 @@ void BoundingBox::DrawBoundingBox(cv::Mat* image) const {
   Draw(255, 255, 255, image);
 }
 
+void BoundingBox::CropBoundingBoxOutImage(cv::Mat &image, cv::Mat &out) {
+  cv::Rect this_rect = cv::Rect((int)(round(x1_)), (int)(round(y1_)), (int)(round(x2_ - x1_)), (int)(round(y2_ - y1_)));
+  out = image(this_rect).clone();
+}
+
 void BoundingBox::Shift(const cv::Mat& image,
                         const double lambda_scale_frac,
                         const double lambda_shift_frac,
@@ -347,6 +353,32 @@ double BoundingBox::compute_intersection(const BoundingBox& bbox) const {
   return area;
 }
 
+double BoundingBox::compute_union(const BoundingBox& bbox) {
+  double area = std::max(0.0, std::max(x2_, bbox.x2_) - std::min(x1_, bbox.x1_)) * std::max(0.0, std::max(y2_, bbox.y2_) - std::min(y1_, bbox.y1_));
+  return area;
+}
+
+double BoundingBox::compute_IOU(const BoundingBox & bbox) {
+  double intersection_area = compute_intersection(bbox);
+  double union_area = compute_union(bbox);
+  return (intersection_area / union_area);
+}
+
 double BoundingBox::compute_area() const {
   return get_width() * get_height();
+}
+
+bool BoundingBox::check_within_image(cv::Mat &image) {
+  int W = image.size().width;
+  int H = image.size().height;
+
+  if (x1_ >= 0 &&
+      y1_ >= 0 &&
+      x2_ <= W -1 &&
+      y2_ <= H -1) {
+    return true;
+  }
+  else {
+    return false;
+  }
 }
