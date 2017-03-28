@@ -20,7 +20,9 @@ CAFFE_MODEL=nets/models/pretrained_model/tracker.caffemodel
 
 OUTPUT_FOLDER=nets/tracker_output/$FOLDER
 
-echo "Saving output to " $OUTPUT_FILE
+mkdir -p $OUTPUT_FOLDER
+
+echo "Saving output to " $OUTPUT_FOLDER
 
 # Run tracker on test set and save vidoes 
 build/save_videos_vot $VIDEOS_FOLDER $DEPLOY_PROTO $CAFFE_MODEL $OUTPUT_FOLDER $GPU_ID 

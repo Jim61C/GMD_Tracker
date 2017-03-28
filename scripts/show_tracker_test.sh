@@ -14,7 +14,7 @@ GPU_ID=0
 START_VIDEO_NUM=0
 
 # Set to 0 to pause after each frame
-PAUSE_VAL=1
+PAUSE_VAL=5
 
 VIDEOS_FOLDER=$1
 DEPLOY=nets/tracker.prototxt
