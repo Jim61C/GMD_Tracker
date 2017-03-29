@@ -16,6 +16,19 @@ RegressorTrain::RegressorTrain(const std::string& deploy_proto,
                                const std::string& caffe_model,
                                const int gpu_id,
                                const string& solver_file,
+                               const int num_input,
+                               const bool do_train)
+  : Regressor(deploy_proto, caffe_model, gpu_id, num_input, do_train),
+    RegressorTrainBase(solver_file)
+{
+  solver_.set_net(net_);
+}
+
+
+RegressorTrain::RegressorTrain(const std::string& deploy_proto,
+                               const std::string& caffe_model,
+                               const int gpu_id,
+                               const string& solver_file,
                                const bool do_train)
   : Regressor(deploy_proto, caffe_model, gpu_id, kNumInputs, do_train),
     RegressorTrainBase(solver_file)
@@ -201,49 +214,69 @@ void RegressorTrain::Train(std::vector<cv::Mat> &images_flattened,
   //   cout << temp_layer_name << ", layer_parameter.propagate_down_size():" << layer_parameter.propagate_down_size() << endl;
   //   cout << temp_layer_name << ", layer_parameter.param_size():" << layer_parameter.param_size() << endl;
   // }
-    string this_layer_name = FREEZE_LAYER_PREFIX + std::to_string(k);
 
-    // unlock this layer
-    const boost::shared_ptr<Layer<float> > layer_pt = net_->layer_by_name(this_layer_name);
+    if (k != -1) {
+      // Usual Training, need to freeze layers
+      string this_layer_name = FREEZE_LAYER_PREFIX + std::to_string(k);
 
-    if (!layer_pt->param_propagate_down(0)) {
-      layer_pt->set_param_propagate_down(0, true);
-    }
-    if (!layer_pt->param_propagate_down(1)) {
-      layer_pt->set_param_propagate_down(1, true);
-    }
+      // unlock this layer
+      const boost::shared_ptr<Layer<float> > layer_pt = net_->layer_by_name(this_layer_name);
 
-    // cout << "after turning on:" << endl;
-    // cout << this_layer_name << ", layer_pt->param_propagate_down(0):" <<layer_pt->param_propagate_down(0) << endl;
-    // cout << this_layer_name << ", layer_pt->param_propagate_down(1):" <<layer_pt->param_propagate_down(1) << endl;
-    
+      if (!layer_pt->param_propagate_down(0)) {
+        layer_pt->set_param_propagate_down(0, true);
+      }
+      if (!layer_pt->param_propagate_down(1)) {
+        layer_pt->set_param_propagate_down(1, true);
+      }
 
-    // Set the image and target.
-    SetImages(images_flattened, targets_flattened);
-
-    // Set the candidates
-    SetCandidates(candidates_flattened);
-
-    // Set the labels
-    set_labels(labels_flattened);
-
-    // Train the network.
-    Step();
+      // cout << "after turning on:" << endl;
+      // cout << this_layer_name << ", layer_pt->param_propagate_down(0):" <<layer_pt->param_propagate_down(0) << endl;
+      // cout << this_layer_name << ", layer_pt->param_propagate_down(1):" <<layer_pt->param_propagate_down(1) << endl;
       
-    //lock this layer back
-    // cout << this_layer_name << " freeze back" << endl;
-    if (layer_pt->param_propagate_down(0)) {
-      layer_pt->set_param_propagate_down(0, false);
-    }
-    if (layer_pt->param_propagate_down(1)) {
-      layer_pt->set_param_propagate_down(1, false);
-    }
 
-    vector<float> this_loss_output;
-    string this_loss_name = LOSS_LAYER_PREFIX + std::to_string(k);
-    GetFeatures(this_loss_name, &this_loss_output);
-    //record the loss for domain k
-    loss_history_k_domain_[k].push_back(this_loss_output[0]);
+      // Set the image and target.
+      SetImages(images_flattened, targets_flattened);
+
+      // Set the candidates
+      SetCandidates(candidates_flattened);
+
+      // Set the labels
+      set_labels(labels_flattened);
+
+      // Train the network.
+      Step();
+        
+      //lock this layer back
+      // cout << this_layer_name << " freeze back" << endl;
+      if (layer_pt->param_propagate_down(0)) {
+        layer_pt->set_param_propagate_down(0, false);
+      }
+      if (layer_pt->param_propagate_down(1)) {
+        layer_pt->set_param_propagate_down(1, false);
+      }
+
+      vector<float> this_loss_output;
+      string this_loss_name = LOSS_LAYER_PREFIX + std::to_string(k);
+      GetFeatures(this_loss_name, &this_loss_output);
+      //record the loss for domain k
+      loss_history_k_domain_[k].push_back(this_loss_output[0]);
+    }
+    else {
+      // Fine Tuning, only one domain, just normally step
+      
+      // Set the image and target.
+      SetImages(images_flattened, targets_flattened);
+
+      // Set the candidates
+      SetCandidates(candidates_flattened);
+
+      // Set the labels
+      set_labels(labels_flattened);
+
+      // Train the network.
+      Step();
+    }
+    
 }
 
 void RegressorTrain::Step() {

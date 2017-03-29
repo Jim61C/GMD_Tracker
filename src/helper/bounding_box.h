@@ -34,7 +34,7 @@ public:
   void DrawBoundingBox(cv::Mat* figure_ptr) const;
 
   // Get Image Mat region of the bounding box in a frame
-  void CropBoundingBoxOutImage(cv::Mat &image, cv::Mat &out);
+  void CropBoundingBoxOutImage(const cv::Mat &image, cv::Mat &out) const;
 
   // Normalize the size of the bounding box based on the size of the image.
   void Scale(const cv::Mat& image, BoundingBox* bbox_scaled) const;

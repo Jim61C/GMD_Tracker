@@ -222,7 +222,7 @@ void BoundingBox::Draw(const int r, const int g, const int b,
   const cv::Scalar box_color(b, g, r);
 
   // Draw a rectangle corresponding to this bbox with the given color.
-  const int thickness = 3;
+  const int thickness = 1;
   cv::rectangle(*image, point1, point2, box_color, thickness);
 }
 
@@ -231,7 +231,7 @@ void BoundingBox::DrawBoundingBox(cv::Mat* image) const {
   Draw(255, 255, 255, image);
 }
 
-void BoundingBox::CropBoundingBoxOutImage(cv::Mat &image, cv::Mat &out) {
+void BoundingBox::CropBoundingBoxOutImage(const cv::Mat &image, cv::Mat &out) const {
   cv::Rect this_rect = cv::Rect((int)(round(x1_)), (int)(round(y1_)), (int)(round(x2_ - x1_)), (int)(round(y2_ - y1_)));
   out = image(this_rect).clone();
 }

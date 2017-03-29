@@ -12,7 +12,14 @@ public:
                  const std::string& caffe_model,
                  const int gpu_id,
                  const std::string& solver_file,
-                 const bool do_train);
+                 const int num_input,
+                 const bool do_train);     
+
+  RegressorTrain(const std::string& deploy_proto,
+                 const std::string& caffe_model,
+                 const int gpu_id,
+                 const std::string& solver_file,
+                 const bool do_train);            
 
   RegressorTrain(const std::string& deploy_proto,
                  const std::string& caffe_model,

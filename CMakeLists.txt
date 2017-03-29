@@ -105,6 +105,15 @@ add_executable (show_tracker_vot src/visualizer/show_tracker_vot.cpp)
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
 target_link_libraries (show_tracker_vot ${PROJECT_NAME})
 
+add_executable (show_tracker_vot_gmd src/visualizer/show_tracker_vot_gmd.cpp)
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
+target_link_libraries (show_tracker_vot_gmd ${PROJECT_NAME})
+
+add_executable (show_tracker_vot_gmd_finetune src/visualizer/show_tracker_vot_gmd_finetune.cpp)
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
+target_link_libraries (show_tracker_vot_gmd_finetune ${PROJECT_NAME})
+
+
 add_executable (show_tracker_otb src/visualizer/show_tracker_otb.cpp)
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
 target_link_libraries (show_tracker_otb ${PROJECT_NAME})

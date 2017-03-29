@@ -40,13 +40,15 @@ public:
              const std::vector<cv::Mat>& targets,
              const std::vector<BoundingBox>& bboxes_gt) = 0;
   
-  // Train the tracker, GOTURN, MDNet
+  // Train the tracker, GOTURN, MDNet, k = -1 indicating Fine Tuning
   virtual void TrainBatch(const std::vector<cv::Mat>& images,
                            const std::vector<cv::Mat>& targets,
                            const std::vector<BoundingBox>& bboxes_gt,
                            const std::vector<std::vector<cv::Mat> > &candidates,
                            const std::vector<std::vector<double> > &labels,
                            int k) = 0;
+
+  // TODO: add an interface for fine-tuning, just one domain and no bboxes_gt (or dummy bboxes_gt);
   
   // Interface for saving the loss_history, implementation depends on implementing sub-classes
   virtual void SaveLossHistoryToFile(const std::string &save_path) = 0;

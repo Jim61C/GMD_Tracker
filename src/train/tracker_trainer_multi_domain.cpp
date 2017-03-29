@@ -168,6 +168,11 @@ void TrackerTrainerMultiDomain::Train(const cv::Mat& image_prev, const cv::Mat& 
   }
 }
 
+void TrackerTrainerMultiDomain::FineTune(const cv::Mat& image_prev, const cv::Mat& image_curr,
+                           const BoundingBox& bbox_prev) {
+  return;
+}
+
 // get if full batch
 bool TrackerTrainerMultiDomain::get_if_full_batch() {
   return batch_filled_;

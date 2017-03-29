@@ -50,6 +50,12 @@ class Regressor : public RegressorBase {
   // Returns: bbox, an estimated location of the target object in the current image.
   virtual void Regress(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, BoundingBox* bbox);
 
+  // Implement the Interface of ML Prediction out of many candidate_bboxes
+  virtual void Predict(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, 
+                       const std::vector<BoundingBox> &candidate_bboxes, 
+                       BoundingBox* bbox,
+                       std::vector<float> * return_probabilities);
+
 protected:
   // Set the network inputs.
   void SetImages(const std::vector<cv::Mat>& images,
@@ -60,6 +66,9 @@ protected:
 
   // Get the features corresponding to the output of the network.
   virtual void GetOutput(std::vector<float>* output);
+
+  // Get the softmax layer output
+  virtual void GetProbOutput(std::vector<float> *output);
 
   // Reshape the image inputs to the network to match the expected size and number of images.
   virtual void ReshapeImageInputs(const size_t num_images);
@@ -76,6 +85,12 @@ protected:
   void Estimate(const std::vector<cv::Mat>& images,
                              const std::vector<cv::Mat>& targets,
                              std::vector<float>* output);
+
+  // Batch ML candidate binary softmax estimation
+  void Estimate(std::vector<cv::Mat> &images_flattened,
+                           std::vector<cv::Mat> &targets_flattened,
+                           std::vector<cv::Mat> &candidates_flattened,
+                           std::vector<float>* output);
 
   // Wrap the input layer of the network in separate cv::Mat objects
   // (one per channel).

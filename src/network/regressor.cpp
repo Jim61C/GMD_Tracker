@@ -1,4 +1,5 @@
 #include "regressor.h"
+#include "math.h"
 
 #include "helper/high_res_timer.h"
 
@@ -15,6 +16,7 @@ using std::string;
 using namespace std;
 
 // #define DEBUG_FREEZE_LAYER
+// #define DEBUG_GETPROBOUTPUT
 
 // We need 2 inputs: one for the current frame and one for the previous frame.
 const int kNumInputs = 2;
@@ -41,7 +43,8 @@ Regressor::Regressor(const string& deploy_proto,
                      const bool do_train)
   : num_inputs_(num_inputs),
     caffe_model_(caffe_model),
-    modified_params_(false)
+    modified_params_(false),
+    K_(-1)
 
 {
   SetupNetwork(deploy_proto, caffe_model, gpu_id, do_train);
@@ -53,7 +56,8 @@ Regressor::Regressor(const string& deploy_proto,
                      const bool do_train)
   : num_inputs_(kNumInputs),
     caffe_model_(caffe_model),
-    modified_params_(false)
+    modified_params_(false),
+    K_(-1)
 {
   SetupNetwork(deploy_proto, caffe_model, gpu_id, do_train);
 }
@@ -100,8 +104,10 @@ void Regressor::SetupNetwork(const string& deploy_proto,
   // Load the binaryproto mean file.
   SetMean();
 
-  // Lock the domain specific layers, will be opened each time during training
-  LockDomainLayers();
+  if (do_train && K_ != -1) {
+    // Only if training and model has K domains, Lock the domain specific layers, will be opened each time during training
+    LockDomainLayers();
+  }
 }
 
 void Regressor::SetMean() {
@@ -151,6 +157,87 @@ void Regressor::Regress(const cv::Mat& image_curr,
 
   // Wrap the estimation in a bounding box object.
   *bbox = BoundingBox(estimation);
+}
+
+void Regressor::Predict(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, 
+                       const std::vector<BoundingBox> &candidate_bboxes, 
+                       BoundingBox* bbox,
+                       std::vector<float> *return_probabilities) {
+  // Prepare the corresponding vector<cv::Mat> for images, targets, candidates to feed into network
+  std::vector<cv::Mat> images_flattened;
+  std::vector<cv::Mat> targets_flattened;
+  std::vector<cv::Mat> candidates_flattened;
+
+  // flatten
+  for (int i = 0; i <candidate_bboxes.size(); i++) {
+    // Crop the candidate
+    const BoundingBox &this_box = candidate_bboxes[i];
+    cv::Mat this_candidate;
+    this_box.CropBoundingBoxOutImage(image_curr, this_candidate);
+
+    candidates_flattened.push_back(this_candidate);
+    images_flattened.push_back(image.clone());
+    targets_flattened.push_back(target.clone());
+  }
+
+  vector<float> probabilities;
+  Estimate(images_flattened, targets_flattened, candidates_flattened, &probabilities);
+  assert (probabilities.size() == images_flattened.size() * 2); // since binary classification, prob[1] is POSITIVE probability
+
+  int best_idx = -1;
+  float best_prob = 0;
+  vector<float> postitive_probablities;
+  for(int i = 0; i < images_flattened.size(); i++) {
+    postitive_probablities.push_back(probabilities[2*i+1]);
+    if (probabilities[2*i+1] > best_prob) {
+      best_prob = probabilities[2*i+1];
+      best_idx = i;
+    }
+  }
+
+  assert (best_idx != -1);
+
+  *bbox = BoundingBox(candidate_bboxes[best_idx]);
+  *return_probabilities = postitive_probablities;
+}
+
+void Regressor::Estimate(std::vector<cv::Mat> &images_flattened,
+                           std::vector<cv::Mat> &targets_flattened,
+                           std::vector<cv::Mat> &candidates_flattened,
+                           std::vector<float>* output) {
+
+  assert(images_flattened.size() == targets_flattened.size());
+  assert(images_flattened.size() == candidates_flattened.size());
+
+  // Set the image and target, Input reshape, WrapInputLayer and Preprocess, input[0]->targets and input[1]->images
+  SetImages(images_flattened, targets_flattened);
+
+  // Set the candidates, Input reshape, WrapInputLayer and Preprocess, input[2]
+  SetCandidates(candidates_flattened);
+
+  // Reshape the labels if it is there
+  if (net_->input_blobs().size() == 4) {
+    // get the input blob for labels, reshape to include batch number
+    Blob<float> * input_label_blob = net_->input_blobs()[3];
+    const size_t num_labels = images_flattened.size();
+
+    // reshape to batch size
+    vector<int> shape;
+    shape.push_back(num_labels);
+    shape.push_back(1);
+    input_label_blob->Reshape(shape);
+  }
+
+  // Forward dimension change to all layers.
+  net_->Reshape();
+
+  // Perform a forward-pass in the network, until fc8 layer
+  // net_->ForwardPrefilled();
+  int layers_size = net_->layers().size();
+  net_->ForwardTo(layers_size-2); // forward until fc8 layer
+
+  // Get softmax output
+  GetProbOutput(output);
 }
 
 void Regressor::Estimate(const cv::Mat& image, const cv::Mat& target, std::vector<float>* output) {
@@ -322,6 +409,41 @@ void Regressor::GetOutput(std::vector<float>* output) {
 
   // Get the fc8 output features of the network (this contains the estimated bounding box).
   GetFeatures("fc8", output);
+}
+
+void Regressor::GetProbOutput(std::vector<float> *output) {
+
+#ifdef DEBUG_GETPROBOUTPUT
+  std::vector<float> feature_fc7b;
+  GetFeatures("fc7b", &feature_fc7b);
+  std::cout << "fc7b features:" << endl;
+  for (int i = 0;i< feature_fc7b.size();i++) {
+    std::cout << feature_fc7b[i] << endl;
+  }
+
+  std::vector<float> feature_fc8;
+  GetFeatures("fc8", &feature_fc8);
+  std::cout << "fc8 features:" << endl;
+  for (int i = 0;i< feature_fc8.size();i++) {
+    std::cout << feature_fc8[i] << endl;
+  }
+#endif
+
+  // GetFeatures("prob", output);
+
+  // get fc8 layer and manually compute softmax since SoftMaxWithLoss is used for finetuning
+  std::vector<float> feature_fc8;
+  GetFeatures("fc8", &feature_fc8);
+  // batch size is feature_fc8.size()/2
+  for (int i = 0;i< feature_fc8.size()/2;i++) {
+    // change to softmax prob 
+    double exp_0 = exp(feature_fc8[2*i]);
+    double exp_1 = exp(feature_fc8[2*i + 1]);
+    feature_fc8[2*i] = exp_0/(exp_0 + exp_1);
+    feature_fc8[2*i + 1] = exp_1/(exp_0 + exp_1);
+  }
+  
+  *output = feature_fc8;
 }
 
 // Wrap the input layer of the network in separate cv::Mat objects

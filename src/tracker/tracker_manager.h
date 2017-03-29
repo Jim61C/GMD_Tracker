@@ -6,6 +6,10 @@
 #include "loader/video.h"
 #include "helper/high_res_timer.h"
 
+// for fine tuning
+#include "train/example_generator.h"
+#include "network/regressor_train_base.h"
+
 // Manage the iteration over all videos and tracking the objects inside.
 class TrackerManager
 {
@@ -65,6 +69,33 @@ public:
       const size_t frame_num, const cv::Mat& image_curr, const bool has_annotation,
       const BoundingBox& bbox_gt, const BoundingBox& bbox_estimate,
       const int pause_val);
+};
+
+// Track objects and visualize the tracker output.
+class TrackerFineTune : public TrackerManager
+{
+public:
+  TrackerFineTune(const std::vector<Video>& videos,
+                    RegressorBase* regressor, Tracker* tracker, 
+                    ExampleGenerator* example_generator,
+                    RegressorTrainBase* regressor_train);
+
+  // Print which video is being visualized.
+  virtual void VideoInit(const Video& video, const size_t video_num);
+
+  // Show the tracking estimate and the ground-truth target location.
+  virtual void ProcessTrackOutput(
+      const size_t frame_num, const cv::Mat& image_curr, const bool has_annotation,
+      const BoundingBox& bbox_gt, const BoundingBox& bbox_estimate,
+      const int pause_val);
+
+private:
+  // Used to generate additional training examples through synthetic transformations.
+  ExampleGenerator* example_generator_;
+
+  // Neural network.
+  RegressorTrainBase* regressor_train_;
+
 };
 
 // Save tracking output and video; record timing.

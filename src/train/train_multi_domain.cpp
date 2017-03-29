@@ -22,7 +22,7 @@ const int kNumBatches = 500000;
 
 // Desired number of iterations, within each iteration, each of K domains is passed 1 batch
 // const int NUM_CYCLES = 800;
-const int NUM_CYCLES = 40;
+const int NUM_CYCLES = 210;
 
 namespace {
 
@@ -221,7 +221,7 @@ int main (int argc, char *argv[]) {
     }
   }
 
-  // save the loss_history when done 
+  // save the loss_history when done, TODO: save loss along training instead end of training
   string save_path = "loss_history/train_multi_domain_loss_history_cycle" + std::to_string(NUM_CYCLES) + ".txt";
   cout << "Training GOTURN MDNet Completed, saving loss to" << save_path << "..." << endl;
   tracker_trainer_multi_domain.SaveLossHistoryToFile(save_path);

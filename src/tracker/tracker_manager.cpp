@@ -7,6 +7,9 @@
 
 using std::string;
 
+#define FINE_TUNE_AUGMENT_NUM 10
+#define FISRT_FRAME_PAUSE
+
 TrackerManager::TrackerManager(const std::vector<Video>& videos,
                                RegressorBase* regressor, Tracker* tracker) :
   videos_(videos),
@@ -101,6 +104,115 @@ void TrackerVisualizer::ProcessTrackOutput(
 void TrackerVisualizer::VideoInit(const Video& video, const size_t video_num) {
   printf("Video: %zu\n", video_num);
 }
+
+
+// Tracker With Fine Tuning Ability
+TrackerFineTune::TrackerFineTune(const std::vector<Video>& videos,
+                                RegressorBase* regressor, Tracker* tracker,
+                                ExampleGenerator* example_generator,
+                                RegressorTrainBase* regressor_train) :
+  TrackerManager(videos, regressor, tracker),
+  example_generator_(example_generator),
+  regressor_train_(regressor_train)
+
+{
+
+}
+
+
+void TrackerFineTune::VideoInit(const Video& video, const size_t video_num) {
+  printf("In TrackerFineTune, Video: %zu\n", video_num);
+
+  printf("About to fine tune the first frame");
+  
+  // Get the first frame of this video with the initial ground-truth bounding box (to initialize the tracker).
+  int first_frame;
+  cv::Mat image_curr;
+  BoundingBox bbox_gt;
+  video.LoadFirstAnnotation(&first_frame, &image_curr, &bbox_gt);
+
+#ifdef FISRT_FRAME_PAUSE
+  cv::Mat image_curr_show = image_curr.clone();
+  bbox_gt.DrawBoundingBox(&image_curr_show);
+  cv::imshow("Full output", image_curr_show);
+  cv::waitKey(0);
+#endif
+
+  // Set up example generator.
+  example_generator_->Reset(bbox_gt,
+                           bbox_gt,
+                           image_curr,
+                           image_curr); // use the same image as initial step fine-tuning
+
+  // data structures to invoke fine tune
+  std::vector<cv::Mat> images;
+  std::vector<cv::Mat> targets;
+  std::vector<BoundingBox> bboxes_gt_scaled;
+  std::vector<std::vector<cv::Mat> > candidates; 
+  std::vector<std::vector<double> >  labels;
+
+  // Generate true example.
+  cv::Mat image;
+  cv::Mat target;
+  BoundingBox bbox_gt_scaled;
+  example_generator_->MakeTrueExample(&image, &target, &bbox_gt_scaled);
+  
+  images.push_back(image);
+  targets.push_back(target);
+  bboxes_gt_scaled.push_back(bbox_gt_scaled);
+
+  // Generate additional training examples through synthetic transformations.
+  example_generator_->MakeTrainingExamples(FINE_TUNE_AUGMENT_NUM, &images,
+                                           &targets, &bboxes_gt_scaled);
+                                           
+  std::vector<cv::Mat> this_frame_candidates;
+  std::vector<double> this_frame_labels;
+
+  // generate candidates and push to this_frame_candidates and this_frame_labels
+  example_generator_->MakeCandidatesAndLabels(&this_frame_candidates, &this_frame_labels);
+
+  // TODO: avoid the copying and just pass a vector of one frame's +/- candidates to train
+  for(int i = 0; i< images.size(); i ++ ) {
+    candidates.push_back(std::vector<cv::Mat>(this_frame_candidates)); // copy
+    labels.push_back(std::vector<double>(this_frame_labels)); // copy
+  }
+
+  //Fine Tune!
+  regressor_train_->TrainBatch(images,
+                               targets,
+                               bboxes_gt_scaled,
+                               candidates,
+                               labels,
+                               -1); // -1 indicating fine tuning
+
+}
+
+
+void TrackerFineTune::ProcessTrackOutput(
+    const size_t frame_num, const cv::Mat& image_curr, const bool has_annotation,
+    const BoundingBox& bbox_gt, const BoundingBox& bbox_estimate_uncentered,
+    const int pause_val) {
+  cv::Mat full_output;
+  image_curr.copyTo(full_output);
+
+  if (has_annotation) {
+    // Draw ground-truth bounding box of the target location (white).
+    bbox_gt.DrawBoundingBox(&full_output);
+  }
+
+  // Draw estimated bounding box of the target location (red).
+  bbox_estimate_uncentered.Draw(255, 0, 0, &full_output);
+
+  // Show the image with the estimated and ground-truth bounding boxes.
+  cv::namedWindow("Full output", cv::WINDOW_AUTOSIZE ); // Create a window for display.
+  cv::imshow("Full output", full_output );                   // Show our image inside it.
+
+  // Pause for pause_val milliseconds, or until user input (if pause_val == 0).
+  cv::waitKey(pause_val);
+}
+
+
+
 
 TrackerTesterAlov::TrackerTesterAlov(const std::vector<Video>& videos,
                                      const bool save_videos,

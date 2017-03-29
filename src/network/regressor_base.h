@@ -5,6 +5,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <boost/shared_ptr.hpp>
+#include <vector>
 
 #include <caffe/caffe.hpp>
 
@@ -22,6 +23,12 @@ public:
   // target is an image of the target object from the previous frame.
   // Returns: bbox, an estimated location of the target object in the current image.
   virtual void Regress(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, BoundingBox* bbox) = 0;
+
+  // Predict current target as ML estimate, out of given 250 moved boxes
+  virtual void Predict(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, 
+                       const std::vector<BoundingBox> &candidate_bboxes, 
+                       BoundingBox* bbox,
+                       std::vector<float> *return_probabilities) = 0;
 
   // Called at the beginning of tracking a new object to initialize the network.
   virtual void Init() { }
