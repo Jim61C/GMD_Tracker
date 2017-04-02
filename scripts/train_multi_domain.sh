@@ -1,4 +1,10 @@
-VIDEOS_FOLDER=~/Downloads/Tracking_Sequences/OTB-VOT2014/
+if [ -z "$1" ] 
+  then
+    echo "No folder supplied!"
+    echo "Usage: bash `basename "$0"` vot_video_folder"
+    exit
+fi
+VIDEOS_FOLDER=$1
 CAFFE_MODEL=nets/models/weights_init/tracker_init.caffemodel
 TRAIN_PROTO=nets/tracker_new_train.prototxt
 SOLVER=nets/solver_temp/solver_temp_GOTURN_MDNET.prototxt
