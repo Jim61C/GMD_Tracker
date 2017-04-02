@@ -415,11 +415,12 @@ void BoundingBox::crop_against_width_height(int W, int H) {
 }
 
 bool BoundingBox::valid_bbox_against_width_height(int W, int H) {
-    if (x2_ <= x1_) {
+    // at least one pixel wide
+    if ((int)(floor(x2_ - x1_)) < 1) {
         return false;
     }
 
-    if (y2_ <= y1_) {
+    if ((int)(floor(y2_ - y1_)) < 1) {
         return false;
     }
 

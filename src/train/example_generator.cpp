@@ -31,7 +31,8 @@ ExampleGenerator::ExampleGenerator(const double lambda_shift,
 
     gsl_rng_env_setup();
     rng_ = gsl_rng_alloc(gsl_rng_mt19937);
-    gsl_rng_set(rng_, time(NULL));
+    // gsl_rng_set(rng_, time(NULL));
+    gsl_rng_set(rng_, 800); // to reproduce
 }
 
 void ExampleGenerator::Reset(const BoundingBox& bbox_prev,
