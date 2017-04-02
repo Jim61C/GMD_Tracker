@@ -14,7 +14,7 @@
 
 using std::string;
 
-#define DEBUG_TRAINING_SAMPLES
+// #define DEBUG_TRAINING_SAMPLES
 
 // Choose whether to shift boxes using the motion model or using a uniform distribution.
 const bool shift_motion_model = true;
