@@ -74,6 +74,13 @@ BoundingBox::BoundingBox(const std::vector<float>& bounding_box)
   }
 }
 
+BoundingBox::BoundingBox(double x1, double y1, double x2, double y2) {
+  x1_ = x1;
+  y1_ = y1;
+  x2_ = x2;
+  y2_ = y2;
+}
+
 void BoundingBox::GetVector(std::vector<float>* bounding_box) const {
   if (use_coordinates_output) {
     // Convert bounding box into a vector format using (x1, y1, x2, y2).

@@ -28,10 +28,14 @@ public:
   virtual void Predict(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, 
                        const std::vector<BoundingBox> &candidate_bboxes, 
                        BoundingBox* bbox,
-                       std::vector<float> *return_probabilities) = 0;
+                       std::vector<float> *return_probabilities, 
+                       std::vector<int> *return_sorted_indexes) = 0;
 
   // Called at the beginning of tracking a new object to initialize the network.
   virtual void Init() { }
+
+  // Called at the end of tracking a video, reset
+  virtual void Reset() { }
 
   //virtual boost::shared_ptr<caffe::Net<float> > get_net() { return net_; }
 

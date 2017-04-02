@@ -60,6 +60,9 @@ public:
   // Set the labels in the net_'s input[3]
   void set_labels(vector<double>  &labels_flattened);
 
+  // Reset the solver's net to this->net_ initialised from regressor 
+  void ResetSolverNet();
+
 private:
   // Train the network.
   void Step();

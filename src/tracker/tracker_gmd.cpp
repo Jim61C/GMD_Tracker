@@ -35,8 +35,9 @@ void TrackerGMD::Track(const cv::Mat& image_curr, RegressorBase* regressor, Boun
     GetCandidates(bbox_curr_prior_tight_, image_curr.size().width, image_curr.size().height, candidate_bboxes);
 
     vector<float> positive_probabilities;
+    vector<int> sorted_idxes; // sorted indexes of candidates from highest positive prob to lowest
     // Estimate the bounding box location as the ML estimate of the candidate_bboxes
-    regressor->Predict(image_curr, curr_search_region, target_pad, candidate_bboxes, bbox_estimate_uncentered, &positive_probabilities);
+    regressor->Predict(image_curr, curr_search_region, target_pad, candidate_bboxes, bbox_estimate_uncentered, &positive_probabilities, &sorted_idxes);
 
 #ifdef DEBUG_SHOW_CANDIDATES
 
@@ -65,6 +66,7 @@ void TrackerGMD::Track(const cv::Mat& image_curr, RegressorBase* regressor, Boun
     cv::waitKey(1);
 #endif
 
+
     // Save the image.
     image_prev_ = image_curr;
 
@@ -76,9 +78,56 @@ void TrackerGMD::Track(const cv::Mat& image_curr, RegressorBase* regressor, Boun
     bbox_curr_prior_tight_ = *bbox_estimate_uncentered;
 }
 
+bool TrackerGMD::ValidCandidate(BoundingBox &candidate_bbox, int W, int H) {
+    // // make sure is inside W, H
+    // if (moved_bbox.x1_ < 0) {
+    //     moved_bbox.x1_ = 0.0;
+    // }
+    // if (moved_bbox.x2_ > W - 1) {
+    //     moved_bbox.x2_ = W -1.0;
+    // }
+
+    // if (moved_bbox.y1_ < 0) {
+    //     moved_bbox.y1_ = 0;
+    // }
+    // if (moved_bbox.y2_ > H - 1) {
+    //     moved_bbox.y2_ = H - 1.0;
+    // }
+    
+    // make sure is inside W, H
+    if (candidate_bbox.x1_ < 0) {
+        return false;
+    }
+    
+    if (candidate_bbox.x2_ > W - 1) {
+        return false;
+    }
+
+    if (candidate_bbox.y1_ < 0) {
+        return false;
+    }
+    
+    if (candidate_bbox.y2_ > H - 1) {
+        return false;
+    }
+
+    if (candidate_bbox.x2_ <= candidate_bbox.x1_) {
+        return false;
+    }
+
+    if (candidate_bbox.y2_ <= candidate_bbox.y1_) {
+        return false;
+    }
+
+    return true;
+}
+
 void TrackerGMD::GetCandidates(BoundingBox &cur_bbox, int W, int H, std::vector<BoundingBox> &candidate_bboxes) {
-    for(int i = 0; i < SAMPLE_CANDIDATES; i ++) {
-        candidate_bboxes.push_back(GenerateOneGaussianCandidate(W, H, cur_bbox));
+    while(candidate_bboxes.size() < SAMPLE_CANDIDATES ) {
+        BoundingBox this_candidate_bbox = GenerateOneGaussianCandidate(W, H, cur_bbox);
+        if (ValidCandidate(this_candidate_bbox, W, H)) {
+            candidate_bboxes.push_back(this_candidate_bbox);
+        }
     }
 }
 
@@ -103,21 +152,33 @@ BoundingBox TrackerGMD::GenerateOneGaussianCandidate(int W, int H, BoundingBox &
   moved_bbox.y1_ = moved_centre_y - moved_h /2.0;
   moved_bbox.x2_ = moved_centre_x + moved_w/2.0;
   moved_bbox.y2_ = moved_centre_y + moved_h/2.0;
-
-  // make sure is inside W, H
-    if (moved_bbox.x1_ < 0) {
-        moved_bbox.x1_ = 0.0;
-    }
-    else if (moved_bbox.x2_ > W - 1) {
-        moved_bbox.x2_ = W -1.0;
-    }
-
-    if (moved_bbox.y1_ < 0) {
-        moved_bbox.y1_ = 0;
-    }
-    else if (moved_bbox.y2_ > H - 1) {
-        moved_bbox.y2_ = H - 1.0;
-    }
   
   return moved_bbox;
+}
+
+void TrackerGMD::FineTuneWorker(ExampleGenerator* example_generator,
+                                RegressorTrainBase* regressor_train) {
+    // Actually perform fine tuning, note that do not do data augmentation for GOTURN part here
+
+}
+
+void TrackerGMD::FineTuneOnline(size_t frame_num, ExampleGenerator* example_generator,
+                                RegressorTrainBase* regressor_train) {
+    // check if to fine tune or not
+
+}
+
+void TrackerGMD::EnqueueOnlineTraningSamples(ExampleGenerator* example_generator) {
+    std::vector<cv::Mat> this_frame_candidates;
+    std::vector<double> this_frame_labels;
+    example_generator->MakeCandidatesAndLabels(&this_frame_candidates, &this_frame_labels);
+    candidates_finetune_.push_back(this_frame_candidates);
+    labels_finetune_.push_back(this_frame_labels);
+
+    cv::Mat image;
+    cv::Mat target;
+    BoundingBox bbox_gt_scaled;
+    example_generator->MakeTrueExample(&image, &target, &bbox_gt_scaled);
+    images_finetune_.push_back(image);
+    targets_finetune_.push_back(target);
 }

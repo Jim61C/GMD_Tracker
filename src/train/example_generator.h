@@ -16,6 +16,9 @@
 #include <gsl/gsl_rng.h> 
 #include <gsl/gsl_randist.h> /* GAUSSIAN*/
 
+const int POS_CANDIDATES = 50;
+const int NEG_CANDIDATES = 200;
+
 struct BBParams {
   double lambda_shift;
   double lambda_scale;
@@ -59,9 +62,16 @@ public:
   static BoundingBox GenerateOneRandomCandidate(BoundingBox &bbox, gsl_rng* rng);
 
   // Make candidates given one frame
-  // candidates: 128 neg and 32 pos candidates 
+  // candidates: 200 neg and 50 pos candidates 
   // labels: vector of scalar 1 means pos and 0 means neg 
-  void MakeCandidatesAndLabels(vector<Mat> *candidates, vector<double> *labels);
+  void MakeCandidatesAndLabels(vector<Mat> *candidates, vector<double> *labels, 
+                               const int num_pos = POS_CANDIDATES,
+                               const int num_neg = NEG_CANDIDATES);
+
+  // Actual woker under MakeCandidatesAndLabels
+  void MakeCandidatesAndLabelsBBox(vector<BoundingBox> *candidate_bboxes, vector<double> *labels,
+                                   const int num_pos = POS_CANDIDATES,
+                                   const int num_neg = NEG_CANDIDATES);
 
   void set_indices(const int video_index, const int frame_index) {
     video_index_ = video_index; frame_index_ = frame_index;

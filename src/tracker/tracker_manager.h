@@ -78,7 +78,9 @@ public:
   TrackerFineTune(const std::vector<Video>& videos,
                     RegressorBase* regressor, Tracker* tracker, 
                     ExampleGenerator* example_generator,
-                    RegressorTrainBase* regressor_train);
+                    RegressorTrainBase* regressor_train,
+                    bool save_videos = true,
+                    const std::string output_folder = "nets/tracker_output/GOTURN_MDNet");
 
   // Print which video is being visualized.
   virtual void VideoInit(const Video& video, const size_t video_num);
@@ -88,6 +90,9 @@ public:
       const size_t frame_num, const cv::Mat& image_curr, const bool has_annotation,
       const BoundingBox& bbox_gt, const BoundingBox& bbox_estimate,
       const int pause_val);
+  
+  // Called after finishing tracking a video. (Used by subclasses)
+  virtual void PostProcessVideo();
 
 private:
   // Used to generate additional training examples through synthetic transformations.
@@ -95,6 +100,31 @@ private:
 
   // Neural network.
   RegressorTrainBase* regressor_train_;
+
+  // Folder to save all tracking output.
+  std::string output_folder_;
+
+  // File for saving tracking output coordinates (for evaluation).
+  FILE* output_file_ptr_;
+
+  // Timer.
+  HighResTimer hrt_;
+
+  // Total time used for tracking (Other time is used to save the tracking
+  // output to a video and to write tracking data to a file for evaluation purposes).
+  double total_ms_;
+
+  // Number of frames tracked.
+  int num_frames_;
+
+  // Used to save tracking visualization data.
+  cv::VideoWriter video_writer_;
+
+  // fps
+  int fps_;
+
+  // Whether to save tracking videos.  Videos take up a lot of space, so use this only when needed.
+  bool save_videos_;
 
 };
 

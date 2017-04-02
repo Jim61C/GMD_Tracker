@@ -53,6 +53,9 @@ public:
   // Interface for saving the loss_history, implementation depends on implementing sub-classes
   virtual void SaveLossHistoryToFile(const std::string &save_path) = 0;
 
+  // Interface to reset solver's net
+  virtual void ResetSolverNet() = 0;
+
 protected:
   MySolver solver_;
 };

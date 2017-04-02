@@ -17,6 +17,7 @@ public:
   BoundingBox();
   BoundingBox(const std::vector<float>& bounding_box);
   BoundingBox(const VOTRegion& region);
+  BoundingBox(double x1, double y1, double x2, double y2);
 
   // Convert bounding box into a vector format.
   void GetVector(std::vector<float>* bounding_box) const;

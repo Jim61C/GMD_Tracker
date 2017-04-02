@@ -62,6 +62,10 @@ RegressorTrain::RegressorTrain(const std::string& deploy_proto,
   }
 }
 
+void RegressorTrain::ResetSolverNet() {
+  solver_.set_net(net_);
+}
+
 void RegressorTrain::set_test_net(const std::string& test_proto) {
   printf("Setting test net to: %s\n", test_proto.c_str());
   test_net_.reset(new caffe::Net<float>(test_proto, caffe::TEST));

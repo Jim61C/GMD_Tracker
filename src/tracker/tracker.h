@@ -8,6 +8,7 @@
 #include "helper/bounding_box.h"
 #include "train/example_generator.h"
 #include "network/regressor.h"
+#include "network/regressor_train_base.h"
 
 class Tracker
 {
@@ -18,6 +19,9 @@ public:
   virtual void Track(const cv::Mat& image_curr, RegressorBase* regressor,
              BoundingBox* bbox_estimate_uncentered);
 
+  // After tracking for this frame, update internal state
+  virtual void UpdateState(const cv::Mat& image_curr, BoundingBox *bbox_estimate_uncentered);
+
   // Initialize the tracker with the ground-truth bounding box of the first frame.
   void Init(const cv::Mat& image_curr, const BoundingBox& bbox_gt,
             RegressorBase* regressor);
@@ -26,6 +30,15 @@ public:
   // VOTRegion is an object for initializing the tracker when using the VOT Tracking dataset.
   void Init(const std::string& image_curr_path, const VOTRegion& region,
             RegressorBase* regressor);
+  
+  
+  // Online fine tune, given the networks and example_generators
+  virtual void FineTuneOnline(size_t frame_num, ExampleGenerator* example_generator,
+                                RegressorTrainBase* regressor_train);
+  
+  // Create and Enqueue Training Samples given already set up example_generator
+  virtual void EnqueueOnlineTraningSamples(ExampleGenerator* example_generator) { }
+
 
 protected:
   // Show the tracking output, for debugging.

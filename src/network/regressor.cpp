@@ -2,6 +2,7 @@
 #include "math.h"
 
 #include "helper/high_res_timer.h"
+#include <algorithm>
 
 // Credits:
 // This file was mostly taken from:
@@ -123,6 +124,11 @@ void Regressor::Init() {
   }
 }
 
+void Regressor::Reset() {
+  printf("In Regressor, Reset net_\n");
+  net_->CopyTrainedLayersFrom(caffe_model_);
+}
+
 void Regressor::LockDomainLayers() {
   // assert K_ is the same as number of loss layers in net_
   assert (net_->output_blob_indices().size() == K_);
@@ -162,7 +168,8 @@ void Regressor::Regress(const cv::Mat& image_curr,
 void Regressor::Predict(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, 
                        const std::vector<BoundingBox> &candidate_bboxes, 
                        BoundingBox* bbox,
-                       std::vector<float> *return_probabilities) {
+                       std::vector<float> *return_probabilities, 
+                       std::vector<int> *return_sorted_indexes) {
   // Prepare the corresponding vector<cv::Mat> for images, targets, candidates to feed into network
   std::vector<cv::Mat> images_flattened;
   std::vector<cv::Mat> targets_flattened;
@@ -186,19 +193,50 @@ void Regressor::Predict(const cv::Mat& image_curr, const cv::Mat& image, const c
 
   int best_idx = -1;
   float best_prob = 0;
-  vector<float> postitive_probablities;
+  vector<float> positive_probabilities;
   for(int i = 0; i < images_flattened.size(); i++) {
-    postitive_probablities.push_back(probabilities[2*i+1]);
-    if (probabilities[2*i+1] > best_prob) {
-      best_prob = probabilities[2*i+1];
-      best_idx = i;
-    }
+    positive_probabilities.push_back(probabilities[2*i+1]);
+    // if (probabilities[2*i+1] > best_prob) {
+    //   best_prob = probabilities[2*i+1];
+    //   best_idx = i;
+    // }
   }
 
-  assert (best_idx != -1);
+  // initialize original index locations
+  vector<int> idx(positive_probabilities.size());
+  iota(idx.begin(), idx.end(), 0);
 
-  *bbox = BoundingBox(candidate_bboxes[best_idx]);
-  *return_probabilities = postitive_probablities;
+  // sort indexes based on comparing values in v
+  sort(idx.begin(), idx.end(),
+       [&positive_probabilities](int i1, int i2) {return positive_probabilities[i1] > positive_probabilities[i2];});
+
+  double x1_weighted = 0;
+  double y1_weighted = 0;
+  double x2_weighted = 0;
+  double y2_weighted = 0;
+  double denominator = 0;
+
+  for (int i = 0 ; i< TOP_ESTIMATES; i ++) {
+    double this_prob = positive_probabilities[idx[i]];
+    
+    x1_weighted += candidate_bboxes[idx[i]].x1_ * this_prob;
+    y1_weighted += candidate_bboxes[idx[i]].y1_ * this_prob;
+    x2_weighted += candidate_bboxes[idx[i]].x2_ * this_prob;
+    y2_weighted += candidate_bboxes[idx[i]].y2_ * this_prob;
+
+    denominator += this_prob;
+  }
+
+  x1_weighted /= denominator;
+  y1_weighted /= denominator;
+  x2_weighted /= denominator;
+  y2_weighted /= denominator;
+
+  // assert (best_idx != -1);
+  // *bbox = BoundingBox(candidate_bboxes[best_idx]);
+  *bbox = BoundingBox(x1_weighted, y1_weighted, x2_weighted, y2_weighted);
+  *return_probabilities = positive_probabilities;
+  *return_sorted_indexes = idx;
 }
 
 void Regressor::Estimate(std::vector<cv::Mat> &images_flattened,

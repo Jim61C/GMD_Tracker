@@ -113,6 +113,10 @@ add_executable (show_tracker_vot_gmd_finetune src/visualizer/show_tracker_vot_gm
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
 target_link_libraries (show_tracker_vot_gmd_finetune ${PROJECT_NAME})
 
+add_executable (UnitTest src/UnitTest/unit_test.cpp)
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${Caffe_LIBRARIES} ${TinyXML_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
+target_link_libraries (UnitTest ${PROJECT_NAME})
+
 
 add_executable (show_tracker_otb src/visualizer/show_tracker_otb.cpp)
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})

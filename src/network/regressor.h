@@ -13,6 +13,7 @@
 
 #include "helper/bounding_box.h"
 #include "network/regressor_base.h"
+#include "helper/Constants.h"
 
 using namespace std;
 
@@ -54,7 +55,8 @@ class Regressor : public RegressorBase {
   virtual void Predict(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, 
                        const std::vector<BoundingBox> &candidate_bboxes, 
                        BoundingBox* bbox,
-                       std::vector<float> * return_probabilities);
+                       std::vector<float> * return_probabilities,
+                       std::vector<int> *return_sorted_indexes);
 
 protected:
   // Set the network inputs.
@@ -112,6 +114,9 @@ protected:
 
   // If the parameters of the network have been modified, reinitialize the parameters to their original values.
   virtual void Init();
+
+  // If need to reset the net_ after tracking one video
+  virtual void Reset();
 
   // lock the domain layers
   virtual void LockDomainLayers();

@@ -15,10 +15,10 @@
 
 using std::string;
 
+#define DEBUG_TRAINING_SAMPLES
+
 // Choose whether to shift boxes using the motion model or using a uniform distribution.
 const bool shift_motion_model = true;
-const int POS_CANDIDATES = 50;
-const int NEG_CANDIDATES = 200;
 const double POS_IOU_TH = 0.7;
 const double NEG_IOU_TH = 0.5;
 double POS_LABEL = 1.0;
@@ -106,33 +106,70 @@ BoundingBox ExampleGenerator::GenerateOneRandomCandidate(BoundingBox &bbox, gsl_
   return moved_bbox;
 }
 
-void ExampleGenerator::MakeCandidatesAndLabels(vector<Mat> *candidates, vector<double> *labels) {
-  std::vector<pair<double, Mat> > label_candidates;
+void ExampleGenerator::MakeCandidatesAndLabels(vector<Mat> *candidates, vector<double> *labels, 
+                                               const int num_pos,
+                                               const int num_neg) {
+  vector<BoundingBox> candidate_bboxes;
+  MakeCandidatesAndLabelsBBox(&candidate_bboxes, labels, num_pos, num_neg);
+
+#ifdef DEBUG_TRAINING_SAMPLES
+  Mat im_show = image_curr_.clone();
+  for (int i = 0; i < candidate_bboxes.size(); i++) {
+    if((*labels)[i] == POS_LABEL) {
+      candidate_bboxes[i].Draw(0,0,255,&im_show);
+    }
+    else {
+      candidate_bboxes[i].Draw(255,0,0,&im_show);
+    }
+  }
+  imshow("random generated bboxes", im_show);
+  waitKey(0);
+#endif
+
+  for (int i = 0; i < candidate_bboxes.size(); i++) {
+    Mat this_candidate;
+    candidate_bboxes[i].CropBoundingBoxOutImage(image_curr_, this_candidate);
+    candidates->push_back(this_candidate);
+  }
+  assert (candidates->size() == labels->size());
+
+  // assert the right number of positive and negative samples generated
+  int count_pos = 0;
+  int count_neg = 0;
+  for (int i = 0; i < labels->size(); i++) {
+    if ((*labels)[i] == POS_LABEL) {
+      count_pos ++;
+    }
+    else {
+      count_neg ++;
+    }
+  }
+  assert (count_pos == num_pos);
+  assert (count_neg == num_neg);
+
+}
+
+  void ExampleGenerator::MakeCandidatesAndLabelsBBox(vector<BoundingBox> *candidate_bboxes, vector<double> *labels,
+                                   const int num_pos,
+                                   const int num_neg) {
+  std::vector<pair<double, BoundingBox> > label_candidates;
   
   // generate positive examples
-  while (label_candidates.size() < POS_CANDIDATES) {
+  while (label_candidates.size() < num_pos) {
     BoundingBox this_box = ExampleGenerator::GenerateOneRandomCandidate(bbox_curr_gt_, rng_);
     if (this_box.check_within_image(image_curr_) && bbox_curr_gt_.compute_IOU(this_box) >= POS_IOU_TH) {
-      // enqueue this box's rect and label
-      Mat this_candidate;
-      this_box.CropBoundingBoxOutImage(image_curr_, this_candidate);
-      // candidates->push_back(this_candidate);
-      // labels->push_back(POS_LABEL);
-      label_candidates.push_back(std::make_pair(POS_LABEL, this_candidate));
+      // enqueue this bbox and label
+      label_candidates.push_back(std::make_pair(POS_LABEL, this_box));
     }
   }
 
 
   // generate negative examples
-  while (label_candidates.size() < POS_CANDIDATES + NEG_CANDIDATES) {
+  while (label_candidates.size() < num_pos + num_neg) {
     BoundingBox this_box = ExampleGenerator::GenerateOneRandomCandidate(bbox_curr_gt_, rng_);
     if (this_box.check_within_image(image_curr_) && bbox_curr_gt_.compute_IOU(this_box) <= NEG_IOU_TH) {
-      // enqueue this box's rect and label
-      Mat this_candidate;
-      this_box.CropBoundingBoxOutImage(image_curr_, this_candidate);
-      // candidates->push_back(this_candidate);
-      // labels->push_back(NEG_LABEL);
-      label_candidates.push_back(std::make_pair(NEG_LABEL, this_candidate));
+      // enqueue this bbox and label
+      label_candidates.push_back(std::make_pair(NEG_LABEL, this_box));
     }
   }
   
@@ -141,11 +178,11 @@ void ExampleGenerator::MakeCandidatesAndLabels(vector<Mat> *candidates, vector<d
   std::shuffle(std::begin(label_candidates), std::end(label_candidates), engine);
 
   for (int i = 0; i< label_candidates.size(); i++) {
-    candidates->push_back(label_candidates[i].second);
+    candidate_bboxes->push_back(label_candidates[i].second);
     labels->push_back(label_candidates[i].first);
   }
-  assert (candidates->size() == labels->size());
 
+  assert (candidate_bboxes->size() == labels->size());
 }
 
 void ExampleGenerator::MakeTrueExample(cv::Mat* curr_search_region,
