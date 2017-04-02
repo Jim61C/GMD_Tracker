@@ -116,10 +116,10 @@ void ExampleGenerator::MakeCandidatesAndLabels(vector<Mat> *candidates, vector<d
   Mat im_show = image_curr_.clone();
   for (int i = 0; i < candidate_bboxes.size(); i++) {
     if((*labels)[i] == POS_LABEL) {
-      candidate_bboxes[i].Draw(0,0,255,&im_show);
+      candidate_bboxes[i].Draw(255,0,0,&im_show);
     }
     else {
-      candidate_bboxes[i].Draw(255,0,0,&im_show);
+      candidate_bboxes[i].Draw(0,0,255,&im_show);
     }
   }
   imshow("random generated bboxes", im_show);
