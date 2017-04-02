@@ -9,13 +9,6 @@
 #include <gsl/gsl_randist.h> /* GAUSSIAN*/
 #include "helper/Constants.h"
 
-#define SAMPLE_CANDIDATES 250
-#define SD_X 0.3 // translation std: mean(width,height)*SD_X
-#define SD_Y 0.3
-#define SD_SCALE 0.5 
-#define KEEP_SD 2.0
-#define MOTION_SCALE_FACTOR 1.05 // scaling std: MOTION_SCALE_FACTOR^(SD_SCALE)
-
 class TrackerGMD : public Tracker {
 
 public:

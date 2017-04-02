@@ -79,21 +79,6 @@ void TrackerGMD::Track(const cv::Mat& image_curr, RegressorBase* regressor, Boun
 }
 
 bool TrackerGMD::ValidCandidate(BoundingBox &candidate_bbox, int W, int H) {
-    // // make sure is inside W, H
-    // if (moved_bbox.x1_ < 0) {
-    //     moved_bbox.x1_ = 0.0;
-    // }
-    // if (moved_bbox.x2_ > W - 1) {
-    //     moved_bbox.x2_ = W -1.0;
-    // }
-
-    // if (moved_bbox.y1_ < 0) {
-    //     moved_bbox.y1_ = 0;
-    // }
-    // if (moved_bbox.y2_ > H - 1) {
-    //     moved_bbox.y2_ = H - 1.0;
-    // }
-    
     // make sure is inside W, H
     if (candidate_bbox.x1_ < 0) {
         return false;
@@ -125,6 +110,8 @@ bool TrackerGMD::ValidCandidate(BoundingBox &candidate_bbox, int W, int H) {
 void TrackerGMD::GetCandidates(BoundingBox &cur_bbox, int W, int H, std::vector<BoundingBox> &candidate_bboxes) {
     while(candidate_bboxes.size() < SAMPLE_CANDIDATES ) {
         BoundingBox this_candidate_bbox = GenerateOneGaussianCandidate(W, H, cur_bbox);
+        // crop against W, H so that fit in image
+        this_candidate_bbox.crop_against_width_height(W, H);
         if (ValidCandidate(this_candidate_bbox, W, H)) {
             candidate_bboxes.push_back(this_candidate_bbox);
         }

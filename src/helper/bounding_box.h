@@ -29,7 +29,7 @@ public:
   void Print() const;
 
   // Draw a rectangle corresponding to this bbox with the given color.
-  void Draw(const int r, const int g, const int b, cv::Mat* image) const;
+  void Draw(const int r, const int g, const int b, cv::Mat* image, const int thickness = 1) const;
 
   // Draw a white rectangle corresponding to this bbox.
   void DrawBoundingBox(cv::Mat* figure_ptr) const;
@@ -94,6 +94,14 @@ public:
 
   // check if bbox within the image range
   bool check_within_image(cv::Mat &image);
+
+  // crops against the image, make sure within image boundary
+  void crop_against_image(cv::Mat &image);
+  
+  // crops against the given W and H
+  void crop_against_width_height(int W, int H);
+
+  bool valid_bbox_against_width_height(int W, int H);
 
   // Bounding box coordiantes: top left, bottom right.
   double x1_, y1_, x2_, y2_;

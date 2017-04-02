@@ -10,14 +10,12 @@
 #include "loader/video.h"
 #include "helper/Common.h"
 #include "helper/CommonCV.h"
+#include "helper/Constants.h"
 
 #include <stdlib.h>     /* srand, rand */
 #include <time.h>       /* time */
 #include <gsl/gsl_rng.h> 
 #include <gsl/gsl_randist.h> /* GAUSSIAN*/
-
-const int POS_CANDIDATES = 50;
-const int NEG_CANDIDATES = 200;
 
 struct BBParams {
   double lambda_shift;
@@ -59,7 +57,9 @@ public:
                             std::vector<BoundingBox>* bboxes_gt_scaled);
 
   // Helper function to generate one moved box, non-gaussian version
-  static BoundingBox GenerateOneRandomCandidate(BoundingBox &bbox, gsl_rng* rng);
+  // trans_range, scale_range are defaults for uniform sampling of uniform samples
+  static BoundingBox GenerateOneRandomCandidate(BoundingBox &bbox, gsl_rng* rng, int W, int H, 
+                                                const double trans_range = POS_TRANS_RANGE, const double scale_range = POS_SCALE_RANGE, const string method = "uniform");
 
   // Make candidates given one frame
   // candidates: 200 neg and 50 pos candidates 

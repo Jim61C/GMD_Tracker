@@ -218,7 +218,7 @@ double BoundingBox::edge_spacing_y() const {
 }
 
 void BoundingBox::Draw(const int r, const int g, const int b,
-                       cv::Mat* image) const {
+                       cv::Mat* image, const int thickness) const {
   // Get the top-left point.
   const cv::Point point1(x1_, y1_);
 
@@ -229,7 +229,6 @@ void BoundingBox::Draw(const int r, const int g, const int b,
   const cv::Scalar box_color(b, g, r);
 
   // Draw a rectangle corresponding to this bbox with the given color.
-  const int thickness = 1;
   cv::rectangle(*image, point1, point2, box_color, thickness);
 }
 
@@ -388,4 +387,58 @@ bool BoundingBox::check_within_image(cv::Mat &image) {
   else {
     return false;
   }
+}
+
+void BoundingBox::crop_against_image(cv::Mat &image) {
+  int W = image.size().width;
+  int H = image.size().height;
+  crop_against_width_height(W, H);
+}
+
+void BoundingBox::crop_against_width_height(int W, int H) {
+  // make sure is inside W, H
+  if (x1_ < 0) {
+      x1_ = 0.0;
+  }
+
+  if (x2_ > W - 1) {
+      x2_ = W -1.0;
+  }
+
+  if (y1_ < 0) {
+      y1_ = 0;
+  }
+
+  if (y2_ > H - 1) {
+      y2_ = H - 1.0;
+  }
+}
+
+bool BoundingBox::valid_bbox_against_width_height(int W, int H) {
+    if (x2_ <= x1_) {
+        return false;
+    }
+
+    if (y2_ <= y1_) {
+        return false;
+    }
+
+    // make sure is inside W, H
+    if (x1_ < 0) {
+        return false;
+    }
+    
+    if (x2_ > W - 1) {
+        return false;
+    }
+
+    if (y1_ < 0) {
+        return false;
+    }
+    
+    if (y2_ > H - 1) {
+        return false;
+    }
+
+    return true;
 }
