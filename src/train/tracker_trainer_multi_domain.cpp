@@ -141,7 +141,7 @@ void TrackerTrainerMultiDomain::Train(const cv::Mat& image_prev, const cv::Mat& 
       batch_filled_ = true;
 
       // We have filled up a complete batch, so we should train.
-      // ProcessBatch();
+      ProcessBatch();
 
       // After training, clear the batch.
       images_batch_.clear();
