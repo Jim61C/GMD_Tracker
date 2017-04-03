@@ -191,6 +191,7 @@ void ExampleGenerator::MakeCandidatesAndLabelsBBox(vector<BoundingBox> *candidat
                                    const int num_pos,
                                    const int num_neg) {
   std::vector<pair<double, BoundingBox> > label_candidates;
+  // TODO: compare with cropping groundtruth, stash@{0}: WIP on master: 0165810 fix bug of candidate box size become 0, which one has better training results
   
   // generate positive examples
   while (label_candidates.size() < num_pos) {
