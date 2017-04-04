@@ -33,4 +33,11 @@ const double NEG_IOU_TH = 0.5;
 #define POS_LABEL 1.0
 #define NEG_LABEL 0.0
 
+// long/short term update
+#define LONG_TERM_BAG_SIZE 100
+#define SHORT_TERM_BAG_SIZE 20
+#define LONG_TERM_UPDATE_INTERVAL 10
+#define LONG_TERM_CANDIDATE_UPPER_BOUND 50
+const double SHORT_TERM_FINE_TUNE_TH = 0.85;
+
 #endif

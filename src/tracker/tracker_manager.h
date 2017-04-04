@@ -126,6 +126,9 @@ private:
   // Whether to save tracking videos.  Videos take up a lot of space, so use this only when needed.
   bool save_videos_;
 
+  // total number of frames in this video
+  int total_num_frames_;
+
 };
 
 // Save tracking output and video; record timing.

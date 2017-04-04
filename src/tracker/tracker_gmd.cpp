@@ -15,7 +15,8 @@ TrackerGMD::TrackerGMD(const bool show_tracking) :
 {
     gsl_rng_env_setup();
     rng_ = gsl_rng_alloc(gsl_rng_mt19937);
-    gsl_rng_set(rng_, time(NULL));
+    // gsl_rng_set(rng_, time(NULL));
+    gsl_rng_set(rng_, 500); // to reproduce
 }
 
 // Estimate the location of the target object in the current image.
@@ -30,26 +31,26 @@ void TrackerGMD::Track(const cv::Mat& image_curr, RegressorBase* regressor, Boun
     double edge_spacing_x, edge_spacing_y;
     CropPadImage(bbox_curr_prior_tight_, image_curr, &curr_search_region, &search_location, &edge_spacing_x, &edge_spacing_y);
 
-    // Motion Model to get candidate_bboxes
-    std::vector<BoundingBox> candidate_bboxes;
-    GetCandidates(bbox_curr_prior_tight_, image_curr.size().width, image_curr.size().height, candidate_bboxes);
+    // Motion Model to get candidate_bboxes, use class attributes, record the scores and candidates
+    candidates_bboxes_.clear();
+    GetCandidates(bbox_curr_prior_tight_, image_curr.size().width, image_curr.size().height, candidates_bboxes_);
 
-    vector<float> positive_probabilities;
-    vector<int> sorted_idxes; // sorted indexes of candidates from highest positive prob to lowest
+    candidate_probabilities_.clear();
+    sorted_idxes_.clear(); // sorted indexes of candidates from highest positive prob to lowest
     // Estimate the bounding box location as the ML estimate of the candidate_bboxes
-    regressor->Predict(image_curr, curr_search_region, target_pad, candidate_bboxes, bbox_estimate_uncentered, &positive_probabilities, &sorted_idxes);
+    regressor->Predict(image_curr, curr_search_region, target_pad, candidates_bboxes_, bbox_estimate_uncentered, &candidate_probabilities_, &sorted_idxes_);
 
 #ifdef DEBUG_SHOW_CANDIDATES
 
     double max_w = 0;
     double min_w = 1.0;
 
-    for (int i =0;i< positive_probabilities.size(); i++) {
-        if (positive_probabilities[i] > max_w) {
-            max_w = positive_probabilities[i];
+    for (int i =0;i< candidate_probabilities_.size(); i++) {
+        if (candidate_probabilities_[i] > max_w) {
+            max_w = candidate_probabilities_[i];
         }
-        if (positive_probabilities[i] < min_w) {
-            min_w = positive_probabilities[i];
+        if (candidate_probabilities_[i] < min_w) {
+            min_w = candidate_probabilities_[i];
         }
     }
 
@@ -57,25 +58,15 @@ void TrackerGMD::Track(const cv::Mat& image_curr, RegressorBase* regressor, Boun
     int max_w_color = 255;
 
     Mat image_to_show = image_curr.clone();
-    for (int i = 0;i < candidate_bboxes.size(); i++) {
-        float this_color = (int)((positive_probabilities[i]- min_w)/(max_w - min_w) * (max_w_color - min_w_color) + min_w_color);
-        candidate_bboxes[i].Draw(125, 125, this_color,
+    for (int i = 0;i < candidates_bboxes_.size(); i++) {
+        float this_color = (int)((candidate_probabilities_[i]- min_w)/(max_w - min_w) * (max_w_color - min_w_color) + min_w_color);
+        candidates_bboxes_[i].Draw(125, 125, this_color,
                        &image_to_show);
     }
     cv::imshow("candidates", image_to_show);
     cv::waitKey(1);
 #endif
 
-
-    // Save the image.
-    image_prev_ = image_curr;
-
-    // Save the current estimate as the location of the target.
-    bbox_prev_tight_ = *bbox_estimate_uncentered;
-
-    // Save the current estimate as the prior prediction for the next image.
-    // TODO - replace with a motion model prediction?
-    bbox_curr_prior_tight_ = *bbox_estimate_uncentered;
 }
 
 bool TrackerGMD::ValidCandidate(BoundingBox &candidate_bbox, int W, int H) {
@@ -144,28 +135,169 @@ BoundingBox TrackerGMD::GenerateOneGaussianCandidate(int W, int H, BoundingBox &
 }
 
 void TrackerGMD::FineTuneWorker(ExampleGenerator* example_generator,
-                                RegressorTrainBase* regressor_train) {
+                                RegressorTrainBase* regressor_train,
+                                vector<int> &this_bag,
+                                const int pos_candidate_upper_bound, 
+                                const int neg_candidate_upper_bound) {
     // Actually perform fine tuning, note that do not do data augmentation for GOTURN part here
+    std::vector<cv::Mat> images;
+    std::vector<cv::Mat> targets;
+    std::vector<BoundingBox> bboxes_gt_scaled;
+    std::vector<std::vector<cv::Mat> > candidates; 
+    std::vector<std::vector<double> >  labels;
+    
+    for (int i = 0; i< this_bag.size(); i ++) {
+        vector<pair<double, Mat> > label_to_candidate;
+        vector<double> this_frame_labels;
+        vector<Mat> this_frame_candidates;
+        
+        int this_update_idx = this_bag[i];
+        for (int j = 0; j < std::min((int)(candidates_finetune_pos_[this_update_idx].size()), pos_candidate_upper_bound);j++) {
+            label_to_candidate.push_back(std::make_pair(POS_LABEL, candidates_finetune_pos_[this_update_idx][j]));
+        }
+        for (int j = 0; j < std::min((int)(candidates_finetune_neg_[this_update_idx].size()), neg_candidate_upper_bound);j++) {
+            label_to_candidate.push_back(std::make_pair(NEG_LABEL, candidates_finetune_neg_[this_update_idx][j]));
+        }
+
+        // random shuffle
+        auto engine = std::default_random_engine{};
+        std::shuffle(std::begin(label_to_candidate), std::end(label_to_candidate), engine);
+
+        for (int i = 0; i< label_to_candidate.size(); i++) {
+            this_frame_candidates.push_back(label_to_candidate[i].second);
+            this_frame_labels.push_back(label_to_candidate[i].first);
+        }
+
+
+        images.push_back(images_finetune_[this_update_idx]);
+        targets.push_back(targets_finetune_[this_update_idx]);
+        bboxes_gt_scaled.push_back(gts_[this_update_idx]);
+        candidates.push_back(this_frame_candidates);
+        labels.push_back(this_frame_labels);
+    }
+
+    // feed to network to train
+    regressor_train->TrainBatch(images,
+                            targets,
+                            bboxes_gt_scaled,
+                            candidates,
+                            labels,
+                            -1); // -1 indicating fine tuning
 
 }
 
 void TrackerGMD::FineTuneOnline(size_t frame_num, ExampleGenerator* example_generator,
-                                RegressorTrainBase* regressor_train) {
+                                RegressorTrainBase* regressor_train, bool success_frame, bool is_last_frame) {
     // check if to fine tune or not
+    // check if need long term finetune
+    if (cur_frame_ != 0 && !is_last_frame && (cur_frame_ % LONG_TERM_UPDATE_INTERVAL == 0)) {
+        cout << "cur_frame_:" << cur_frame_ << ", about to start long term fine tune, frames to use:" << endl;
+        for (int i = 0 ; i < long_term_bag_.size(); i ++ ) {
+            cout << long_term_bag_[i] << ", ";
+        }
+        cout << endl;
+        FineTuneWorker(example_generator,
+                       regressor_train,
+                       long_term_bag_,
+                       LONG_TERM_CANDIDATE_UPPER_BOUND, 
+                       LONG_TERM_CANDIDATE_UPPER_BOUND);
+    }
+    
+
+
+    // check if need short_term finetune, if best prob < 0.5, need to short term finetune
+    if (!success_frame) {
+        cout << "cur_frame_:" << cur_frame_ << ", about to start short term fine tune, frames to use:" << endl;
+        for (int i = 0 ; i < short_term_bag_.size(); i ++ ) {
+            cout << short_term_bag_[i] << ", ";
+        }
+        cout << endl;
+        FineTuneWorker(example_generator,
+                       regressor_train,
+                       short_term_bag_);
+    }
 
 }
 
-void TrackerGMD::EnqueueOnlineTraningSamples(ExampleGenerator* example_generator) {
-    std::vector<cv::Mat> this_frame_candidates;
-    std::vector<double> this_frame_labels;
-    example_generator->MakeCandidatesAndLabels(&this_frame_candidates, &this_frame_labels);
-    candidates_finetune_.push_back(this_frame_candidates);
-    labels_finetune_.push_back(this_frame_labels);
+
+void TrackerGMD::EnqueueOnlineTraningSamples(ExampleGenerator* example_generator, const cv::Mat &image_curr, const BoundingBox &estimate,  bool success_frame) {
+    // reset example_generator
+    example_generator->Reset(bbox_prev_tight_,
+                             estimate,
+                             image_prev_, 
+                             image_curr);
+
+    std::vector<cv::Mat> this_frame_candidates_pos;
+    std::vector<cv::Mat> this_frame_candidates_neg;
 
     cv::Mat image;
     cv::Mat target;
     BoundingBox bbox_gt_scaled;
-    example_generator->MakeTrueExample(&image, &target, &bbox_gt_scaled);
+
+    if (success_frame) {
+        cout << "cur_frame_:" << cur_frame_<< " is success frame, enqueue pos and neg examples for later fine tuning" << endl;
+        example_generator->MakeCandidatesPos(&this_frame_candidates_pos);
+        example_generator->MakeCandidatesNeg(&this_frame_candidates_neg, NEG_CANDIDATES/2);
+        example_generator->MakeCandidatesNeg(&this_frame_candidates_neg, NEG_CANDIDATES/2, NEG_TRANS_RANGE, NEG_SCALE_RANGE, "whole");
+        example_generator->MakeTrueExample(&image, &target, &bbox_gt_scaled);
+
+        // enqueue this frame index
+        short_term_bag_.push_back(cur_frame_);
+        long_term_bag_.push_back(cur_frame_);
+
+        // remove old frames kept for online update
+        while(short_term_bag_.size() > SHORT_TERM_BAG_SIZE) {
+            // remove from beginning
+            candidates_finetune_pos_[short_term_bag_[0]].clear();
+            candidates_finetune_neg_[short_term_bag_[0]].clear();
+            short_term_bag_.erase(short_term_bag_.begin());
+        }
+
+        while(long_term_bag_.size() > LONG_TERM_BAG_SIZE) {
+            // remove from beginning
+            candidates_finetune_pos_[long_term_bag_[0]].clear();
+            candidates_finetune_neg_[long_term_bag_[0]].clear();
+            long_term_bag_.erase(long_term_bag_.begin());
+        }
+    }
+
+    // if not success, push back dummy values
+    candidates_finetune_pos_.push_back(this_frame_candidates_pos);
+    candidates_finetune_neg_.push_back(this_frame_candidates_neg); 
+
     images_finetune_.push_back(image);
     targets_finetune_.push_back(target);
+    gts_.push_back(bbox_gt_scaled);
+}
+
+struct MyGreater
+{
+    template<class T>
+    bool operator()(T const &a, T const &b) const { return a > b; }
+};
+
+
+bool TrackerGMD::IsSuccessEstimate() {
+
+  double prob_sum = 0;
+  // get top 5 score average 
+  for (int i = 0 ; i< TOP_ESTIMATES; i ++) {
+    double this_prob = candidate_probabilities_[sorted_idxes_[i]];
+    prob_sum += this_prob;
+  }
+
+  double avg_prob = prob_sum / TOP_ESTIMATES;
+  cout <<"cur_frame_:" << cur_frame_ << " avg_prob: " << avg_prob << endl;
+  if (avg_prob <= SHORT_TERM_FINE_TUNE_TH) {
+      return false;
+  }
+  else {
+      return true;
+  }
+
+}
+
+void TrackerGMD::Reset() {
+    cur_frame_ = 0;
+    
 }

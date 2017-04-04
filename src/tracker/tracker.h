@@ -34,11 +34,27 @@ public:
   
   // Online fine tune, given the networks and example_generators
   virtual void FineTuneOnline(size_t frame_num, ExampleGenerator* example_generator,
-                                RegressorTrainBase* regressor_train);
+                                RegressorTrainBase* regressor_train, bool success_frame, bool is_last_frame);
   
   // Create and Enqueue Training Samples given already set up example_generator
-  virtual void EnqueueOnlineTraningSamples(ExampleGenerator* example_generator) { }
+  virtual void EnqueueOnlineTraningSamples(ExampleGenerator* example_generator, const cv::Mat &image_curr, const BoundingBox &estimate,  bool success_frame) { }
 
+  // check if the current estimate is success, needed as flag to pass to EnqueueOnlineTraningSamples
+  virtual bool IsSuccessEstimate() { }
+
+  // clear all the storage associated with this video for next video
+  virtual void Reset() { }
+
+  cv::Mat GetImagePrev() { return image_prev_; }
+
+  void SetImagePrev(cv::Mat image_prev) { image_prev_ = image_prev; }
+
+  BoundingBox GetBBoxPrev() { return bbox_prev_tight_; }
+
+  void SetBBoxPrev(BoundingBox bbox) { bbox_prev_tight_ = bbox; }
+
+  // internel index starting from 0
+  int cur_frame_;
 
 protected:
   // Show the tracking output, for debugging.

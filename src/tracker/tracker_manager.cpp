@@ -11,8 +11,8 @@ using std::string;
 #define FIRST_FRAME_FINETUNE_ITERATION 10
 #define FINE_TUNE_AUGMENT_NUM 10
 // #define FISRT_FRAME_PAUSE
-#define FIRST_FRAME_POS_SAMPLES 500
-#define FIRST_FRAME_NEG_SAMPLES 5000
+#define FIRST_FRAME_POS_SAMPLES 50
+#define FIRST_FRAME_NEG_SAMPLES 500
 
 TrackerManager::TrackerManager(const std::vector<Video>& videos,
                                RegressorBase* regressor, Tracker* tracker) :
@@ -32,7 +32,7 @@ void TrackerManager::TrackAll(const size_t start_video_num, const int pause_val)
     // Get the video.
     const Video& video = videos_[video_num];
 
-    // Perform any pre-processing steps on this video.
+    // Perform any pre-processing steps on this video
     VideoInit(video, video_num);
 
     // Get the first frame of this video with the initial ground-truth bounding box (to initialize the tracker).
@@ -66,12 +66,15 @@ void TrackerManager::TrackAll(const size_t start_video_num, const int pause_val)
       BoundingBox bbox_estimate_uncentered;
       tracker_->Track(image_curr, regressor_, &bbox_estimate_uncentered);
 
-      // After estimation, update state, previous frame, new bbox priors etc.
-      tracker_->UpdateState(image_curr, &bbox_estimate_uncentered);
-
       // Process the output (e.g. visualize / save results).
       ProcessTrackOutput(frame_num, image_curr, has_annotation, bbox_gt,
                            bbox_estimate_uncentered, pause_val);
+
+      // After estimation, update state, previous frame, new bbox priors etc.
+      tracker_->UpdateState(image_curr, &bbox_estimate_uncentered);
+
+      // increment tracker's internel frame counter
+      tracker_->cur_frame_ ++;
     }
     PostProcessVideo();
   }
@@ -135,9 +138,15 @@ TrackerFineTune::TrackerFineTune(const std::vector<Video>& videos,
 
 
 void TrackerFineTune::VideoInit(const Video& video, const size_t video_num) {
+  // update total_num_frames_
+  total_num_frames_ = video.all_frames.size();
+
   printf("In TrackerFineTune, Video: %zu\n", video_num);
 
   printf("About to fine tune the first frame\n");
+  
+  // set the start internel frame counter
+  tracker_->cur_frame_ = 0;
   
   // Get the first frame of this video with the initial ground-truth bounding box (to initialize the tracker).
   int first_frame;
@@ -177,8 +186,32 @@ void TrackerFineTune::VideoInit(const Video& video, const size_t video_num) {
     std::vector<cv::Mat> this_frame_candidates;
     std::vector<double> this_frame_labels;
 
+    std::vector<cv::Mat> this_frame_candidates_pos;
+    std::vector<cv::Mat> this_frame_candidates_neg;
+
     // generate candidates and push to this_frame_candidates and this_frame_labels
-    example_generator_->MakeCandidatesAndLabels(&this_frame_candidates, &this_frame_labels, FIRST_FRAME_POS_SAMPLES, FIRST_FRAME_NEG_SAMPLES);
+    // example_generator_->MakeCandidatesAndLabels(&this_frame_candidates, &this_frame_labels, FIRST_FRAME_POS_SAMPLES, FIRST_FRAME_NEG_SAMPLES);
+    example_generator_->MakeCandidatesPos(&this_frame_candidates_pos, FIRST_FRAME_POS_SAMPLES);
+    example_generator_->MakeCandidatesNeg(&this_frame_candidates_neg, FIRST_FRAME_NEG_SAMPLES/2);
+    example_generator_->MakeCandidatesNeg(&this_frame_candidates_neg, FIRST_FRAME_NEG_SAMPLES/2, NEG_TRANS_RANGE, NEG_SCALE_RANGE, "whole");
+    
+    // shuffling
+    std::vector<std::pair<double, cv::Mat> > label_to_candidate;
+    for (int i =0; i < this_frame_candidates_pos.size(); i++) {
+      label_to_candidate.push_back(std::make_pair(POS_LABEL, this_frame_candidates_pos[i]));
+    }
+    for (int i =0; i < this_frame_candidates_neg.size(); i++) {
+      label_to_candidate.push_back(std::make_pair(NEG_LABEL, this_frame_candidates_neg[i]));
+    }
+
+    // random shuffle
+    auto engine = std::default_random_engine{};
+    std::shuffle(std::begin(label_to_candidate), std::end(label_to_candidate), engine);
+
+    for (int i = 0; i< label_to_candidate.size(); i++) {
+        this_frame_candidates.push_back(label_to_candidate[i].second);
+        this_frame_labels.push_back(label_to_candidate[i].first);
+    }
 
     // TODO: avoid the copying and just pass a vector of one frame's +/- candidates to train
     for(int i = 0; i< images.size(); i ++ ) {
@@ -197,8 +230,11 @@ void TrackerFineTune::VideoInit(const Video& video, const size_t video_num) {
   }
 
   // enqueue short term online learning samples, 50 POS and 200 NEG
-  tracker_->EnqueueOnlineTraningSamples(example_generator_);
-
+  tracker_->SetImagePrev(image_curr);
+  tracker_->SetBBoxPrev(bbox_gt); // use the same frame and bbox for t = 0
+  tracker_->EnqueueOnlineTraningSamples(example_generator_, image_curr, bbox_gt, true);
+  tracker_->cur_frame_ ++; // increment internel frame counter
+  
   // set up video saver and output path
   string video_name = video.path;
   std::replace(video_name.begin(), video_name.end(), '/', '_');
@@ -232,9 +268,16 @@ void TrackerFineTune::ProcessTrackOutput(
     const size_t frame_num, const cv::Mat& image_curr, const bool has_annotation,
     const BoundingBox& bbox_gt, const BoundingBox& bbox_estimate_uncentered,
     const int pause_val) {
-
+    
+  cout << "process tracker output for frame " << frame_num << endl;
   // Post processing after this frame, fine tune, invoke tracker_ -> finetune
+  bool is_this_frame_success = tracker_->IsSuccessEstimate();
 
+  // generate examples, if not success, just dummy values pushed in
+  tracker_->EnqueueOnlineTraningSamples(example_generator_, image_curr, bbox_estimate_uncentered, is_this_frame_success);
+
+  // afte generate examples, check if need to fine tune, and acutally fine tune if needed 
+  tracker_->FineTuneOnline(frame_num, example_generator_, regressor_train_, is_this_frame_success, frame_num == total_num_frames_ - 1 );
 
   // Visualise
   cv::Mat full_output;
@@ -271,6 +314,9 @@ void TrackerFineTune::PostProcessVideo() {
   regressor_->Reset(); // reload weights to net_
 
   regressor_train_->ResetSolverNet(); // re-assign net_ to solver_
+
+  // clear all the storage in the tracker
+
 }
 
 

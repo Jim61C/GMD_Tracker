@@ -192,7 +192,7 @@ void ExampleGenerator::MakeCandidatesAndLabelsBBox(vector<BoundingBox> *candidat
                                    const int num_neg) {
   std::vector<pair<double, BoundingBox> > label_candidates;
   // TODO: compare with cropping groundtruth, stash@{0}: WIP on master: 0165810 fix bug of candidate box size become 0, which one has better training results
-  
+
   // generate positive examples
   while (label_candidates.size() < num_pos) {
     BoundingBox this_box = ExampleGenerator::GenerateOneRandomCandidate(bbox_curr_gt_, rng_, image_curr_.size().width, image_curr_.size().height);
@@ -228,6 +228,37 @@ void ExampleGenerator::MakeCandidatesAndLabelsBBox(vector<BoundingBox> *candidat
   }
 
   assert (candidate_bboxes->size() == labels->size());
+}
+
+void ExampleGenerator::MakeCandidatesPos(vector<Mat> *candidates, const int num,
+                                const double trans_range, const double scale_range, const string method) {
+  while (candidates->size() < num) {
+    BoundingBox this_box = ExampleGenerator::GenerateOneRandomCandidate(bbox_curr_gt_, rng_, image_curr_.size().width, image_curr_.size().height, 
+                                                                        trans_range, scale_range, method);
+    // no need to crop as the bbox_curr_gt_ is the current estimate, which will never go out of boundary
+    if (this_box.valid_bbox_against_width_height(image_curr_.size().width, image_curr_.size().height) && bbox_curr_gt_.compute_IOU(this_box) >= POS_IOU_TH) {
+      // enqueue
+      Mat this_candidate;
+      this_box.CropBoundingBoxOutImage(image_curr_, this_candidate);
+      candidates->push_back(this_candidate);
+    }
+  }
+
+}
+
+void ExampleGenerator::MakeCandidatesNeg(vector<Mat> *candidates, const int num,
+                                const double trans_range, const double scale_range, const string method) {
+  while (candidates->size() < num) {
+    BoundingBox this_box = ExampleGenerator::GenerateOneRandomCandidate(bbox_curr_gt_, rng_, image_curr_.size().width, image_curr_.size().height, 
+                                                                        trans_range, scale_range, method);
+    // no need to crop as the bbox_curr_gt_ is the current estimate, which will never go out of boundary
+    if (this_box.valid_bbox_against_width_height(image_curr_.size().width, image_curr_.size().height) && bbox_curr_gt_.compute_IOU(this_box) <= NEG_IOU_TH) {
+      // enqueue
+      Mat this_candidate;
+      this_box.CropBoundingBoxOutImage(image_curr_, this_candidate);
+      candidates->push_back(this_candidate);
+    }
+  }                     
 }
 
 void ExampleGenerator::MakeTrueExample(cv::Mat* curr_search_region,

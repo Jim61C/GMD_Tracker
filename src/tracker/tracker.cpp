@@ -12,6 +12,7 @@
 Tracker::Tracker(const bool show_tracking) :
   show_tracking_(show_tracking)
 {
+  cur_frame_ = 0;
 }
 
 void Tracker::Init(const cv::Mat& image, const BoundingBox& bbox_gt,
@@ -26,6 +27,9 @@ void Tracker::Init(const cv::Mat& image, const BoundingBox& bbox_gt,
 
   // Initialize the neural network.
   regressor->Init();
+  
+  // at this point of time, cur_frame_ should be 1, since we start on 2nd frame of the sequnce, 1st frame we have the ground truth
+  cur_frame_ = 1;
 }
 
 void Tracker::Init(const std::string& image_curr_path, const VOTRegion& region,
@@ -81,7 +85,7 @@ void Tracker::UpdateState(const cv::Mat& image_curr, BoundingBox *bbox_estimate_
 }
 
 void Tracker::FineTuneOnline(size_t frame_num, ExampleGenerator* example_generator,
-                                RegressorTrainBase* regressor_train) {
+                                RegressorTrainBase* regressor_train, bool success_frame, bool is_last_frame) {
   // Base class does nothing
 }
 
