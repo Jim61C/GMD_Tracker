@@ -3,14 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import re
 
-def main():
-	log_file = sys.argv[1]
-	k = int(sys.argv[2])
-	TOTAL_NUM_DOMAIN = int(sys.argv[3])
 
+def plot_one_domain_loss(k, TOTAL_NUM_DOMAIN, log_file, lines):
 	loss_log_regex = r"Train net output #(.*): loss_k" + re.escape(str(k)) + r" = (.*) " + re.escape("(")
-	f = open(log_file, 'rb')
-	lines = f.readlines()
 
 	# loss_log_lines = []
 	loss_nums = []
@@ -49,13 +44,29 @@ def main():
 	plt.ylabel('loss_domain_' + str(k))
 	plt.xlabel('# cycles')
 	plt.show()
+	plt.clf()
+
+def main():
+	log_file = sys.argv[1]
+	TOTAL_NUM_DOMAIN = int(sys.argv[2])
+	
+
+	f = open(log_file, 'rb')
+	lines = f.readlines()
+	if (len(sys.argv) > 3):
+		k = int(sys.argv[3])
+		plot_one_domain_loss(k, TOTAL_NUM_DOMAIN, log_file, lines)
+	else:
+		# iterate through all k's
+		for k in range(0, TOTAL_NUM_DOMAIN):
+			plot_one_domain_loss(k, TOTAL_NUM_DOMAIN, log_file, lines)	
 
 	f.close()
 	return
 
 
 if __name__ == "__main__":
-	if len(sys.argv) != 4:
-		print "Usage: python {0} log_file k TOTAL_NUM_DOMAIN".format(sys.argv[0])
+	if len(sys.argv) < 3:
+		print "Usage: python {0} log_file TOTAL_NUM_DOMAIN [k]".format(sys.argv[0])
 		exit()
 	main()
