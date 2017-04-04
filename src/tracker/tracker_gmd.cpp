@@ -16,7 +16,9 @@ TrackerGMD::TrackerGMD(const bool show_tracking) :
     gsl_rng_env_setup();
     rng_ = gsl_rng_alloc(gsl_rng_mt19937);
     // gsl_rng_set(rng_, time(NULL));
-    gsl_rng_set(rng_, 500); // to reproduce
+    gsl_rng_set(rng_, SEED_RNG_TRACKER); // to reproduce
+    // engine_.seed(time(NULL));
+    engine_.seed(SEED_ENGINE);
 }
 
 // Estimate the location of the target object in the current image.
@@ -139,6 +141,10 @@ void TrackerGMD::FineTuneWorker(ExampleGenerator* example_generator,
                                 vector<int> &this_bag,
                                 const int pos_candidate_upper_bound, 
                                 const int neg_candidate_upper_bound) {
+
+    vector<int> this_bag_permuted(this_bag);
+    std::shuffle(this_bag_permuted.begin(), this_bag_permuted.end(), engine_);
+
     // Actually perform fine tuning, note that do not do data augmentation for GOTURN part here
     std::vector<cv::Mat> images;
     std::vector<cv::Mat> targets;
@@ -146,12 +152,12 @@ void TrackerGMD::FineTuneWorker(ExampleGenerator* example_generator,
     std::vector<std::vector<cv::Mat> > candidates; 
     std::vector<std::vector<double> >  labels;
     
-    for (int i = 0; i< this_bag.size(); i ++) {
+    for (int i = 0; i< this_bag_permuted.size(); i ++) {
         vector<pair<double, Mat> > label_to_candidate;
         vector<double> this_frame_labels;
         vector<Mat> this_frame_candidates;
         
-        int this_update_idx = this_bag[i];
+        int this_update_idx = this_bag_permuted[i];
         for (int j = 0; j < std::min((int)(candidates_finetune_pos_[this_update_idx].size()), pos_candidate_upper_bound);j++) {
             label_to_candidate.push_back(std::make_pair(POS_LABEL, candidates_finetune_pos_[this_update_idx][j]));
         }
@@ -160,8 +166,7 @@ void TrackerGMD::FineTuneWorker(ExampleGenerator* example_generator,
         }
 
         // random shuffle
-        auto engine = std::default_random_engine{};
-        std::shuffle(std::begin(label_to_candidate), std::end(label_to_candidate), engine);
+        std::shuffle(std::begin(label_to_candidate), std::end(label_to_candidate), engine_);
 
         for (int i = 0; i< label_to_candidate.size(); i++) {
             this_frame_candidates.push_back(label_to_candidate[i].second);
@@ -299,5 +304,21 @@ bool TrackerGMD::IsSuccessEstimate() {
 
 void TrackerGMD::Reset() {
     cur_frame_ = 0;
-    
+    candidate_probabilities_.clear();
+    candidate_probabilities_.reserve(SAMPLE_CANDIDATES);
+    candidates_bboxes_.clear();
+    candidates_bboxes_.reserve(SAMPLE_CANDIDATES);
+    sorted_idxes_.clear();
+    sorted_idxes_.reserve(SAMPLE_CANDIDATES);
+
+    // samples collected along each frame
+    gts_.clear();
+    images_finetune_.clear();
+    targets_finetune_.clear();
+    candidates_finetune_pos_.clear();
+    candidates_finetune_neg_.clear(); 
+
+    // long term and short term 
+    short_term_bag_.clear();
+    long_term_bag_.clear();
 }

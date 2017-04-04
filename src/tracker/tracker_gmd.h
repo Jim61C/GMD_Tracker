@@ -68,6 +68,8 @@ private:
   std::vector<int> short_term_bag_;
   std::vector<int> long_term_bag_;
 
+  std::mt19937 engine_;
+
 };
 
 #endif

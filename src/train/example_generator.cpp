@@ -15,9 +15,13 @@
 using std::string;
 
 // #define DEBUG_TRAINING_SAMPLES
+#define VISUALIZE_BBOX
 
 // Choose whether to shift boxes using the motion model or using a uniform distribution.
 const bool shift_motion_model = true;
+
+// std::mt19937 ExampleGenerator::engine_(time(NULL)); // static attributes declaration
+std::mt19937 ExampleGenerator::engine_(SEED_ENGINE); // static attributes declaration
 
 ExampleGenerator::ExampleGenerator(const double lambda_shift,
                                    const double lambda_scale,
@@ -32,7 +36,7 @@ ExampleGenerator::ExampleGenerator(const double lambda_shift,
     gsl_rng_env_setup();
     rng_ = gsl_rng_alloc(gsl_rng_mt19937);
     // gsl_rng_set(rng_, time(NULL));
-    gsl_rng_set(rng_, 800); // to reproduce
+    gsl_rng_set(rng_, SEED_RNG_EXAMPLE_GENERATOR); // to reproduce
 }
 
 void ExampleGenerator::Reset(const BoundingBox& bbox_prev,
@@ -219,8 +223,7 @@ void ExampleGenerator::MakeCandidatesAndLabelsBBox(vector<BoundingBox> *candidat
   }
   
   // random shuffle
-  auto engine = std::default_random_engine{};
-  std::shuffle(std::begin(label_candidates), std::end(label_candidates), engine);
+  std::shuffle(std::begin(label_candidates), std::end(label_candidates), engine_);
 
   for (int i = 0; i< label_candidates.size(); i++) {
     candidate_bboxes->push_back(label_candidates[i].second);
@@ -232,7 +235,11 @@ void ExampleGenerator::MakeCandidatesAndLabelsBBox(vector<BoundingBox> *candidat
 
 void ExampleGenerator::MakeCandidatesPos(vector<Mat> *candidates, const int num,
                                 const double trans_range, const double scale_range, const string method) {
-  while (candidates->size() < num) {
+#ifdef VISUALIZE_BBOX
+  Mat canvas = image_curr_.clone();
+#endif
+  int count = 0;
+  while (count < num) {
     BoundingBox this_box = ExampleGenerator::GenerateOneRandomCandidate(bbox_curr_gt_, rng_, image_curr_.size().width, image_curr_.size().height, 
                                                                         trans_range, scale_range, method);
     // no need to crop as the bbox_curr_gt_ is the current estimate, which will never go out of boundary
@@ -241,14 +248,27 @@ void ExampleGenerator::MakeCandidatesPos(vector<Mat> *candidates, const int num,
       Mat this_candidate;
       this_box.CropBoundingBoxOutImage(image_curr_, this_candidate);
       candidates->push_back(this_candidate);
+      count ++;
+#ifdef VISUALIZE_BBOX
+      this_box.Draw(255, 0, 0, &canvas);
+#endif
     }
   }
 
+#ifdef VISUALIZE_BBOX
+  string window_name = "pos_samples_" + method + "_" +std::to_string(trans_range) + "_" + std::to_string(scale_range);
+  cv::imshow(window_name, canvas);
+  cv::waitKey(10);
+#endif     
 }
 
 void ExampleGenerator::MakeCandidatesNeg(vector<Mat> *candidates, const int num,
                                 const double trans_range, const double scale_range, const string method) {
-  while (candidates->size() < num) {
+  int count = 0;
+#ifdef VISUALIZE_BBOX
+  Mat canvas = image_curr_.clone();
+#endif
+  while (count < num) {
     BoundingBox this_box = ExampleGenerator::GenerateOneRandomCandidate(bbox_curr_gt_, rng_, image_curr_.size().width, image_curr_.size().height, 
                                                                         trans_range, scale_range, method);
     // no need to crop as the bbox_curr_gt_ is the current estimate, which will never go out of boundary
@@ -257,8 +277,19 @@ void ExampleGenerator::MakeCandidatesNeg(vector<Mat> *candidates, const int num,
       Mat this_candidate;
       this_box.CropBoundingBoxOutImage(image_curr_, this_candidate);
       candidates->push_back(this_candidate);
+      count ++;
+
+#ifdef VISUALIZE_BBOX
+      this_box.Draw(0, 0, 255, &canvas);
+#endif
     }
-  }                     
+  }
+
+#ifdef VISUALIZE_BBOX
+  string window_name = "neg_samples_" + method + "_" +std::to_string(trans_range) + "_" + std::to_string(scale_range);
+  cv::imshow(window_name, canvas);
+  cv::waitKey(10);
+#endif                     
 }
 
 void ExampleGenerator::MakeTrueExample(cv::Mat* curr_search_region,

@@ -64,6 +64,7 @@ public:
   // Make candidates given one frame
   // candidates: 200 neg and 50 pos candidates 
   // labels: vector of scalar 1 means pos and 0 means neg 
+  // fixed number output, candidates and labels will have size == num_pos + num_neg
   void MakeCandidatesAndLabels(vector<Mat> *candidates, vector<double> *labels, 
                                const int num_pos = POS_CANDIDATES,
                                const int num_neg = NEG_CANDIDATES);
@@ -123,6 +124,8 @@ private:
   int frame_index_;
 
   gsl_rng* rng_;
+
+  static std::mt19937 engine_;
 };
 
 #endif // EXAMPLE_GENERATOR_H

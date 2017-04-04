@@ -11,6 +11,7 @@ using std::string;
 #define FIRST_FRAME_FINETUNE_ITERATION 10
 #define FINE_TUNE_AUGMENT_NUM 10
 // #define FISRT_FRAME_PAUSE
+// #define VISUALIZE_FIRST_FRAME_SAMPLES
 #define FIRST_FRAME_POS_SAMPLES 50
 #define FIRST_FRAME_NEG_SAMPLES 500
 
@@ -134,6 +135,9 @@ TrackerFineTune::TrackerFineTune(const std::vector<Video>& videos,
   if (output_folder_.back() != '/') {
     output_folder_ += '/';
   }
+
+  // engine_.seed(time(NULL));
+  engine_.seed(SEED_ENGINE);
 }
 
 
@@ -194,7 +198,7 @@ void TrackerFineTune::VideoInit(const Video& video, const size_t video_num) {
     example_generator_->MakeCandidatesPos(&this_frame_candidates_pos, FIRST_FRAME_POS_SAMPLES);
     example_generator_->MakeCandidatesNeg(&this_frame_candidates_neg, FIRST_FRAME_NEG_SAMPLES/2);
     example_generator_->MakeCandidatesNeg(&this_frame_candidates_neg, FIRST_FRAME_NEG_SAMPLES/2, NEG_TRANS_RANGE, NEG_SCALE_RANGE, "whole");
-    
+
     // shuffling
     std::vector<std::pair<double, cv::Mat> > label_to_candidate;
     for (int i =0; i < this_frame_candidates_pos.size(); i++) {
@@ -205,13 +209,26 @@ void TrackerFineTune::VideoInit(const Video& video, const size_t video_num) {
     }
 
     // random shuffle
-    auto engine = std::default_random_engine{};
-    std::shuffle(std::begin(label_to_candidate), std::end(label_to_candidate), engine);
+    std::shuffle(std::begin(label_to_candidate), std::end(label_to_candidate), engine_);
 
     for (int i = 0; i< label_to_candidate.size(); i++) {
         this_frame_candidates.push_back(label_to_candidate[i].second);
         this_frame_labels.push_back(label_to_candidate[i].first);
     }
+
+#ifdef VISUALIZE_FIRST_FRAME_SAMPLES
+    Mat visualise_first_frame = image_curr.clone();
+    for (int i = 0; i < this_frame_candidates.size(); i++) {
+        if (this_frame_labels[i] == POS_LABEL) {
+          cv::imshow("pos first frame sample", this_frame_candidates[i]);
+        }
+        else {
+          cv::imshow("neg first frame sample", this_frame_candidates[i]);
+        }
+
+        cv::waitKey(0);
+    }
+#endif
 
     // TODO: avoid the copying and just pass a vector of one frame's +/- candidates to train
     for(int i = 0; i< images.size(); i ++ ) {

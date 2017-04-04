@@ -183,12 +183,13 @@ void RegressorTrain::TrainBatch(const std::vector<cv::Mat>& images,
     //TODO: if random shuffling here helps
 
     // images_flattened.size() should be 11 * 250, if kBatchSize outside is 11 and POS/NEG sample sizes are 250
-    int num_inner_batches = images_flattened.size() / INNER_BATCH_SIZE;
+    int total_size = images_flattened.size();
+    int num_inner_batches =  total_size / INNER_BATCH_SIZE;
     for (int i = 0; i< num_inner_batches; i++) {
-      std::vector<cv::Mat> this_images_flattened(images_flattened.begin() + i*INNER_BATCH_SIZE, images_flattened.begin() + (i+1)*INNER_BATCH_SIZE);
-      std::vector<cv::Mat> this_targets_flattened(targets_flattened.begin() + i*INNER_BATCH_SIZE, targets_flattened.begin() + (i+1)*INNER_BATCH_SIZE);
-      std::vector<cv::Mat> this_candidates_flattened(candidates_flattened.begin() + i*INNER_BATCH_SIZE, candidates_flattened.begin() + (i+1)*INNER_BATCH_SIZE);
-      std::vector<double> this_labels_flattened(labels_flattened.begin() + i*INNER_BATCH_SIZE, labels_flattened.begin() + (i+1)*INNER_BATCH_SIZE);
+      std::vector<cv::Mat> this_images_flattened(images_flattened.begin() + i*INNER_BATCH_SIZE, images_flattened.begin() + std::min((i+1)*INNER_BATCH_SIZE, total_size));
+      std::vector<cv::Mat> this_targets_flattened(targets_flattened.begin() + i*INNER_BATCH_SIZE, targets_flattened.begin() + std::min((i+1)*INNER_BATCH_SIZE, total_size));
+      std::vector<cv::Mat> this_candidates_flattened(candidates_flattened.begin() + i*INNER_BATCH_SIZE, candidates_flattened.begin() + std::min((i+1)*INNER_BATCH_SIZE, total_size));
+      std::vector<double> this_labels_flattened(labels_flattened.begin() + i*INNER_BATCH_SIZE, labels_flattened.begin() + std::min((i+1)*INNER_BATCH_SIZE, total_size));
 
       Train(this_images_flattened, this_targets_flattened, this_candidates_flattened, this_labels_flattened, k);
     }

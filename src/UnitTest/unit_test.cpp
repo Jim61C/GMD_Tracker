@@ -37,5 +37,22 @@ int main (int argc, char *argv[]) {
 
 //   sp.reset();               // deletes managed object
 
+  vector<int> temp = {1,2,3,4,5,6,7,8,9,10};
+  // auto engine = std::default_random_engine{};
+  cout << "time(NULL) " << time(NULL) << endl;
+  // std::mt19937 engine(time(NULL));
+  std::mt19937 engine;
+  engine.seed(time(NULL));
+
+  for (int i = 0; i < 5 ; i ++) {
+    vector<int> this_temp(temp);
+    std::shuffle(this_temp.begin(), this_temp.end(), engine);
+    for (int j = 0; j < this_temp.size() ; j ++) {
+      cout << this_temp[j] << " ";
+    }
+    cout << endl;
+  }
+
+
   return 0;
 }

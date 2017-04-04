@@ -129,6 +129,9 @@ private:
   // total number of frames in this video
   int total_num_frames_;
 
+  // random generator
+  std::mt19937 engine_;
+
 };
 
 // Save tracking output and video; record timing.
