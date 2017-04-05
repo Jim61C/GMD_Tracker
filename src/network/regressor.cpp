@@ -29,6 +29,7 @@ Regressor::Regressor(const string& deploy_proto,
                      const bool do_train,
                      const int K)
   : num_inputs_(num_inputs),
+    deploy_proto_(deploy_proto), 
     caffe_model_(caffe_model),
     modified_params_(false),
     K_(K)
@@ -43,6 +44,7 @@ Regressor::Regressor(const string& deploy_proto,
                      const int num_inputs,
                      const bool do_train)
   : num_inputs_(num_inputs),
+    deploy_proto_(deploy_proto), 
     caffe_model_(caffe_model),
     modified_params_(false),
     K_(-1)
@@ -56,6 +58,7 @@ Regressor::Regressor(const string& deploy_proto,
                      const int gpu_id,
                      const bool do_train)
   : num_inputs_(kNumInputs),
+    deploy_proto_(deploy_proto), 
     caffe_model_(caffe_model),
     modified_params_(false),
     K_(-1)
@@ -125,6 +128,7 @@ void Regressor::Init() {
 }
 
 void Regressor::Reset() {
+  net_.reset(new Net<float>(deploy_proto_, caffe::TRAIN));
   printf("In Regressor, Reset net_\n");
   net_->CopyTrainedLayersFrom(caffe_model_);
 }

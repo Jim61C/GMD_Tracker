@@ -148,6 +148,9 @@ protected:
   // Folder containing the model parameters.
   std::string caffe_model_;
 
+  // model definition file
+  std::string deploy_proto_;
+
   // Whether the model weights has been modified.
   bool modified_params_;
 

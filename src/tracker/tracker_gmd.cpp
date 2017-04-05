@@ -8,7 +8,8 @@
 #include "helper/image_proc.h"
 #include <algorithm>    // std::min
 
-#define DEBUG_SHOW_CANDIDATES
+// #define DEBUG_SHOW_CANDIDATES
+#define DEBUG_FINETUNE_WORKER
 
 TrackerGMD::TrackerGMD(const bool show_tracking) :
     Tracker(show_tracking)
@@ -103,9 +104,10 @@ bool TrackerGMD::ValidCandidate(BoundingBox &candidate_bbox, int W, int H) {
 void TrackerGMD::GetCandidates(BoundingBox &cur_bbox, int W, int H, std::vector<BoundingBox> &candidate_bboxes) {
     while(candidate_bboxes.size() < SAMPLE_CANDIDATES ) {
         BoundingBox this_candidate_bbox = GenerateOneGaussianCandidate(W, H, cur_bbox);
-        // crop against W, H so that fit in image
-        this_candidate_bbox.crop_against_width_height(W, H);
-        if (ValidCandidate(this_candidate_bbox, W, H)) {
+        // // crop against W, H so that fit in image
+        // this_candidate_bbox.crop_against_width_height(W, H);
+        // if at boarder, do not crop, to avoid really thin candidates being fed in -> correspond to cropping gt in training, instead of cropping pos/neg samples
+        if (this_candidate_bbox.valid_bbox_against_width_height(W, H)) {
             candidate_bboxes.push_back(this_candidate_bbox);
         }
     }
@@ -181,6 +183,14 @@ void TrackerGMD::FineTuneWorker(ExampleGenerator* example_generator,
         labels.push_back(this_frame_labels);
     }
 
+#ifdef DEBUG_FINETUNE_WORKER
+    int count = 0;
+    for (int i = 0; i< candidates.size();i++) {
+        count += candidates[i].size();
+    }
+    cout << "Total number of candidates for fine tune: " << count << endl;
+#endif
+
     // feed to network to train
     regressor_train->TrainBatch(images,
                             targets,
@@ -226,11 +236,6 @@ void TrackerGMD::FineTuneOnline(size_t frame_num, ExampleGenerator* example_gene
 
 
 void TrackerGMD::EnqueueOnlineTraningSamples(ExampleGenerator* example_generator, const cv::Mat &image_curr, const BoundingBox &estimate,  bool success_frame) {
-    // reset example_generator
-    example_generator->Reset(bbox_prev_tight_,
-                             estimate,
-                             image_prev_, 
-                             image_curr);
 
     std::vector<cv::Mat> this_frame_candidates_pos;
     std::vector<cv::Mat> this_frame_candidates_neg;
@@ -240,6 +245,12 @@ void TrackerGMD::EnqueueOnlineTraningSamples(ExampleGenerator* example_generator
     BoundingBox bbox_gt_scaled;
 
     if (success_frame) {
+        // reset example_generator
+        example_generator->Reset(bbox_prev_tight_,
+                                 estimate,
+                                 image_prev_, 
+                                 image_curr);
+        
         cout << "cur_frame_:" << cur_frame_<< " is success frame, enqueue pos and neg examples for later fine tuning" << endl;
         example_generator->MakeCandidatesPos(&this_frame_candidates_pos);
         example_generator->MakeCandidatesNeg(&this_frame_candidates_neg, NEG_CANDIDATES/2);
@@ -252,9 +263,7 @@ void TrackerGMD::EnqueueOnlineTraningSamples(ExampleGenerator* example_generator
 
         // remove old frames kept for online update
         while(short_term_bag_.size() > SHORT_TERM_BAG_SIZE) {
-            // remove from beginning
-            candidates_finetune_pos_[short_term_bag_[0]].clear();
-            candidates_finetune_neg_[short_term_bag_[0]].clear();
+            // no removing here as the frames could still be used for long term fine tuning, only remove when it even goes out of long term range
             short_term_bag_.erase(short_term_bag_.begin());
         }
 

@@ -12,8 +12,10 @@ using std::string;
 #define FINE_TUNE_AUGMENT_NUM 10
 // #define FISRT_FRAME_PAUSE
 // #define VISUALIZE_FIRST_FRAME_SAMPLES
-#define FIRST_FRAME_POS_SAMPLES 50
-#define FIRST_FRAME_NEG_SAMPLES 500
+// #define FINE_TUNE_VISUALISE
+
+#define FIRST_FRAME_POS_SAMPLES 500
+#define FIRST_FRAME_NEG_SAMPLES 5000
 
 TrackerManager::TrackerManager(const std::vector<Video>& videos,
                                RegressorBase* regressor, Tracker* tracker) :
@@ -308,12 +310,14 @@ void TrackerFineTune::ProcessTrackOutput(
   // Draw estimated bounding box of the target location (red).
   bbox_estimate_uncentered.Draw(255, 0, 0, &full_output);
 
+#ifdef FINE_TUNE_VISUALISE
   // Show the image with the estimated and ground-truth bounding boxes.
   cv::namedWindow("Full output", cv::WINDOW_AUTOSIZE ); // Create a window for display.
   cv::imshow("Full output", full_output );                   // Show our image inside it.
 
   // Pause for pause_val milliseconds, or until user input (if pause_val == 0).
   cv::waitKey(pause_val);
+#endif
 
   // write to video
   if (save_videos_) {
@@ -333,7 +337,7 @@ void TrackerFineTune::PostProcessVideo() {
   regressor_train_->ResetSolverNet(); // re-assign net_ to solver_
 
   // clear all the storage in the tracker
-
+  tracker_->Reset();
 }
 
 

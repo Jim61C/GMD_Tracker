@@ -63,6 +63,7 @@ RegressorTrain::RegressorTrain(const std::string& deploy_proto,
 }
 
 void RegressorTrain::ResetSolverNet() {
+  // TODO: check if need to free the memory pointed in solver_.net_ 
   solver_.set_net(net_);
 }
 

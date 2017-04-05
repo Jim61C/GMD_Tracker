@@ -94,6 +94,11 @@ LoaderAlov::LoaderAlov(const string& video_folder, const string& annotations_fol
         video.annotations.push_back(frame);
       } // Process annotation file
 
+      // to be safe, use min of (video.annotations.size(), video.all_frames.size())
+      int n_frames = std::min(video.annotations.size(), video.all_frames.size());
+      video.annotations.erase(video.annotations.begin() + n_frames, video.annotations.end());
+      video.all_frames.erase(video.all_frames.begin() + n_frames, video.all_frames.end());
+
       // Save the video.
       fclose(annotation_file_ptr);
       videos_.push_back(video);

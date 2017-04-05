@@ -2,6 +2,7 @@
 #include "helper/Common.h"
 #include "helper/CommonCV.h"
 #include "helper/helper.h"
+#include <algorithm> // std::min
 
 namespace bfs = boost::filesystem;
 
@@ -114,6 +115,11 @@ LoaderOTB::LoaderOTB(const std::string& otb_folder) {
                 video.annotations.push_back(frame);   
             }
         } // Processed annotation file
+
+        // to be safe, use min of (video.annotations.size(), video.all_frames.size())
+        int n_frames = std::min(video.annotations.size(), video.all_frames.size());
+        video.annotations.erase(video.annotations.begin() + n_frames, video.annotations.end());
+        video.all_frames.erase(video.all_frames.begin() + n_frames, video.all_frames.end());
 
         videos_.push_back(video);
     } // Processed all videos

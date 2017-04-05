@@ -54,5 +54,7 @@ int main (int argc, char *argv[]) {
   }
 
 
+  cout << std::min(1,2) << endl;
+
   return 0;
 }

@@ -15,7 +15,7 @@
 using std::string;
 
 // #define DEBUG_TRAINING_SAMPLES
-#define VISUALIZE_BBOX
+// #define VISUALIZE_BBOX
 
 // Choose whether to shift boxes using the motion model or using a uniform distribution.
 const bool shift_motion_model = true;
@@ -247,6 +247,10 @@ void ExampleGenerator::MakeCandidatesPos(vector<Mat> *candidates, const int num,
       // enqueue
       Mat this_candidate;
       this_box.CropBoundingBoxOutImage(image_curr_, this_candidate);
+      if (this_candidate.size().width == 0 || this_candidate.size().height == 0) {
+        cout << "empty candidate:" << this_box.x1_ <<", " << this_box.y1_ << ", " << this_box.x2_ << ", " << this_box.y2_ << endl;
+        cout << "bbox_curr_gt_" << bbox_curr_gt_.x1_ << ", " << bbox_curr_gt_.y1_ << ", " << bbox_curr_gt_.x2_ << ", " << bbox_curr_gt_.y2_ << endl;
+      }
       candidates->push_back(this_candidate);
       count ++;
 #ifdef VISUALIZE_BBOX
@@ -276,6 +280,10 @@ void ExampleGenerator::MakeCandidatesNeg(vector<Mat> *candidates, const int num,
       // enqueue
       Mat this_candidate;
       this_box.CropBoundingBoxOutImage(image_curr_, this_candidate);
+      if (this_candidate.size().width == 0 || this_candidate.size().height == 0) {
+        cout << "empty candidate:" << this_box.x1_ <<", " << this_box.y1_ << ", " << this_box.x2_ << ", " << this_box.y2_ << endl;
+        cout << "bbox_curr_gt_" << bbox_curr_gt_.x1_ << ", " << bbox_curr_gt_.y1_ << ", " << bbox_curr_gt_.x2_ << ", " << bbox_curr_gt_.y2_ << endl;
+      }
       candidates->push_back(this_candidate);
       count ++;
 
