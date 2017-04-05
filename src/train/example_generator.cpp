@@ -195,14 +195,17 @@ void ExampleGenerator::MakeCandidatesAndLabelsBBox(vector<BoundingBox> *candidat
                                    const int num_pos,
                                    const int num_neg) {
   std::vector<pair<double, BoundingBox> > label_candidates;
-  // TODO: compare with cropping groundtruth, stash@{0}: WIP on master: 0165810 fix bug of candidate box size become 0, which one has better training results
+  // compare with cropping groundtruth, stash@{0}: WIP on master: 0165810 fix bug of candidate box size become 0, which one has better training results
 
+  BoundingBox gt_bbox_cropped(bbox_curr_gt_); // copy
+  gt_bbox_cropped.crop_against_image(image_curr_); // crop if the gt is out of boundary
+  
   // generate positive examples
   while (label_candidates.size() < num_pos) {
-    BoundingBox this_box = ExampleGenerator::GenerateOneRandomCandidate(bbox_curr_gt_, rng_, image_curr_.size().width, image_curr_.size().height);
-    if (bbox_curr_gt_.compute_IOU(this_box) >= POS_IOU_TH) {
+    BoundingBox this_box = ExampleGenerator::GenerateOneRandomCandidate(gt_bbox_cropped, rng_, image_curr_.size().width, image_curr_.size().height);
+    if (gt_bbox_cropped.compute_IOU(this_box) >= POS_IOU_TH) {
       // enqueue this bbox and label
-      this_box.crop_against_image(image_curr_); // make sure within image, note here, only crop and check boundary after checking IOU as sometimes the gt bbox could be out of boundary
+      // this_box.crop_against_image(image_curr_); // make sure within image, note here, only crop and check boundary after checking IOU as sometimes the gt bbox could be out of boundary
       if (this_box.valid_bbox_against_width_height(image_curr_.size().width, image_curr_.size().height)) { // make sure valid
         label_candidates.push_back(std::make_pair(POS_LABEL, this_box));
       }
@@ -212,10 +215,10 @@ void ExampleGenerator::MakeCandidatesAndLabelsBBox(vector<BoundingBox> *candidat
 
   // generate negative examples
   while (label_candidates.size() < num_pos + num_neg) {
-    BoundingBox this_box = ExampleGenerator::GenerateOneRandomCandidate(bbox_curr_gt_, rng_, image_curr_.size().width, image_curr_.size().height, NEG_TRANS_RANGE, NEG_SCALE_RANGE);
-    if (bbox_curr_gt_.compute_IOU(this_box) <= NEG_IOU_TH) {
+    BoundingBox this_box = ExampleGenerator::GenerateOneRandomCandidate(gt_bbox_cropped, rng_, image_curr_.size().width, image_curr_.size().height, NEG_TRANS_RANGE, NEG_SCALE_RANGE);
+    if (gt_bbox_cropped.compute_IOU(this_box) <= NEG_IOU_TH) {
       // enqueue this bbox and label
-      this_box.crop_against_image(image_curr_); // make sure within image
+      // this_box.crop_against_image(image_curr_); // make sure within image
       if (this_box.valid_bbox_against_width_height(image_curr_.size().width, image_curr_.size().height)) { // make sure valid
         label_candidates.push_back(std::make_pair(NEG_LABEL, this_box));
       }
