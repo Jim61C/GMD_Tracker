@@ -59,6 +59,8 @@ int main (int argc, char *argv[]) {
       BoundingBox bbox_estimate;
       tracker.Track(image, &regressor, &bbox_estimate);
 
+      tracker.UpdateState(image, bbox_estimate, &regressor, false);
+
       bbox_estimate.GetRegion(&region);
 
       vot.report(region); // Report the position of the tracker

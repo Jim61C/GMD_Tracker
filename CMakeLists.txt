@@ -79,11 +79,24 @@ include_directories(src/native)
 #file(GLOB_RECURSE srcs src/*.cpp)
 #add_library (${PROJECT_NAME} ${srcs} ${hdrs})
 
-# add_executable (test_tracker_vot src/test/test_tracker_vot.cpp)
-# target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${GLOG_LIB})
-# target_link_libraries (test_tracker_vot ${PROJECT_NAME})
+# message ("** OpenCV_INCLUDE_DIRS: ${OpenCV_INCLUDE_DIRS}")
+# message ("** Caffe_INCLUDE_DIRS: ${Caffe_INCLUDE_DIRS}")
+# message ("** GLOG_INCLUDE_DIRS: ${GLOG_INCLUDE_DIRS}")
+# message ("** PROTOBUF_INCLUDE_DIRS: ${PROTOBUF_INCLUDE_DIRS}")
+# message ("** GSL_INCLUDE_DIRS: ${GSL_INCLUDE_DIRS}")
+# message ("** Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
+
+add_executable (test_tracker_vot src/test/test_tracker_vot.cpp)
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
 # # Note: If can't find trax, please download trax and build it, then uncomment the below line and set the path manually
-# # target_link_libraries(${PROJECT_NAME} /path_to_trax/build/libtrax.so)
+target_link_libraries(${PROJECT_NAME} /home/jimxing/proj/trax/build/libtrax.so)
+target_link_libraries (test_tracker_vot ${PROJECT_NAME})
+
+add_executable (test_tracker_vot_gmd_finetune src/test/test_tracker_vot_gmd_finetune.cpp)
+target_link_libraries(${PROJECT_NAME}  ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
+# # Note: If can't find trax, please download trax and build it, then uncomment the below line and set the path manually
+target_link_libraries(${PROJECT_NAME} /home/jimxing/proj/trax/build/libtrax.so)
+target_link_libraries (test_tracker_vot_gmd_finetune ${PROJECT_NAME})
 
 add_executable (test_tracker_alov src/test/test_tracker_alov.cpp)
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
