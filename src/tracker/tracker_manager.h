@@ -52,6 +52,9 @@ protected:
 
   // Tracker.
   Tracker* tracker_;
+
+  // total number of frames
+  int total_num_frames_;
 };
 
 // Track objects and visualize the tracker output.
@@ -77,8 +80,6 @@ class TrackerFineTune : public TrackerManager
 public:
   TrackerFineTune(const std::vector<Video>& videos,
                     RegressorBase* regressor, Tracker* tracker, 
-                    ExampleGenerator* example_generator,
-                    RegressorTrainBase* regressor_train,
                     bool save_videos = true,
                     const std::string output_folder = "nets/tracker_output/GOTURN_MDNet");
 
@@ -98,11 +99,6 @@ public:
   virtual void SetupEstimate();
 
 private:
-  // Used to generate additional training examples through synthetic transformations.
-  ExampleGenerator* example_generator_;
-
-  // Neural network.
-  RegressorTrainBase* regressor_train_;
 
   // Folder to save all tracking output.
   std::string output_folder_;
@@ -128,9 +124,6 @@ private:
 
   // Whether to save tracking videos.  Videos take up a lot of space, so use this only when needed.
   bool save_videos_;
-
-  // total number of frames in this video
-  int total_num_frames_;
 
   // random generator
   std::mt19937 engine_;

@@ -9,10 +9,14 @@
 #include <algorithm>    // std::min
 
 // #define DEBUG_SHOW_CANDIDATES
-#define DEBUG_FINETUNE_WORKER
+// #define DEBUG_FINETUNE_WORKER
+// #define FISRT_FRAME_PAUSE
+// #define VISUALIZE_FIRST_FRAME_SAMPLES
 
-TrackerGMD::TrackerGMD(const bool show_tracking) :
-    Tracker(show_tracking)
+TrackerGMD::TrackerGMD(const bool show_tracking, ExampleGenerator* example_generator,  RegressorTrainBase* regressor_train) :
+    Tracker(show_tracking),
+    example_generator_(example_generator),
+    regressor_train_(regressor_train)
 {
     gsl_rng_env_setup();
     rng_ = gsl_rng_alloc(gsl_rng_mt19937);
@@ -201,16 +205,16 @@ void TrackerGMD::FineTuneWorker(ExampleGenerator* example_generator,
 
 }
 
-void TrackerGMD::FineTuneOnline(size_t frame_num, ExampleGenerator* example_generator,
+void TrackerGMD::FineTuneOnline(ExampleGenerator* example_generator,
                                 RegressorTrainBase* regressor_train, bool success_frame, bool is_last_frame) {
     // check if to fine tune or not
     // check if need long term finetune
     if (cur_frame_ != 0 && !is_last_frame && (cur_frame_ % LONG_TERM_UPDATE_INTERVAL == 0)) {
-        cout << "cur_frame_:" << cur_frame_ << ", about to start long term fine tune, frames to use:" << endl;
-        for (int i = 0 ; i < long_term_bag_.size(); i ++ ) {
-            cout << long_term_bag_[i] << ", ";
-        }
-        cout << endl;
+        // cout << "cur_frame_:" << cur_frame_ << ", about to start long term fine tune, frames to use:" << endl;
+        // for (int i = 0 ; i < long_term_bag_.size(); i ++ ) {
+        //     cout << long_term_bag_[i] << ", ";
+        // }
+        // cout << endl;
         FineTuneWorker(example_generator,
                        regressor_train,
                        long_term_bag_,
@@ -222,11 +226,11 @@ void TrackerGMD::FineTuneOnline(size_t frame_num, ExampleGenerator* example_gene
 
     // check if need short_term finetune, if best prob < 0.5, need to short term finetune
     if (!success_frame) {
-        cout << "cur_frame_:" << cur_frame_ << ", about to start short term fine tune, frames to use:" << endl;
-        for (int i = 0 ; i < short_term_bag_.size(); i ++ ) {
-            cout << short_term_bag_[i] << ", ";
-        }
-        cout << endl;
+        // cout << "cur_frame_:" << cur_frame_ << ", about to start short term fine tune, frames to use:" << endl;
+        // for (int i = 0 ; i < short_term_bag_.size(); i ++ ) {
+        //     cout << short_term_bag_[i] << ", ";
+        // }
+        // cout << endl;
         FineTuneWorker(example_generator,
                        regressor_train,
                        short_term_bag_);
@@ -251,7 +255,7 @@ void TrackerGMD::EnqueueOnlineTraningSamples(ExampleGenerator* example_generator
                                  image_prev_, 
                                  image_curr);
         
-        cout << "cur_frame_:" << cur_frame_<< " is success frame, enqueue pos and neg examples for later fine tuning" << endl;
+        // cout << "cur_frame_:" << cur_frame_<< " is success frame, enqueue pos and neg examples for later fine tuning" << endl;
         example_generator->MakeCandidatesPos(&this_frame_candidates_pos);
         example_generator->MakeCandidatesNeg(&this_frame_candidates_neg, NEG_CANDIDATES/2);
         example_generator->MakeCandidatesNeg(&this_frame_candidates_neg, NEG_CANDIDATES/2, NEG_TRANS_RANGE, NEG_SCALE_RANGE, "whole");
@@ -301,7 +305,7 @@ bool TrackerGMD::IsSuccessEstimate() {
   }
 
   double avg_prob = prob_sum / TOP_ESTIMATES;
-  cout <<"cur_frame_:" << cur_frame_ << " avg_prob: " << avg_prob << endl;
+//   cout <<"cur_frame_:" << cur_frame_ << " avg_prob: " << avg_prob << endl;
   if (avg_prob <= SHORT_TERM_FINE_TUNE_TH) {
       return false;
   }
@@ -311,7 +315,12 @@ bool TrackerGMD::IsSuccessEstimate() {
 
 }
 
-void TrackerGMD::Reset() {
+void TrackerGMD::Reset(RegressorBase *regressor) {
+    // Reset the fine-tuned net for next video
+    regressor->Reset(); // reinitialise net_ and load new weights
+
+    regressor_train_->ResetSolverNet(); // release solver_'s net_ memory and re-assign net_ to solver_
+
     cur_frame_ = 0;
     candidate_probabilities_.clear();
     candidate_probabilities_.reserve(SAMPLE_CANDIDATES);
@@ -330,4 +339,161 @@ void TrackerGMD::Reset() {
     // long term and short term 
     short_term_bag_.clear();
     long_term_bag_.clear();
+}
+
+
+  // Initialize the tracker with the ground-truth bounding box of the first frame.
+void TrackerGMD::Init(const cv::Mat& image_curr, const BoundingBox& bbox_gt, 
+                      RegressorBase* regressor) {
+    // Initialize the neural network.
+    regressor->Init();
+
+    // fine tune at cur_frame_ 0
+    cur_frame_ = 0;
+
+    printf("About to fine tune the first frame ...\n");
+    for (int iter = 0; iter < FIRST_FRAME_FINETUNE_ITERATION; iter ++) {
+        printf("first frame fine tune iter %d\n", iter);
+        // Set up example generator.
+        example_generator_->Reset(bbox_gt,
+                                bbox_gt,
+                                image_curr,
+                                image_curr); // use the same image as initial step fine-tuning
+
+        // data structures to invoke fine tune
+        std::vector<cv::Mat> images;
+        std::vector<cv::Mat> targets;
+        std::vector<BoundingBox> bboxes_gt_scaled;
+        std::vector<std::vector<cv::Mat> > candidates; 
+        std::vector<std::vector<double> >  labels;
+
+        // Generate true example.
+        cv::Mat image;
+        cv::Mat target;
+        BoundingBox bbox_gt_scaled;
+        example_generator_->MakeTrueExample(&image, &target, &bbox_gt_scaled);
+        
+        images.push_back(image);
+        targets.push_back(target);
+        bboxes_gt_scaled.push_back(bbox_gt_scaled);
+
+        // Generate additional training examples through synthetic transformations.
+        example_generator_->MakeTrainingExamples(FINE_TUNE_AUGMENT_NUM, &images,
+                                                &targets, &bboxes_gt_scaled);
+                                                
+        std::vector<cv::Mat> this_frame_candidates;
+        std::vector<double> this_frame_labels;
+
+        std::vector<cv::Mat> this_frame_candidates_pos;
+        std::vector<cv::Mat> this_frame_candidates_neg;
+
+        // generate candidates and push to this_frame_candidates and this_frame_labels
+        // example_generator_->MakeCandidatesAndLabels(&this_frame_candidates, &this_frame_labels, FIRST_FRAME_POS_SAMPLES, FIRST_FRAME_NEG_SAMPLES);
+        example_generator_->MakeCandidatesPos(&this_frame_candidates_pos, FIRST_FRAME_POS_SAMPLES);
+        example_generator_->MakeCandidatesNeg(&this_frame_candidates_neg, FIRST_FRAME_NEG_SAMPLES/2);
+        example_generator_->MakeCandidatesNeg(&this_frame_candidates_neg, FIRST_FRAME_NEG_SAMPLES/2, NEG_TRANS_RANGE, NEG_SCALE_RANGE, "whole");
+
+        // shuffling
+        std::vector<std::pair<double, cv::Mat> > label_to_candidate;
+        for (int i =0; i < this_frame_candidates_pos.size(); i++) {
+        label_to_candidate.push_back(std::make_pair(POS_LABEL, this_frame_candidates_pos[i]));
+        }
+        for (int i =0; i < this_frame_candidates_neg.size(); i++) {
+        label_to_candidate.push_back(std::make_pair(NEG_LABEL, this_frame_candidates_neg[i]));
+        }
+
+        // random shuffle
+        std::shuffle(std::begin(label_to_candidate), std::end(label_to_candidate), engine_);
+
+        for (int i = 0; i< label_to_candidate.size(); i++) {
+            this_frame_candidates.push_back(label_to_candidate[i].second);
+            this_frame_labels.push_back(label_to_candidate[i].first);
+        }
+
+    #ifdef VISUALIZE_FIRST_FRAME_SAMPLES
+        Mat visualise_first_frame = image_curr.clone();
+        for (int i = 0; i < this_frame_candidates.size(); i++) {
+            if (this_frame_labels[i] == POS_LABEL) {
+            cv::imshow("pos first frame sample", this_frame_candidates[i]);
+            }
+            else {
+            cv::imshow("neg first frame sample", this_frame_candidates[i]);
+            }
+
+            cv::waitKey(0);
+        }
+    #endif
+
+        // TODO: avoid the copying and just pass a vector of one frame's +/- candidates to train
+        for(int i = 0; i< images.size(); i ++ ) {
+        candidates.push_back(std::vector<cv::Mat>(this_frame_candidates)); // copy
+        labels.push_back(std::vector<double>(this_frame_labels)); // copy
+        }
+
+        //Fine Tune!
+        regressor_train_->TrainBatch(images,
+                                    targets,
+                                    bboxes_gt_scaled,
+                                    candidates,
+                                    labels,
+                                    -1); // -1 indicating fine tuning
+
+    }
+    printf("Fine tune the first frame completed!\n");
+
+#ifdef FISRT_FRAME_PAUSE
+  cv::Mat image_curr_show = image_curr.clone();
+  bbox_gt.DrawBoundingBox(&image_curr_show);
+  cv::imshow("Full output", image_curr_show);
+  cv::waitKey(0);
+#endif
+
+    // the same part as usual tracker, set the image_prev_, bbox_curr_prior_tight_, bbox_prev_tight_
+    image_prev_ = image_curr;
+    bbox_prev_tight_ = bbox_gt;
+
+    // Predict in the current frame that the location will be approximately the same
+    // as in the previous frame.
+    // TODO - use a motion model?
+    bbox_curr_prior_tight_ = bbox_gt;
+
+    // enqueue short term online learning samples, 50 POS and 200 NEG
+    EnqueueOnlineTraningSamples(example_generator_, image_curr, bbox_gt, true); // TODO, if first frame add random purturbations like GOTURN to simulate frame -1 to frame 0
+
+    // at this point of time, cur_frame_ should be 1, since we start on 2nd frame of the sequnce, 1st frame we have the ground truth
+    cur_frame_ = 1;
+}
+
+void TrackerGMD::Init(const std::string& image_curr_path, const VOTRegion& region, 
+            RegressorBase* regressor) { 
+    Tracker::Init(image_curr_path, region, regressor); 
+}
+
+// After tracking for this frame, update internal state, called right after tracker_->Track
+void TrackerGMD::UpdateState(const cv::Mat& image_curr, BoundingBox &bbox_estimate, RegressorBase* regressor, bool is_last_frame) {
+    
+    // Post processing after this frame, fine tune, invoke tracker_ -> finetune
+    bool is_this_frame_success = IsSuccessEstimate();
+
+    // generate examples, if not success, just dummy values pushed in
+    EnqueueOnlineTraningSamples(example_generator_, image_curr, bbox_estimate, is_this_frame_success);
+
+    // afte generate examples, check if need to fine tune, and acutally fine tune if needed 
+    FineTuneOnline(example_generator_, regressor_train_, is_this_frame_success, is_last_frame);
+
+    // TODO: check if re-estimate after failure works better
+    // Track(image_curr, regressor, bbox_estimate_uncentered);
+
+    // update image_prev_ to image_curr
+    image_prev_ = image_curr;
+
+    // Save the current estimate as the location of the target.
+    bbox_prev_tight_ = bbox_estimate;
+
+    // Save the current estimate as the prior prediction for the next image.
+    // TODO - replace with a motion model prediction?
+    bbox_curr_prior_tight_ = bbox_estimate;
+
+    // internel frame counter
+    cur_frame_ ++;
 }

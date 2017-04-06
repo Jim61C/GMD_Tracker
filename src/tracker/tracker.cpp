@@ -72,19 +72,19 @@ void Tracker::Track(const cv::Mat& image_curr, RegressorBase* regressor,
   }
 }
 
-void Tracker::UpdateState(const cv::Mat& image_curr, BoundingBox *bbox_estimate_uncentered) {
+void Tracker::UpdateState(const cv::Mat& image_curr, BoundingBox &bbox_estimate, RegressorBase* regressor, bool is_last_frame) {
   // Save the image.
   image_prev_ = image_curr;
 
   // Save the current estimate as the location of the target.
-  bbox_prev_tight_ = *bbox_estimate_uncentered;
+  bbox_prev_tight_ = bbox_estimate;
 
   // Save the current estimate as the prior prediction for the next image.
   // TODO - replace with a motion model prediction?
-  bbox_curr_prior_tight_ = *bbox_estimate_uncentered;
+  bbox_curr_prior_tight_ = bbox_estimate;
 }
 
-void Tracker::FineTuneOnline(size_t frame_num, ExampleGenerator* example_generator,
+void Tracker::FineTuneOnline(ExampleGenerator* example_generator,
                                 RegressorTrainBase* regressor_train, bool success_frame, bool is_last_frame) {
   // Base class does nothing
 }

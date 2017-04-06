@@ -13,14 +13,24 @@
 class TrackerGMD : public Tracker {
 
 public:
-  TrackerGMD(const bool show_tracking);
+  TrackerGMD(const bool show_tracking, ExampleGenerator* example_generator,  RegressorTrainBase* regressor_train);
 
   // Estimate the location of the target object in the current image.
   virtual void Track(const cv::Mat& image_curr, RegressorBase* regressor,
              BoundingBox* bbox_estimate_uncentered);
+
+  // After tracking for this frame, update internal state
+  virtual void UpdateState(const cv::Mat& image_curr, BoundingBox &bbox_estimate, RegressorBase* regressor, bool is_last_frame);
+
+  // Initialize the tracker with the ground-truth bounding box of the first frame.
+  virtual void Init(const cv::Mat& image_curr, const BoundingBox& bbox_gt,
+            RegressorBase* regressor);
+
+  virtual void Init(const std::string& image_curr_path, const VOTRegion& region, 
+            RegressorBase* regressor);
   
   // Online fine tune, given the networks and example_generators
-  virtual void FineTuneOnline(size_t frame_num, ExampleGenerator* example_generator,
+  virtual void FineTuneOnline(ExampleGenerator* example_generator,
                                 RegressorTrainBase* regressor_train, bool success_frame, bool is_last_frame);
   
   // Actual worker to do the finetune
@@ -46,10 +56,18 @@ public:
   virtual bool IsSuccessEstimate();
 
   // clear all the related storage for tracking net video
-  virtual void Reset();
+  virtual void Reset(RegressorBase *regressor);
 
 private:
   gsl_rng *rng_;
+
+  // Used to generate additional training examples through synthetic transformations.
+  ExampleGenerator* example_generator_;
+
+  // Neural network.
+  RegressorTrainBase* regressor_train_;
+
+
   // this prediction scores for candidates
   vector<float> candidate_probabilities_;
   vector<BoundingBox> candidates_bboxes_;

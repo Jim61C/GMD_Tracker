@@ -20,20 +20,20 @@ public:
              BoundingBox* bbox_estimate_uncentered);
 
   // After tracking for this frame, update internal state
-  virtual void UpdateState(const cv::Mat& image_curr, BoundingBox *bbox_estimate_uncentered);
+  virtual void UpdateState(const cv::Mat& image_curr, BoundingBox &bbox_estimate, RegressorBase* regressor, bool is_last_frame);
 
   // Initialize the tracker with the ground-truth bounding box of the first frame.
-  void Init(const cv::Mat& image_curr, const BoundingBox& bbox_gt,
+  virtual void Init(const cv::Mat& image_curr, const BoundingBox& bbox_gt,
             RegressorBase* regressor);
 
   // Initialize the tracker with the ground-truth bounding box of the first frame.
   // VOTRegion is an object for initializing the tracker when using the VOT Tracking dataset.
-  void Init(const std::string& image_curr_path, const VOTRegion& region,
+  virtual void Init(const std::string& image_curr_path, const VOTRegion& region,
             RegressorBase* regressor);
   
   
   // Online fine tune, given the networks and example_generators
-  virtual void FineTuneOnline(size_t frame_num, ExampleGenerator* example_generator,
+  virtual void FineTuneOnline(ExampleGenerator* example_generator,
                                 RegressorTrainBase* regressor_train, bool success_frame, bool is_last_frame);
   
   // Create and Enqueue Training Samples given already set up example_generator
@@ -43,7 +43,7 @@ public:
   virtual bool IsSuccessEstimate() { }
 
   // clear all the storage associated with this video for next video
-  virtual void Reset() { }
+  virtual void Reset(RegressorBase *regressor) { }
 
   cv::Mat GetImagePrev() { return image_prev_; }
 
@@ -53,8 +53,7 @@ public:
 
   void SetBBoxPrev(BoundingBox bbox) { bbox_prev_tight_ = bbox; }
 
-  // internel index starting from 0
-  int cur_frame_;
+  int GetInternelCurFrame() { return cur_frame_; }
 
 protected:
   // Show the tracking output, for debugging.
@@ -73,6 +72,9 @@ protected:
 
   // Whether to visualize the tracking results
   bool show_tracking_;
+
+  // internel index starting from 0
+  int cur_frame_;
 };
 
 #endif // TRACKER_H

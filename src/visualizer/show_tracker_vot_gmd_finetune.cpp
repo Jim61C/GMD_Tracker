@@ -25,7 +25,7 @@ const bool show_intermediate_output = false;
 int main (int argc, char *argv[]) {
   if (argc < 9) {
     std::cerr << "Usage: " << argv[0]
-              << " deploy.prototxt network.caffemodel solver_file videos_folder MIN_SCALE MAX_SCALE GPU_ID RANDOM_SEED"
+              << " deploy.prototxt network.caffemodel solver_file videos_folder LAMBDA_SHIFT LAMBDA_SCALE MIN_SCALE MAX_SCALE"
               << " [gpu_id] [video_num] [pauseval]" << std::endl;
     return 1;
   }
@@ -66,19 +66,18 @@ int main (int argc, char *argv[]) {
                                solver_file,
                                3,
                                do_train);
+    // Get example_generator
+  ExampleGenerator example_generator(lambda_shift, lambda_scale,
+                                    min_scale, max_scale); // TODO: change to from input instead
 
-  TrackerGMD tracker_gmd(show_intermediate_output);
+  TrackerGMD tracker_gmd(show_intermediate_output, &example_generator, &regressor_train);
 
   // Get videos.
   LoaderVOT loader(videos_folder);
   std::vector<Video> videos = loader.get_videos();
 
-  // Get example_generator
-  ExampleGenerator example_generator(lambda_shift, lambda_scale,
-                                    min_scale, max_scale); // TODO: change to from input instead
-
   // Visualize the tracker performance.
-  TrackerFineTune tracker_fine_tune(videos, &regressor_train, &tracker_gmd, &example_generator, &regressor_train);
+  TrackerFineTune tracker_fine_tune(videos, &regressor_train, &tracker_gmd);
   tracker_fine_tune.TrackAll(start_video_num, pause_val);
 
   return 0;

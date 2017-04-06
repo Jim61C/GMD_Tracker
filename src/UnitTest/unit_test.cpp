@@ -5,6 +5,27 @@
 #include <helper/bounding_box.h>
 using namespace std;
 
+class A {
+public:
+  virtual void foo() {
+    cout << "A's foo" << endl;
+  }
+  virtual void foo_invoker() {
+    cout << "A's foo_invoker, about to call foo()" << endl;
+    foo();
+  }
+};
+
+class B: public A {
+public:
+  virtual void foo() {
+    cout << "B's foo" << endl;
+  }
+  virtual void foo_invoker() {
+    A::foo_invoker();
+  }
+};
+
 int main (int argc, char *argv[]) {
   boost::shared_ptr<BoundingBox> sp;  // empty
 
@@ -55,6 +76,30 @@ int main (int argc, char *argv[]) {
 
 
   cout << std::min(1,2) << endl;
+
+  // TODO: unit test assign &Bbox to a bbox, creates a copy!
+  BoundingBox box_a(0, 0, 255, 255);
+  BoundingBox &box_b = box_a;
+
+  BoundingBox box_c;
+  box_c = box_b;
+
+  box_a.x1_ = 10;
+  box_a.y1_ = 10;
+
+  cout << "box_a:" << box_a.x1_ << ", "<< box_a.y1_ << ", " << box_a.x2_ << ", " << box_a.y2_ << endl;
+  cout << "box_b:" << box_b.x1_ << ", "<< box_b.y1_ << ", " << box_b.x2_ << ", " << box_b.y2_ << endl;
+  cout << "box_c:" << box_c.x1_ << ", "<< box_c.y1_ << ", " << box_c.x2_ << ", " << box_c.y2_ << endl; 
+
+
+  // TODO: unit test dynamic binding for tracker_->Init, which function to call will be based on the dynamic type, virtual table looked up during runtime
+  A a;
+  B b;
+  cout << "a.foo_invoker():" << endl;
+  a.foo_invoker();
+  cout << "b.foo_invoker():" << endl;
+  b.foo_invoker();
+
 
   return 0;
 }

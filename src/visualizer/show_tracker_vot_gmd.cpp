@@ -50,7 +50,7 @@ int main (int argc, char *argv[]) {
   const bool do_train = false;
   Regressor regressor(model_file, trained_file, gpu_id, 3, do_train);
 
-  TrackerGMD tracker_gmd(show_intermediate_output);
+  TrackerGMD tracker_gmd(show_intermediate_output, NULL, NULL);
 
   // Get videos.
   LoaderVOT loader(videos_folder);
