@@ -125,9 +125,6 @@ private:
   // Whether to save tracking videos.  Videos take up a lot of space, so use this only when needed.
   bool save_videos_;
 
-  // random generator
-  std::mt19937 engine_;
-
 };
 
 // Save tracking output and video; record timing.

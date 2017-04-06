@@ -128,9 +128,6 @@ TrackerFineTune::TrackerFineTune(const std::vector<Video>& videos,
   if (output_folder_.back() != '/') {
     output_folder_ += '/';
   }
-
-  // engine_.seed(time(NULL));
-  engine_.seed(SEED_ENGINE);
 }
 
 
