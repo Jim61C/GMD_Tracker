@@ -222,7 +222,11 @@ int main (int argc, char *argv[]) {
   }
 
   // save the loss_history when done, TODO: save loss along training instead end of training
-  string save_path = "loss_history/train_multi_domain_loss_history_cycle" + std::to_string(NUM_CYCLES) + ".txt";
+  string save_dir = "loss_history/train_multi_domain_loss_history_cycle";
+  string save_path = save_dir + std::to_string(NUM_CYCLES) + ".txt";
+  if (!boost::filesystem::exists(save_dir)) {
+   boost::filesystem::create_directories(save_dir);
+  }
   cout << "Training GOTURN MDNet Completed, saving loss to" << save_path << "..." << endl;
   tracker_trainer_multi_domain.SaveLossHistoryToFile(save_path);
 
