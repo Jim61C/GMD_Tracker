@@ -38,7 +38,7 @@ public:
       const int pause_val) {}
 
   // Called after finishing tracking a video. (Used by subclasses)
-  virtual void PostProcessVideo() {}
+  virtual void PostProcessVideo(size_t video_num) {}
 
   // Called after finishing tracking all videos. (Used by subclasses)
   virtual void PostProcessAll() {}
@@ -92,7 +92,10 @@ public:
       const int pause_val);
   
   // Called after finishing tracking a video. (Used by subclasses)
-  virtual void PostProcessVideo();
+  virtual void PostProcessVideo(size_t video_num);
+
+  // Record the time before starting to track.
+  virtual void SetupEstimate();
 
 private:
   // Used to generate additional training examples through synthetic transformations.
@@ -156,7 +159,7 @@ public:
       const int pause_val);
 
   // Close the file that saves the tracking data.
-  virtual void PostProcessVideo();
+  virtual void PostProcessVideo(size_t video_num);
 
   virtual void PostProcessAll();
 

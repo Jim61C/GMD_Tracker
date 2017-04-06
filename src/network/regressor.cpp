@@ -128,6 +128,7 @@ void Regressor::Init() {
 }
 
 void Regressor::Reset() {
+  net_.reset(); // decrease reference count
   net_.reset(new Net<float>(deploy_proto_, caffe::TRAIN));
   printf("In Regressor, Reset net_\n");
   net_->CopyTrainedLayersFrom(caffe_model_);

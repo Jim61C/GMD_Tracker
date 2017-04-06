@@ -14,8 +14,8 @@ using std::string;
 // #define VISUALIZE_FIRST_FRAME_SAMPLES
 // #define FINE_TUNE_VISUALISE
 
-#define FIRST_FRAME_POS_SAMPLES 500
-#define FIRST_FRAME_NEG_SAMPLES 5000
+#define FIRST_FRAME_POS_SAMPLES 50
+#define FIRST_FRAME_NEG_SAMPLES 500
 
 TrackerManager::TrackerManager(const std::vector<Video>& videos,
                                RegressorBase* regressor, Tracker* tracker) :
@@ -79,7 +79,7 @@ void TrackerManager::TrackAll(const size_t start_video_num, const int pause_val)
       // increment tracker's internel frame counter
       tracker_->cur_frame_ ++;
     }
-    PostProcessVideo();
+    PostProcessVideo(video_num);
   }
   PostProcessAll();
 }
@@ -131,6 +131,9 @@ TrackerFineTune::TrackerFineTune(const std::vector<Video>& videos,
   regressor_train_(regressor_train),
   save_videos_(save_videos),
   output_folder_(output_folder),
+  hrt_("Tracker"),
+  total_ms_(0),
+  num_frames_(0),
   fps_(20)
 
 {
@@ -298,6 +301,17 @@ void TrackerFineTune::ProcessTrackOutput(
   // afte generate examples, check if need to fine tune, and acutally fine tune if needed 
   tracker_->FineTuneOnline(frame_num, example_generator_, regressor_train_, is_this_frame_success, frame_num == total_num_frames_ - 1 );
 
+  hrt_.stop();
+  const double ms = hrt_.getMilliseconds();
+
+  // Update the total time needed for tracking before visualise and save
+  total_ms_ += ms;
+
+  // Increment number of frames tracked
+  num_frames_ ++;
+
+  printf("Track frame %zu, time spent: %lf ms\n", frame_num, ms);
+
   // Visualise
   cv::Mat full_output;
   image_curr.copyTo(full_output);
@@ -327,17 +341,31 @@ void TrackerFineTune::ProcessTrackOutput(
 }
 
 
-void TrackerFineTune::PostProcessVideo() {
+void TrackerFineTune::PostProcessVideo(size_t video_num) {
   // Close the file that saves the tracking data.
   // fclose(output_file_ptr_)
 
   // Reset the fine-tuned net for next video
-  regressor_->Reset(); // reload weights to net_
-
-  regressor_train_->ResetSolverNet(); // re-assign net_ to solver_
+  regressor_->Reset(); // reinitialise net_ and load new weights
+  
+  regressor_train_->ResetSolverNet(); // release solver_'s net_ memory and re-assign net_ to solver_
 
   // clear all the storage in the tracker
   tracker_->Reset();
+
+  // report the time and average fps
+  const double mean_fps = num_frames_ / (total_ms_ / 1000.0);
+  printf("Video %zu Mean fps: %lf ms\n", video_num, mean_fps);
+
+  // reset counters
+  total_ms_ = 0;
+  num_frames_ = 0;
+}
+
+void TrackerFineTune::SetupEstimate() {
+  // Record the time before starting to track.
+  hrt_.reset();
+  hrt_.start();
 }
 
 
@@ -428,7 +456,7 @@ void TrackerTesterAlov::ProcessTrackOutput(
   }
 }
 
-void TrackerTesterAlov::PostProcessVideo() {
+void TrackerTesterAlov::PostProcessVideo(size_t video_num) {
   // Close the file that saves the tracking data.
   fclose(output_file_ptr_);
 }

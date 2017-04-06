@@ -30,6 +30,8 @@ int main (int argc, char *argv[]) {
     return 1;
   }
 
+  // FLAGS_alsologtostderr = 1;
+
   ::google::InitGoogleLogging(argv[0]);
 
   const string& model_file   = argv[1];

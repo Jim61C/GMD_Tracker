@@ -63,8 +63,12 @@ RegressorTrain::RegressorTrain(const std::string& deploy_proto,
 }
 
 void RegressorTrain::ResetSolverNet() {
-  // TODO: check if need to free the memory pointed in solver_.net_ 
+  // TODO: if reload a new solver and assign to solver_ makes memory go down, but need to change solver_ to be a shared_ptr
+
+  // free the memory pointed in solver_.net_ 
+  solver_.reset_net();
   solver_.set_net(net_);
+
 }
 
 void RegressorTrain::set_test_net(const std::string& test_proto) {

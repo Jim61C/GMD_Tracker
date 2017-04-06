@@ -5,6 +5,7 @@ MySolver::MySolver(const std::string& param_file)
 }
 
 RegressorTrainBase::RegressorTrainBase(const std::string& solver_file)
-  : solver_(solver_file)
+  : solver_(solver_file),
+  solver_file_(solver_file)
 {
 }

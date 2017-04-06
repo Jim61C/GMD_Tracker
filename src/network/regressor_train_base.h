@@ -27,6 +27,10 @@ public:
   void set_test_net(const boost::shared_ptr<caffe::Net<float> >& net) {
     test_nets_[0] = net;
   }
+
+  void reset_net() {
+    net_.reset(); // decrease reference count to have the memory deallocated
+  }
 };
 
 // The class used to train the tracker should inherit from this class.
@@ -58,6 +62,8 @@ public:
 
 protected:
   MySolver solver_;
+
+  std:: string solver_file_;
 };
 
 #endif // REGRESSOR_TRAIN_BASE_H
