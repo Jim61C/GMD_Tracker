@@ -20,8 +20,8 @@ using std::string;
 // Choose whether to shift boxes using the motion model or using a uniform distribution.
 const bool shift_motion_model = true;
 
-// std::mt19937 ExampleGenerator::engine_(time(NULL)); // static attributes declaration
-std::mt19937 ExampleGenerator::engine_(SEED_ENGINE); // static attributes declaration
+std::mt19937 ExampleGenerator::engine_(time(NULL)); // static attributes declaration
+// std::mt19937 ExampleGenerator::engine_(SEED_ENGINE); // static attributes declaration
 
 ExampleGenerator::ExampleGenerator(const double lambda_shift,
                                    const double lambda_scale,
@@ -35,8 +35,8 @@ ExampleGenerator::ExampleGenerator(const double lambda_shift,
 
     gsl_rng_env_setup();
     rng_ = gsl_rng_alloc(gsl_rng_mt19937);
-    // gsl_rng_set(rng_, time(NULL));
-    gsl_rng_set(rng_, SEED_RNG_EXAMPLE_GENERATOR); // to reproduce
+    gsl_rng_set(rng_, time(NULL));
+    // gsl_rng_set(rng_, SEED_RNG_EXAMPLE_GENERATOR); // to reproduce
 }
 
 void ExampleGenerator::Reset(const BoundingBox& bbox_prev,

@@ -8,7 +8,7 @@
 
 using std::string;
 
-// #define FINE_TUNE_VISUALISE
+#define FINE_TUNE_VISUALISE
 
 TrackerManager::TrackerManager(const std::vector<Video>& videos,
                                RegressorBase* regressor, Tracker* tracker) :

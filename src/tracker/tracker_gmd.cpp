@@ -12,6 +12,7 @@
 // #define DEBUG_FINETUNE_WORKER
 // #define FISRT_FRAME_PAUSE
 // #define VISUALIZE_FIRST_FRAME_SAMPLES
+// #define DEBUG_LOG
 
 TrackerGMD::TrackerGMD(const bool show_tracking, ExampleGenerator* example_generator,  RegressorTrainBase* regressor_train) :
     Tracker(show_tracking),
@@ -20,10 +21,10 @@ TrackerGMD::TrackerGMD(const bool show_tracking, ExampleGenerator* example_gener
 {
     gsl_rng_env_setup();
     rng_ = gsl_rng_alloc(gsl_rng_mt19937);
-    // gsl_rng_set(rng_, time(NULL));
-    gsl_rng_set(rng_, SEED_RNG_TRACKER); // to reproduce
-    // engine_.seed(time(NULL));
-    engine_.seed(SEED_ENGINE);
+    gsl_rng_set(rng_, time(NULL));
+    // gsl_rng_set(rng_, SEED_RNG_TRACKER); // to reproduce
+    engine_.seed(time(NULL));
+    // engine_.seed(SEED_ENGINE);
 }
 
 // Estimate the location of the target object in the current image.
@@ -117,21 +118,23 @@ void TrackerGMD::GetCandidates(BoundingBox &cur_bbox, int W, int H, std::vector<
     }
 }
 
-BoundingBox TrackerGMD::GenerateOneGaussianCandidate(int W, int H, BoundingBox &bbox) {
+BoundingBox TrackerGMD::GenerateOneGaussianCandidate(int W, int H, BoundingBox &bbox, double sd_x, double sd_y, double sd_scale, double ap_scale) {
   double w = bbox.x2_ - bbox.x1_;
   double h = bbox.y2_ - bbox.y1_;
+  double ap = h/w;
   
   double centre_x = bbox.x1_ + w/2.0;
   double centre_y = bbox.y1_ + h/2.0;
 
   double r = round((w+h)/2.0);
 
-  double moved_centre_x = centre_x + SD_X * r * std::max(-KEEP_SD, std::min(KEEP_SD, gsl_ran_gaussian(rng_, 1.0))); // keep the range in [-KEEP_SD* SD, KEEP_SD*SD]
-  double moved_centre_y = centre_y + SD_Y * r * std::max(-KEEP_SD, std::min(KEEP_SD, gsl_ran_gaussian(rng_, 1.0))); 
+  double moved_centre_x = centre_x + sd_x * r * std::max(-KEEP_SD, std::min(KEEP_SD, gsl_ran_gaussian(rng_, 1.0))); // keep the range in [-KEEP_SD* SD, KEEP_SD*SD]
+  double moved_centre_y = centre_y + sd_y * r * std::max(-KEEP_SD, std::min(KEEP_SD, gsl_ran_gaussian(rng_, 1.0))); 
 
-  double ds = pow(MOTION_SCALE_FACTOR, SD_SCALE * std::max(-KEEP_SD, std::min(KEEP_SD, gsl_ran_gaussian(rng_, 1.0))) );
+  double ds = pow(MOTION_SCALE_FACTOR, sd_scale * std::max(-KEEP_SD, std::min(KEEP_SD, gsl_ran_gaussian(rng_, 1.0))) );
+  double dap = pow(MOTION_AP_FACTOR, ap_scale * std::max(-KEEP_SD, std::min(KEEP_SD, gsl_ran_gaussian(rng_, 1.0))) );
   double moved_w = w * ds;
-  double moved_h = h * ds;
+  double moved_h = moved_w * (ap * dap);
 
   BoundingBox moved_bbox;
   moved_bbox.x1_ = moved_centre_x - moved_w /2.0;
@@ -210,11 +213,13 @@ void TrackerGMD::FineTuneOnline(ExampleGenerator* example_generator,
     // check if to fine tune or not
     // check if need long term finetune
     if (cur_frame_ != 0 && !is_last_frame && (cur_frame_ % LONG_TERM_UPDATE_INTERVAL == 0)) {
-        // cout << "cur_frame_:" << cur_frame_ << ", about to start long term fine tune, frames to use:" << endl;
-        // for (int i = 0 ; i < long_term_bag_.size(); i ++ ) {
-        //     cout << long_term_bag_[i] << ", ";
-        // }
-        // cout << endl;
+#ifdef DEBUG_LOG
+        cout << "cur_frame_:" << cur_frame_ << ", about to start long term fine tune, frames to use:" << endl;
+        for (int i = 0 ; i < long_term_bag_.size(); i ++ ) {
+            cout << long_term_bag_[i] << ", ";
+        }
+        cout << endl;
+#endif
         FineTuneWorker(example_generator,
                        regressor_train,
                        long_term_bag_,
@@ -226,11 +231,13 @@ void TrackerGMD::FineTuneOnline(ExampleGenerator* example_generator,
 
     // check if need short_term finetune, if best prob < 0.5, need to short term finetune
     if (!success_frame) {
-        // cout << "cur_frame_:" << cur_frame_ << ", about to start short term fine tune, frames to use:" << endl;
-        // for (int i = 0 ; i < short_term_bag_.size(); i ++ ) {
-        //     cout << short_term_bag_[i] << ", ";
-        // }
-        // cout << endl;
+#ifdef DEBUG_LOG
+        cout << "cur_frame_:" << cur_frame_ << ", about to start short term fine tune, frames to use:" << endl;
+        for (int i = 0 ; i < short_term_bag_.size(); i ++ ) {
+            cout << short_term_bag_[i] << ", ";
+        }
+        cout << endl;
+#endif
         FineTuneWorker(example_generator,
                        regressor_train,
                        short_term_bag_);
@@ -254,11 +261,12 @@ void TrackerGMD::EnqueueOnlineTraningSamples(ExampleGenerator* example_generator
                                  estimate,
                                  image_prev_, 
                                  image_curr);
-        
-        // cout << "cur_frame_:" << cur_frame_<< " is success frame, enqueue pos and neg examples for later fine tuning" << endl;
-        example_generator->MakeCandidatesPos(&this_frame_candidates_pos);
-        example_generator->MakeCandidatesNeg(&this_frame_candidates_neg, NEG_CANDIDATES/2);
-        example_generator->MakeCandidatesNeg(&this_frame_candidates_neg, NEG_CANDIDATES/2, NEG_TRANS_RANGE, NEG_SCALE_RANGE, "whole");
+#ifdef DEBUG_LOG
+        cout << "cur_frame_:" << cur_frame_<< " is success frame, enqueue pos and neg examples for later fine tuning" << endl;
+#endif
+        example_generator->MakeCandidatesPos(&this_frame_candidates_pos, POS_CANDIDATES_FINETUNE );
+        example_generator->MakeCandidatesNeg(&this_frame_candidates_neg, NEG_CANDIDATES_FINETUNE/2);
+        example_generator->MakeCandidatesNeg(&this_frame_candidates_neg, NEG_CANDIDATES_FINETUNE/2, NEG_TRANS_RANGE, NEG_SCALE_RANGE, "whole");
         example_generator->MakeTrueExample(&image, &target, &bbox_gt_scaled);
 
         // enqueue this frame index
@@ -305,7 +313,9 @@ bool TrackerGMD::IsSuccessEstimate() {
   }
 
   double avg_prob = prob_sum / TOP_ESTIMATES;
-//   cout <<"cur_frame_:" << cur_frame_ << " avg_prob: " << avg_prob << endl;
+#ifdef DEBUG_LOG
+  cout <<"cur_frame_:" << cur_frame_ << " avg_prob: " << avg_prob << endl;
+#endif
   if (avg_prob <= SHORT_TERM_FINE_TUNE_TH) {
       return false;
   }
@@ -483,6 +493,9 @@ void TrackerGMD::UpdateState(const cv::Mat& image_curr, BoundingBox &bbox_estima
 
     // TODO: check if re-estimate after failure works better
     // Track(image_curr, regressor, bbox_estimate_uncentered);
+
+    // TODO: when appearance change drastically, after re-estimate, still enqueue for finetune
+    // hypothesis: if there is a drastic drop in target score, indiating appearance change, need to enqueu and finetune!
 
     // update image_prev_ to image_curr
     image_prev_ = image_curr;

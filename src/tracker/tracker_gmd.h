@@ -47,7 +47,7 @@ public:
   bool ValidCandidate(BoundingBox &candidate_bbox, int W, int H);
 
   // Get one moved box, according to the Gaussian Motion Model
-  BoundingBox GenerateOneGaussianCandidate(int W, int H, BoundingBox &bbox);
+  BoundingBox GenerateOneGaussianCandidate(int W, int H, BoundingBox &bbox, double sd_x = SD_X, double sd_y = SD_Y, double sd_scale = SD_SCALE, double ap_scale = AP_SCALE);
 
   // Create and Enqueue Training Samples given already set up example_generator
   virtual void EnqueueOnlineTraningSamples(ExampleGenerator* example_generator, const cv::Mat &image_curr, const BoundingBox &estimate,  bool success_frame);

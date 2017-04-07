@@ -15,6 +15,9 @@
 #define KEEP_SD 2.0
 #define MOTION_SCALE_FACTOR 1.05 // scaling std: MOTION_SCALE_FACTOR^(SD_SCALE)
 
+#define AP_SCALE 1.0
+#define MOTION_AP_FACTOR 1.2
+
 // for random sampling
 #define SCALE_FACTOR 1.05
 #define POS_SCALE_RANGE 5.0 // for positive sample 
@@ -29,13 +32,17 @@ const int NEG_CANDIDATES = 200;
 const double POS_IOU_TH = 0.7;
 const double NEG_IOU_TH = 0.5;
 
+// for fine tune sample generation
+const int POS_CANDIDATES_FINETUNE = 10;
+const int NEG_CANDIDATES_FINETUNE = 40;
+
 // for training labels
 #define POS_LABEL 1.0
 #define NEG_LABEL 0.0
 
 // long/short term update
 #define LONG_TERM_BAG_SIZE 50
-#define SHORT_TERM_BAG_SIZE 20
+#define SHORT_TERM_BAG_SIZE 10
 #define LONG_TERM_UPDATE_INTERVAL 10
 #define LONG_TERM_CANDIDATE_UPPER_BOUND 50
 const double SHORT_TERM_FINE_TUNE_TH = 0.85;
@@ -50,8 +57,8 @@ const double SHORT_TERM_FINE_TUNE_TH = 0.85;
 #define FIRST_FRAME_FINETUNE_ITERATION 10
 #define FINE_TUNE_AUGMENT_NUM 10
 
-#define FIRST_FRAME_POS_SAMPLES 50
-#define FIRST_FRAME_NEG_SAMPLES 500
+#define FIRST_FRAME_POS_SAMPLES 10
+#define FIRST_FRAME_NEG_SAMPLES 40
 
 
 #endif
