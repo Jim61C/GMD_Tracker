@@ -59,7 +59,8 @@ public:
   // Helper function to generate one moved box, non-gaussian version
   // trans_range, scale_range are defaults for uniform sampling of uniform samples
   static BoundingBox GenerateOneRandomCandidate(BoundingBox &bbox, gsl_rng* rng, int W, int H, 
-                                                const double trans_range = POS_TRANS_RANGE, const double scale_range = POS_SCALE_RANGE, const string method = "uniform");
+                                                const string method = "uniform", const double trans_range = POS_TRANS_RANGE, const double scale_range = POS_SCALE_RANGE, 
+                                                const double sd_x = SD_X, const double sd_y = SD_Y, const double sd_scale = SD_SCALE);
 
   // Make candidates given one frame
   // candidates: 200 neg and 50 pos candidates 
@@ -75,10 +76,12 @@ public:
                                    const int num_neg = NEG_CANDIDATES);
   
   void MakeCandidatesPos(vector<Mat> *candidates, const int num = POS_CANDIDATES,
-                                  const double trans_range = POS_TRANS_RANGE, const double scale_range = POS_SCALE_RANGE, const string method = "gaussian");
+                                  const string method = "gaussian", const double trans_range = POS_TRANS_RANGE, const double scale_range = POS_SCALE_RANGE,
+                                  const double sd_x = SD_X, const double sd_y = SD_Y, const double sd_scale = SD_SCALE);
 
   void MakeCandidatesNeg(vector<Mat> *candidates, const int num = NEG_CANDIDATES,
-                                  const double trans_range = 2 * SD_X, const double scale_range = POS_SCALE_RANGE, const string method = "uniform");
+                                  const string method = "uniform", const double trans_range = 2 * SD_X, const double scale_range = POS_SCALE_RANGE,
+                                  const double sd_x = SD_X, const double sd_y = SD_Y, const double sd_scale = SD_SCALE);
 
   void set_indices(const int video_index, const int frame_index) {
     video_index_ = video_index; frame_index_ = frame_index;

@@ -15,7 +15,7 @@
 using std::string;
 
 // #define DEBUG_TRAINING_SAMPLES
-// #define VISUALIZE_BBOX
+// #define VISUALIZE_FINETUNE_SAMPLES
 
 // Choose whether to shift boxes using the motion model or using a uniform distribution.
 const bool shift_motion_model = true;
@@ -77,7 +77,8 @@ void ExampleGenerator::MakeTrainingExamples(const int num_examples,
 
 // Randomly generates a new moved BoundingBox from bbox as candidate
 BoundingBox ExampleGenerator::GenerateOneRandomCandidate(BoundingBox &bbox, gsl_rng* rng, int W, int H,
-                                                         const double trans_range, const double scale_range, const string method) {
+                                                         const string method, const double trans_range, const double scale_range, 
+                                                         const double sd_x, const double sd_y, const double sd_scale) {
   double w = bbox.x2_ - bbox.x1_;
   double h = bbox.y2_ - bbox.y1_;
   
@@ -105,10 +106,10 @@ BoundingBox ExampleGenerator::GenerateOneRandomCandidate(BoundingBox &bbox, gsl_
 
     double r = round((w+h)/2.0);
 
-    double moved_centre_x = centre_x + SD_X * r * std::max(-KEEP_SD, std::min(KEEP_SD, gsl_ran_gaussian(rng, 1.0))); // keep the range in [-KEEP_SD* SD, KEEP_SD*SD]
-    double moved_centre_y = centre_y + SD_Y * r * std::max(-KEEP_SD, std::min(KEEP_SD, gsl_ran_gaussian(rng, 1.0))); 
+    double moved_centre_x = centre_x + sd_x * r * std::max(-KEEP_SD, std::min(KEEP_SD, gsl_ran_gaussian(rng, 1.0))); // keep the range in [-KEEP_SD* SD, KEEP_SD*SD]
+    double moved_centre_y = centre_y + sd_y * r * std::max(-KEEP_SD, std::min(KEEP_SD, gsl_ran_gaussian(rng, 1.0))); 
 
-    double ds = pow(MOTION_SCALE_FACTOR, SD_SCALE * std::max(-KEEP_SD, std::min(KEEP_SD, gsl_ran_gaussian(rng, 1.0))) );
+    double ds = pow(MOTION_SCALE_FACTOR, sd_scale * std::max(-KEEP_SD, std::min(KEEP_SD, gsl_ran_gaussian(rng, 1.0))) );
     double moved_w = w * ds;
     double moved_h = h * ds;
 
@@ -215,7 +216,7 @@ void ExampleGenerator::MakeCandidatesAndLabelsBBox(vector<BoundingBox> *candidat
 
   // generate negative examples
   while (label_candidates.size() < num_pos + num_neg) {
-    BoundingBox this_box = ExampleGenerator::GenerateOneRandomCandidate(gt_bbox_cropped, rng_, image_curr_.size().width, image_curr_.size().height, NEG_TRANS_RANGE, NEG_SCALE_RANGE);
+    BoundingBox this_box = ExampleGenerator::GenerateOneRandomCandidate(gt_bbox_cropped, rng_, image_curr_.size().width, image_curr_.size().height, "uniform",  NEG_TRANS_RANGE, NEG_SCALE_RANGE);
     if (gt_bbox_cropped.compute_IOU(this_box) <= NEG_IOU_TH) {
       // enqueue this bbox and label
       // this_box.crop_against_image(image_curr_); // make sure within image
@@ -237,14 +238,17 @@ void ExampleGenerator::MakeCandidatesAndLabelsBBox(vector<BoundingBox> *candidat
 }
 
 void ExampleGenerator::MakeCandidatesPos(vector<Mat> *candidates, const int num,
-                                const double trans_range, const double scale_range, const string method) {
-#ifdef VISUALIZE_BBOX
+                                const string method, const double trans_range, const double scale_range,
+                                const double sd_x, const double sd_y, const double sd_scale
+                                ) {
+#ifdef VISUALIZE_FINETUNE_SAMPLES
   Mat canvas = image_curr_.clone();
 #endif
   int count = 0;
   while (count < num) {
     BoundingBox this_box = ExampleGenerator::GenerateOneRandomCandidate(bbox_curr_gt_, rng_, image_curr_.size().width, image_curr_.size().height, 
-                                                                        trans_range, scale_range, method);
+                                                                        method, trans_range, scale_range, 
+                                                                        sd_x, sd_y, sd_scale);
     // no need to crop as the bbox_curr_gt_ is the current estimate, which will never go out of boundary
     if (this_box.valid_bbox_against_width_height(image_curr_.size().width, image_curr_.size().height) && bbox_curr_gt_.compute_IOU(this_box) >= POS_IOU_TH) {
       // enqueue
@@ -256,28 +260,30 @@ void ExampleGenerator::MakeCandidatesPos(vector<Mat> *candidates, const int num,
       }
       candidates->push_back(this_candidate);
       count ++;
-#ifdef VISUALIZE_BBOX
+#ifdef VISUALIZE_FINETUNE_SAMPLES
       this_box.Draw(255, 0, 0, &canvas);
 #endif
     }
   }
 
-#ifdef VISUALIZE_BBOX
-  string window_name = "pos_samples_" + method + "_" +std::to_string(trans_range) + "_" + std::to_string(scale_range);
+#ifdef VISUALIZE_FINETUNE_SAMPLES
+  string window_name = "pos_samples_" + method + "_" +std::to_string(sd_x) + "_" + std::to_string(sd_scale);
   cv::imshow(window_name, canvas);
   cv::waitKey(10);
 #endif     
 }
 
 void ExampleGenerator::MakeCandidatesNeg(vector<Mat> *candidates, const int num,
-                                const double trans_range, const double scale_range, const string method) {
+                                         const string method, const double trans_range, const double scale_range,
+                                         const double sd_x, const double sd_y, const double sd_scale) {
   int count = 0;
-#ifdef VISUALIZE_BBOX
+#ifdef VISUALIZE_FINETUNE_SAMPLES
   Mat canvas = image_curr_.clone();
 #endif
   while (count < num) {
     BoundingBox this_box = ExampleGenerator::GenerateOneRandomCandidate(bbox_curr_gt_, rng_, image_curr_.size().width, image_curr_.size().height, 
-                                                                        trans_range, scale_range, method);
+                                                                        method, trans_range, scale_range,
+                                                                        sd_x, sd_y, sd_scale);
     // no need to crop as the bbox_curr_gt_ is the current estimate, which will never go out of boundary
     if (this_box.valid_bbox_against_width_height(image_curr_.size().width, image_curr_.size().height) && bbox_curr_gt_.compute_IOU(this_box) <= NEG_IOU_TH) {
       // enqueue
@@ -290,13 +296,13 @@ void ExampleGenerator::MakeCandidatesNeg(vector<Mat> *candidates, const int num,
       candidates->push_back(this_candidate);
       count ++;
 
-#ifdef VISUALIZE_BBOX
+#ifdef VISUALIZE_FINETUNE_SAMPLES
       this_box.Draw(0, 0, 255, &canvas);
 #endif
     }
   }
 
-#ifdef VISUALIZE_BBOX
+#ifdef VISUALIZE_FINETUNE_SAMPLES
   string window_name = "neg_samples_" + method + "_" +std::to_string(trans_range) + "_" + std::to_string(scale_range);
   cv::imshow(window_name, canvas);
   cv::waitKey(10);

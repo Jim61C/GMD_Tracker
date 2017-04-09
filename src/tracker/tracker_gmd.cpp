@@ -25,6 +25,10 @@ TrackerGMD::TrackerGMD(const bool show_tracking, ExampleGenerator* example_gener
     // gsl_rng_set(rng_, SEED_RNG_TRACKER); // to reproduce
     engine_.seed(time(NULL));
     // engine_.seed(SEED_ENGINE);
+
+    sd_trans_ = SD_X;
+    sd_scale_ = SD_SCALE;
+    sd_ap_ = SD_AP;
 }
 
 // Estimate the location of the target object in the current image.
@@ -108,7 +112,7 @@ bool TrackerGMD::ValidCandidate(BoundingBox &candidate_bbox, int W, int H) {
 
 void TrackerGMD::GetCandidates(BoundingBox &cur_bbox, int W, int H, std::vector<BoundingBox> &candidate_bboxes) {
     while(candidate_bboxes.size() < SAMPLE_CANDIDATES ) {
-        BoundingBox this_candidate_bbox = GenerateOneGaussianCandidate(W, H, cur_bbox);
+        BoundingBox this_candidate_bbox = GenerateOneGaussianCandidate(W, H, cur_bbox, sd_trans_, sd_trans_, sd_scale_, sd_ap_);
         // // crop against W, H so that fit in image
         // this_candidate_bbox.crop_against_width_height(W, H);
         // if at boarder, do not crop, to avoid really thin candidates being fed in -> correspond to cropping gt in training, instead of cropping pos/neg samples
@@ -118,7 +122,7 @@ void TrackerGMD::GetCandidates(BoundingBox &cur_bbox, int W, int H, std::vector<
     }
 }
 
-BoundingBox TrackerGMD::GenerateOneGaussianCandidate(int W, int H, BoundingBox &bbox, double sd_x, double sd_y, double sd_scale, double ap_scale) {
+BoundingBox TrackerGMD::GenerateOneGaussianCandidate(int W, int H, BoundingBox &bbox, double sd_x, double sd_y, double sd_scale, double sd_ap) {
   double w = bbox.x2_ - bbox.x1_;
   double h = bbox.y2_ - bbox.y1_;
   double ap = h/w;
@@ -132,7 +136,7 @@ BoundingBox TrackerGMD::GenerateOneGaussianCandidate(int W, int H, BoundingBox &
   double moved_centre_y = centre_y + sd_y * r * std::max(-KEEP_SD, std::min(KEEP_SD, gsl_ran_gaussian(rng_, 1.0))); 
 
   double ds = pow(MOTION_SCALE_FACTOR, sd_scale * std::max(-KEEP_SD, std::min(KEEP_SD, gsl_ran_gaussian(rng_, 1.0))) );
-  double dap = pow(MOTION_AP_FACTOR, ap_scale * std::max(-KEEP_SD, std::min(KEEP_SD, gsl_ran_gaussian(rng_, 1.0))) );
+  double dap = pow(MOTION_AP_FACTOR, sd_ap * std::max(-KEEP_SD, std::min(KEEP_SD, gsl_ran_gaussian(rng_, 1.0))) );
   double moved_w = w * ds;
   double moved_h = moved_w * (ap * dap);
 
@@ -264,9 +268,10 @@ void TrackerGMD::EnqueueOnlineTraningSamples(ExampleGenerator* example_generator
 #ifdef DEBUG_LOG
         cout << "cur_frame_:" << cur_frame_<< " is success frame, enqueue pos and neg examples for later fine tuning" << endl;
 #endif
-        example_generator->MakeCandidatesPos(&this_frame_candidates_pos, POS_CANDIDATES_FINETUNE );
-        example_generator->MakeCandidatesNeg(&this_frame_candidates_neg, NEG_CANDIDATES_FINETUNE/2);
-        example_generator->MakeCandidatesNeg(&this_frame_candidates_neg, NEG_CANDIDATES_FINETUNE/2, NEG_TRANS_RANGE, NEG_SCALE_RANGE, "whole");
+        example_generator->MakeCandidatesPos(&this_frame_candidates_pos, POS_CANDIDATES_FINETUNE, "gaussian", POS_TRANS_RANGE, POS_SCALE_RANGE, 
+                                             0.05, 0.05, 2.5); // trans sd 0.05, scale sd 2.5
+        example_generator->MakeCandidatesNeg(&this_frame_candidates_neg, NEG_CANDIDATES_FINETUNE/2, "uniform", 1.0, 2.5); // trans range 1, scale range 2.5
+        example_generator->MakeCandidatesNeg(&this_frame_candidates_neg, NEG_CANDIDATES_FINETUNE/2, "whole", NEG_TRANS_RANGE, 5.0);
         example_generator->MakeTrueExample(&image, &target, &bbox_gt_scaled);
 
         // enqueue this frame index
@@ -399,9 +404,10 @@ void TrackerGMD::Init(const cv::Mat& image_curr, const BoundingBox& bbox_gt,
 
         // generate candidates and push to this_frame_candidates and this_frame_labels
         // example_generator_->MakeCandidatesAndLabels(&this_frame_candidates, &this_frame_labels, FIRST_FRAME_POS_SAMPLES, FIRST_FRAME_NEG_SAMPLES);
-        example_generator_->MakeCandidatesPos(&this_frame_candidates_pos, FIRST_FRAME_POS_SAMPLES);
-        example_generator_->MakeCandidatesNeg(&this_frame_candidates_neg, FIRST_FRAME_NEG_SAMPLES/2);
-        example_generator_->MakeCandidatesNeg(&this_frame_candidates_neg, FIRST_FRAME_NEG_SAMPLES/2, NEG_TRANS_RANGE, NEG_SCALE_RANGE, "whole");
+        example_generator_->MakeCandidatesPos(&this_frame_candidates_pos, FIRST_FRAME_POS_SAMPLES, "gaussian", POS_TRANS_RANGE, POS_SCALE_RANGE,
+                                              0.05, 0.05, 2.5); // 0.05, 2.5
+        example_generator_->MakeCandidatesNeg(&this_frame_candidates_neg, FIRST_FRAME_NEG_SAMPLES/2, "uniform", 0.5, 5); // 0.5, 5
+        example_generator_->MakeCandidatesNeg(&this_frame_candidates_neg, FIRST_FRAME_NEG_SAMPLES/2, "whole", NEG_TRANS_RANGE, 5.0);
 
         // shuffling
         std::vector<std::pair<double, cv::Mat> > label_to_candidate;
@@ -484,6 +490,14 @@ void TrackerGMD::UpdateState(const cv::Mat& image_curr, BoundingBox &bbox_estima
     
     // Post processing after this frame, fine tune, invoke tracker_ -> finetune
     bool is_this_frame_success = IsSuccessEstimate();
+
+    // update sd_trans_ in case of failure
+    if (!is_this_frame_success) {
+        sd_trans_ = std::min(0.75, 1.1 * sd_trans_);
+    }
+    else {
+        sd_trans_ = SD_X;
+    }
 
     // generate examples, if not success, just dummy values pushed in
     EnqueueOnlineTraningSamples(example_generator_, image_curr, bbox_estimate, is_this_frame_success);
