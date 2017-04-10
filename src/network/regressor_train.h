@@ -43,6 +43,25 @@ public:
                            std::vector<double> &labels_flattened,
                            int k);
   
+  void TrainForwardBackwardWorker(const std::vector<cv::Mat> &candidates_flattened,
+                            const std::vector<double> &labels_flattened,
+                            const cv::Mat & image,
+                            const cv::Mat & target);
+
+  void TrainForwardBackward(const std::vector<cv::Mat> &candidates_flattened,
+                            const std::vector<double> &labels_flattened,
+                            const cv::Mat & image,
+                            const cv::Mat & target,
+                            int k);
+  
+  // Forward and Backward. TODO: add Online Hard Example Mining
+  void TrainBatchFast(const std::vector<cv::Mat>& images,
+                           const std::vector<cv::Mat>& targets,
+                           const std::vector<BoundingBox>& bboxes_gt,
+                           const std::vector<std::vector<cv::Mat> > &candidates,
+                           const std::vector<std::vector<double> > &labels,
+                           int k);
+
   // Implementing the TrainBatch Interface
   void TrainBatch(const std::vector<cv::Mat>& images,
                            const std::vector<cv::Mat>& targets,
@@ -58,7 +77,7 @@ public:
   void set_test_net(const std::string& test_proto);
 
   // Set the labels in the net_'s input[3]
-  void set_labels(vector<double>  &labels_flattened);
+  void set_labels(const vector<double>  &labels_flattened);
 
   // Reset the solver's net to this->net_ initialised from regressor 
   void ResetSolverNet();

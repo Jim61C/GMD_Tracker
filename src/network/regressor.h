@@ -84,6 +84,10 @@ protected:
 
   virtual void ReshapeCandidateInputs(const size_t num_candidates);
 
+  // Does all the preparations needed, i.e., forward until concat layer to finish the complete forwarding
+  void PreForwardFast(const std::vector<cv::Mat> &candidates,
+                               const cv::Mat & image,
+                               const cv::Mat & target);
 
   // TODO: current wrap WrapOutputBlob is BUGGY!!! check how to copy out memory to cv Mat
   void WrapOutputBlob(const std::string & blob_name, std::vector<cv::Mat>* output_channels);

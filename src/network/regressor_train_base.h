@@ -21,6 +21,10 @@ class MySolver : public caffe::SGDSolver<float>
 public:
   MySolver(const std::string& param_file);
 
+  void apply_update() {
+    this->ApplyUpdate();
+  }
+
   void set_net(const boost::shared_ptr<caffe::Net<float> >& net) {
     net_ = net;
   }
@@ -44,6 +48,14 @@ public:
              const std::vector<cv::Mat>& targets,
              const std::vector<BoundingBox>& bboxes_gt) = 0;
   
+  // Use forward and backward
+  virtual void TrainBatchFast(const std::vector<cv::Mat>& images,
+                           const std::vector<cv::Mat>& targets,
+                           const std::vector<BoundingBox>& bboxes_gt,
+                           const std::vector<std::vector<cv::Mat> > &candidates,
+                           const std::vector<std::vector<double> > &labels,
+                           int k) = 0;
+
   // Train the tracker, GOTURN, MDNet, k = -1 indicating Fine Tuning
   virtual void TrainBatch(const std::vector<cv::Mat>& images,
                            const std::vector<cv::Mat>& targets,

@@ -18,6 +18,7 @@ using namespace std;
 
 // #define DEBUG_FREEZE_LAYER
 // #define DEBUG_GETPROBOUTPUT
+// #define LOG_TIME
 
 // We need 2 inputs: one for the current frame and one for the previous frame.
 const int kNumInputs = 2;
@@ -196,15 +197,122 @@ bool equalVector(std::vector<float> &a, std::vector<float> &b) {
   return true; 
 }
 
+
+void Regressor::PreForwardFast(const std::vector<cv::Mat> &candidates,
+                               const cv::Mat & image,
+                               const cv::Mat & target) {
+  // get a hold of image and target pool5 features
+  Blob<float>* input_target = net_->input_blobs()[0];
+  input_target->Reshape(1, num_channels_,
+                       input_geometry_.height, input_geometry_.width);
+
+  Blob<float>* input_image = net_->input_blobs()[1];
+  input_image->Reshape(1, num_channels_,
+                       input_geometry_.height, input_geometry_.width);
+
+  Blob<float>* input_candidate = net_->input_blobs()[2];
+  input_candidate->Reshape(1, num_channels_,
+                       input_geometry_.height, input_geometry_.width);
+
+  // Reshape the labels if it is there
+  if (net_->input_blobs().size() == 4) {
+    // get the input blob for labels, reshape to include batch number
+    Blob<float> * input_label_blob = net_->input_blobs()[3];
+    const size_t num_labels = 1;
+
+    // reshape to batch size
+    vector<int> shape;
+    shape.push_back(num_labels);
+    shape.push_back(1);
+    input_label_blob->Reshape(shape);
+  }
+
+  // Forward dimension change to all layers.
+  net_->Reshape();
+
+  // Process the inputs so we can set them.
+  std::vector<cv::Mat> target_channels;
+  std::vector<cv::Mat> image_channels;
+  WrapInputLayer(&target_channels, &image_channels);
+
+  // Set the inputs to the network.
+  Preprocess(image, &image_channels);
+  Preprocess(target, &target_channels);
+
+  const vector<string> & layer_names = net_->layer_names();
+  int layer_conv1_idx = FindLayerIndexByName(layer_names, "conv1");
+  int layer_pool5_idx = FindLayerIndexByName(layer_names, "pool5");
+
+  int layer_conv1_p_idx = FindLayerIndexByName(layer_names, "conv1_p");
+  int layer_pool5_p_idx = FindLayerIndexByName(layer_names, "pool5_p");
+
+  std::vector<cv::Mat> pool5_image;
+  std::vector<cv::Mat> pool5_p_image;
+
+  // Perform a forward-pass in the network.
+  net_->ForwardFromTo(layer_conv1_idx, layer_pool5_idx);
+  WrapOutputBlob("pool5", &pool5_image);
+
+  net_->ForwardFromTo(layer_conv1_p_idx, layer_pool5_p_idx);
+  WrapOutputBlob("pool5_p", &pool5_p_image);
+
+  // now forward the candidates
+  int layer_conv1_c_idx = FindLayerIndexByName(layer_names, "conv1_c");
+  int layer_pool5_c_idx = FindLayerIndexByName(layer_names, "pool5_c");
+
+  // reshape to include batch now
+  input_target = net_->input_blobs()[0];
+  input_target->Reshape(candidates.size(), num_channels_,
+                       input_geometry_.height, input_geometry_.width);
+
+  input_image = net_->input_blobs()[1];
+  input_image->Reshape(candidates.size(), num_channels_,
+                       input_geometry_.height, input_geometry_.width);
+
+  SetCandidates(candidates);
+
+  // Reshape the labels if it is there
+  if (net_->input_blobs().size() == 4) {
+    // get the input blob for labels, reshape to include batch number
+    Blob<float> * input_label_blob = net_->input_blobs()[3];
+    const size_t num_labels = candidates.size();
+
+    // reshape to batch size
+    vector<int> shape;
+    shape.push_back(num_labels);
+    shape.push_back(1);
+    input_label_blob->Reshape(shape);
+  }
+
+  // Forward dimension change to all layers.
+  net_->Reshape();
+
+  net_->ForwardFromTo(layer_conv1_c_idx, layer_pool5_c_idx);
+
+  // wrap pool5 and pool5_p memory in opencv mat
+  std::vector<std::vector<cv::Mat> > pool5_channels;
+  std::vector<std::vector<cv::Mat> > pool5_p_channels;
+
+  WrapBlobByNameBatch("pool5", &pool5_channels);
+  WrapBlobByNameBatch("pool5_p", &pool5_p_channels);
+
+  PreprocessDuplicateIn(pool5_image, &pool5_channels);
+  PreprocessDuplicateIn(pool5_p_image, &pool5_p_channels);
+}
+
 void Regressor::PredictFast(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, 
                        const std::vector<BoundingBox> &candidate_bboxes, 
                        BoundingBox* bbox,
                        std::vector<float> *return_probabilities, 
                        std::vector<int> *return_sorted_indexes) {
+#ifdef LOG_TIME
   // hrt timer
   hrt_.reset();
   hrt_.start();
+#endif
 
+  // TODO: load another net with phase TEST and use Net::ShareTrainedLayersWith() to share weights with the train net
+  // Or: Just use solver_'s net_ and test_nets_[0] which are shared weights
   
   std::vector<cv::Mat> candidates;
   
@@ -489,9 +597,10 @@ void Regressor::PredictFast(const cv::Mat& image_curr, const cv::Mat& image, con
   *return_probabilities = positive_probabilities;
   *return_sorted_indexes = idx;
 
-
+#ifdef LOG_TIME
   hrt_.stop();
   cout << "time spent for PredictFast: " << hrt_.getMilliseconds() << " ms" << endl;
+#endif
 }
 
 void Regressor::Predict(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, 
@@ -499,9 +608,11 @@ void Regressor::Predict(const cv::Mat& image_curr, const cv::Mat& image, const c
                        BoundingBox* bbox,
                        std::vector<float> *return_probabilities, 
                        std::vector<int> *return_sorted_indexes) {
+#ifdef LOG_TIME
   // hrt timer
   hrt_.reset();
   hrt_.start();
+#endif
 
   // Prepare the corresponding vector<cv::Mat> for images, targets, candidates to feed into network
   std::vector<cv::Mat> images_flattened;
@@ -571,9 +682,11 @@ void Regressor::Predict(const cv::Mat& image_curr, const cv::Mat& image, const c
   *return_probabilities = positive_probabilities;
   *return_sorted_indexes = idx;
 
+#ifdef LOG_TIME
   //report time
   hrt_.stop();
   cout << "time spent for Predict: " << hrt_.getMilliseconds() << " ms" << endl;
+#endif
 }
 
 int Regressor::FindLayerIndexByName( const vector<string> & layer_names, const string & target) {
