@@ -1,6 +1,7 @@
 // Visualize the tracker performance.
 
 #include <string>
+#include <caffe/caffe.hpp>
 
 #include <opencv/cv.h>
 #include <opencv2/core/core.hpp>
@@ -33,6 +34,8 @@ int main (int argc, char *argv[]) {
   // FLAGS_alsologtostderr = 1;
 
   ::google::InitGoogleLogging(argv[0]);
+
+  caffe::Caffe::set_random_seed(800); 
 
   const string& model_file   = argv[1];
   const string& trained_file = argv[2];

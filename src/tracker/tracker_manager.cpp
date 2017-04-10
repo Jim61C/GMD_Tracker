@@ -179,7 +179,7 @@ void TrackerFineTune::ProcessTrackOutput(
   // Increment number of frames tracked
   num_frames_ ++;
 
-  printf("Track frame %zu, time spent: %lf ms\n", frame_num, ms);
+  printf("Track frame %zu, time spent: %lf ms\n\n", frame_num, ms);
 
   // Visualise
   cv::Mat full_output;
