@@ -17,14 +17,15 @@
 TrackerGMD::TrackerGMD(const bool show_tracking, ExampleGenerator* example_generator,  RegressorTrainBase* regressor_train) :
     Tracker(show_tracking),
     example_generator_(example_generator),
-    regressor_train_(regressor_train)
+    regressor_train_(regressor_train),
+    hrt_("TrackerGMD")
 {
     gsl_rng_env_setup();
     rng_ = gsl_rng_alloc(gsl_rng_mt19937);
-    gsl_rng_set(rng_, time(NULL));
-    // gsl_rng_set(rng_, SEED_RNG_TRACKER); // to reproduce
-    engine_.seed(time(NULL));
-    // engine_.seed(SEED_ENGINE);
+    // gsl_rng_set(rng_, time(NULL));
+    gsl_rng_set(rng_, SEED_RNG_TRACKER); // to reproduce
+    // engine_.seed(time(NULL));
+    engine_.seed(SEED_ENGINE);
 
     sd_trans_ = SD_X;
     sd_scale_ = SD_SCALE;
@@ -45,12 +46,17 @@ void TrackerGMD::Track(const cv::Mat& image_curr, RegressorBase* regressor, Boun
 
     // Motion Model to get candidate_bboxes, use class attributes, record the scores and candidates
     candidates_bboxes_.clear();
+    hrt_.reset();
+    hrt_.start();
     GetCandidates(bbox_curr_prior_tight_, image_curr.size().width, image_curr.size().height, candidates_bboxes_);
+    hrt_.stop();
+    cout << "time spent for genrating motion candiadates: " << hrt_.getMilliseconds() << " ms" << endl;
 
     candidate_probabilities_.clear();
     sorted_idxes_.clear(); // sorted indexes of candidates from highest positive prob to lowest
     // Estimate the bounding box location as the ML estimate of the candidate_bboxes
-    regressor->Predict(image_curr, curr_search_region, target_pad, candidates_bboxes_, bbox_estimate_uncentered, &candidate_probabilities_, &sorted_idxes_);
+    // regressor->Predict(image_curr, curr_search_region, target_pad, candidates_bboxes_, bbox_estimate_uncentered, &candidate_probabilities_, &sorted_idxes_);
+    regressor->PredictFast(image_curr, curr_search_region, target_pad, candidates_bboxes_, bbox_estimate_uncentered, &candidate_probabilities_, &sorted_idxes_);
 
 #ifdef DEBUG_SHOW_CANDIDATES
 
@@ -487,7 +493,9 @@ void TrackerGMD::Init(const std::string& image_curr_path, const VOTRegion& regio
 
 // After tracking for this frame, update internal state, called right after tracker_->Track
 void TrackerGMD::UpdateState(const cv::Mat& image_curr, BoundingBox &bbox_estimate, RegressorBase* regressor, bool is_last_frame) {
-    
+    hrt_.reset();
+    hrt_.start();
+
     // Post processing after this frame, fine tune, invoke tracker_ -> finetune
     bool is_this_frame_success = IsSuccessEstimate();
 
@@ -523,4 +531,7 @@ void TrackerGMD::UpdateState(const cv::Mat& image_curr, BoundingBox &bbox_estima
 
     // internel frame counter
     cur_frame_ ++;
+
+    hrt_.stop();
+    cout << "time spent for update state (possibly finetune): " << hrt_.getMilliseconds() << " ms" << endl;
 }

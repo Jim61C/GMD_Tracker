@@ -9,6 +9,7 @@
 #include <gsl/gsl_randist.h> /* GAUSSIAN*/
 #include "helper/Constants.h"
 #include <limits.h>
+#include "helper/high_res_timer.h"
 
 class TrackerGMD : public Tracker {
 
@@ -93,6 +94,9 @@ private:
   double sd_trans_;
   double sd_scale_;
   double sd_ap_;
+
+  // timer
+  HighResTimer hrt_;
 
 };
 

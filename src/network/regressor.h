@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "helper/bounding_box.h"
+#include "helper/high_res_timer.h"
 #include "network/regressor_base.h"
 #include "helper/Constants.h"
 
@@ -58,6 +59,12 @@ class Regressor : public RegressorBase {
                        std::vector<float> * return_probabilities,
                        std::vector<int> *return_sorted_indexes);
 
+  virtual void PredictFast(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, 
+                       const std::vector<BoundingBox> &candidate_bboxes, 
+                       BoundingBox* bbox,
+                       std::vector<float> *return_probabilities, 
+                       std::vector<int> *return_sorted_indexes);
+
 protected:
   // Set the network inputs.
   void SetImages(const std::vector<cv::Mat>& images,
@@ -77,6 +84,12 @@ protected:
 
   virtual void ReshapeCandidateInputs(const size_t num_candidates);
 
+
+  // TODO: current wrap WrapOutputBlob is BUGGY!!! check how to copy out memory to cv Mat
+  void WrapOutputBlob(const std::string & blob_name, std::vector<cv::Mat>* output_channels);
+  
+  void WrapOutputBlob(const std::string & blob_name, std::vector<std::vector<cv::Mat> > *output_channels);
+
   // Get the features in the network with the given name, and copy their values to the output.
   void GetFeatures(const std::string& feature_name, std::vector<float>* output) const;
 
@@ -88,6 +101,9 @@ protected:
                              const std::vector<cv::Mat>& targets,
                              std::vector<float>* output);
 
+  // Find layer index by name, so that we could do forward from to
+  int FindLayerIndexByName( const vector<string> & layer_names, const string & target);
+
   // Batch ML candidate binary softmax estimation
   void Estimate(std::vector<cv::Mat> &images_flattened,
                            std::vector<cv::Mat> &targets_flattened,
@@ -98,6 +114,9 @@ protected:
   // (one per channel).
   void WrapInputLayer(std::vector<cv::Mat>* target_channels, std::vector<cv::Mat>* image_channels);
 
+  // Wrap candidate, just one imge
+  void WrapInputLayer(std::vector<cv::Mat>* candidate_channels);
+
   // Wrap the input layer of the network in separate cv::Mat objects
   // (one per channel per image, for num_images images).
   void WrapInputLayer(const size_t num_images,
@@ -107,10 +126,16 @@ protected:
   // Wrap the input of network (candidate) in separate cv::Mat objects
   void WrapInputLayer(const size_t num_candidates, std::vector<std::vector<cv::Mat> >* candidate_channels);
 
+  // Wrap a specific blob in cv::Mat objects
+  void WrapBlobByNameBatch(const string & blob_name, std::vector<std::vector<cv::Mat> >* blob_channels);
+
   // Set the inputs to the network.
   void Preprocess(const cv::Mat& img, std::vector<cv::Mat>* input_channels);
   void Preprocess(const std::vector<cv::Mat>& images,
                   std::vector<std::vector<cv::Mat> >* input_channels);
+  
+  // Create batch number of copies and Set blob value
+  void PreprocessDuplicateIn(std::vector<cv::Mat> &data_to_duplicate, std::vector<std::vector<cv::Mat> >* blob_channels);
 
   // If the parameters of the network have been modified, reinitialize the parameters to their original values.
   virtual void Init();
@@ -156,6 +181,9 @@ protected:
 
   // Number of Domains
   int K_;
+
+  // Timer.
+  HighResTimer hrt_;
 };
 
 #endif // REGRESSOR_H

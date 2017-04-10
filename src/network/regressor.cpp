@@ -32,7 +32,8 @@ Regressor::Regressor(const string& deploy_proto,
     deploy_proto_(deploy_proto), 
     caffe_model_(caffe_model),
     modified_params_(false),
-    K_(K)
+    K_(K),
+    hrt_("Regressor")
 
 {
   SetupNetwork(deploy_proto, caffe_model, gpu_id, do_train);
@@ -47,7 +48,8 @@ Regressor::Regressor(const string& deploy_proto,
     deploy_proto_(deploy_proto), 
     caffe_model_(caffe_model),
     modified_params_(false),
-    K_(-1)
+    K_(-1),
+    hrt_("Regressor")
 
 {
   SetupNetwork(deploy_proto, caffe_model, gpu_id, do_train);
@@ -61,7 +63,8 @@ Regressor::Regressor(const string& deploy_proto,
     deploy_proto_(deploy_proto), 
     caffe_model_(caffe_model),
     modified_params_(false),
-    K_(-1)
+    K_(-1),
+    hrt_("Regressor")
 {
   SetupNetwork(deploy_proto, caffe_model, gpu_id, do_train);
 }
@@ -170,11 +173,336 @@ void Regressor::Regress(const cv::Mat& image_curr,
   *bbox = BoundingBox(estimation);
 }
 
+bool equalMat(cv::Mat &mat1, cv::Mat &mat2) {
+  cv::Mat dst;
+  cv::bitwise_xor(mat1, mat2, dst);        
+  if(cv::countNonZero(dst) > 0) //check non-0 pixels
+    //do stuff in case cv::Mat are not the same
+    return false;
+  else
+    return true;
+}
+
+bool equalVector(std::vector<float> &a, std::vector<float> &b) {
+  if (a.size() != b.size()) {
+    return false;
+  }
+  for (int i =0;i < a.size(); i++) {
+    if(a[i] != b[i]) {
+      return false;
+    }
+  }
+
+  return true; 
+}
+
+void Regressor::PredictFast(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, 
+                       const std::vector<BoundingBox> &candidate_bboxes, 
+                       BoundingBox* bbox,
+                       std::vector<float> *return_probabilities, 
+                       std::vector<int> *return_sorted_indexes) {
+  // hrt timer
+  hrt_.reset();
+  hrt_.start();
+
+  
+  std::vector<cv::Mat> candidates;
+  
+  for (int i = 0; i <candidate_bboxes.size(); i++) {
+    // Crop the candidate
+    cv::Mat this_candidate;
+    candidate_bboxes[i].CropBoundingBoxOutImage(image_curr, this_candidate);
+
+    candidates.push_back(this_candidate);
+  }
+
+  // get a hold of image and target pool5 features
+  Blob<float>* input_target = net_->input_blobs()[0];
+  input_target->Reshape(1, num_channels_,
+                       input_geometry_.height, input_geometry_.width);
+
+  Blob<float>* input_image = net_->input_blobs()[1];
+  input_image->Reshape(1, num_channels_,
+                       input_geometry_.height, input_geometry_.width);
+
+  // Here, one by one forwarding, TODO: see if batch forwarding of candiates will be faster
+  Blob<float>* input_candidate = net_->input_blobs()[2];
+  input_candidate->Reshape(1, num_channels_,
+                       input_geometry_.height, input_geometry_.width);
+
+  // Reshape the labels if it is there
+  if (net_->input_blobs().size() == 4) {
+    // get the input blob for labels, reshape to include batch number
+    Blob<float> * input_label_blob = net_->input_blobs()[3];
+    const size_t num_labels = 1;
+
+    // reshape to batch size
+    vector<int> shape;
+    shape.push_back(num_labels);
+    shape.push_back(1);
+    input_label_blob->Reshape(shape);
+  }
+
+  // Forward dimension change to all layers.
+  net_->Reshape();
+
+  // Process the inputs so we can set them.
+  std::vector<cv::Mat> target_channels;
+  std::vector<cv::Mat> image_channels;
+  WrapInputLayer(&target_channels, &image_channels);
+
+  // Set the inputs to the network.
+  Preprocess(image, &image_channels);
+  Preprocess(target, &target_channels);
+
+  const vector<string> & layer_names = net_->layer_names();
+  int layer_conv1_idx = FindLayerIndexByName(layer_names, "conv1");
+  int layer_pool5_idx = FindLayerIndexByName(layer_names, "pool5");
+
+  int layer_conv1_p_idx = FindLayerIndexByName(layer_names, "conv1_p");
+  int layer_pool5_p_idx = FindLayerIndexByName(layer_names, "pool5_p");
+
+  std::vector<cv::Mat> pool5_image;
+  std::vector<cv::Mat> pool5_p_image;
+
+  // Perform a forward-pass in the network.
+  net_->ForwardFromTo(layer_conv1_idx, layer_pool5_idx);
+  WrapOutputBlob("pool5", &pool5_image);
+
+  net_->ForwardFromTo(layer_conv1_p_idx, layer_pool5_p_idx);
+  WrapOutputBlob("pool5_p", &pool5_p_image);
+  // cout << "pool5_p[0] before forward candidate:\n" <<pool5_p_image[0] << endl;
+
+  // now forward the candidates
+  int layer_conv1_c_idx = FindLayerIndexByName(layer_names, "conv1_c");
+  int layer_pool5_c_idx = FindLayerIndexByName(layer_names, "pool5_c");
+  
+  int layer_pool5_concat_idx = FindLayerIndexByName(layer_names, "concat");
+  int layer_fc8_idx = net_->layers().size() - 2;
+  
+  // Option1: one by one pass
+  /**
+    // std::vector<std::vector<cv::Mat> > pool5_cs;
+    // std::vector<std::vector<float> > pool5_cs_flattened;
+
+    for (int i =0; i < candidates.size(); i++) {
+      // warp the input for candidate, if passed one by one, new 'candidate_channels' creation needed on each pass, 
+      // as the memory locatoin that input[2]'s mutable_cpu_data is pointing to will change dynamically
+      std::vector<cv::Mat> candidate_channels;
+      WrapInputLayer(&candidate_channels); 
+      Preprocess(candidates[i], &candidate_channels);
+      net_->ForwardFromTo(layer_conv1_c_idx, layer_pool5_c_idx);
+
+      // std::vector<cv::Mat> temp_pool5_c;
+      // WrapOutputBlob("pool5_c", &temp_pool5_c);
+      // pool5_cs.push_back(temp_pool5_c);
+
+      // std::vector<float> temp_pool5_c_flattened;
+      // GetFeatures("pool5_c", &temp_pool5_c_flattened);
+      // pool5_cs_flattened.push_back(temp_pool5_c_flattened);
+
+      // if (i == 133) {
+      //     // check if other blobs values changed
+      //   std::vector<cv::Mat> temp_pool5;
+      //   WrapOutputBlob("pool5", &temp_pool5);
+      //   // cout << "candidate" << i << ", pool5[0] after forward candidate:\n" <<temp_pool5[0] << endl;
+      //   // cout << "candidate" << i << ", pool5[1] after forward candidate:\n" <<temp_pool5[1] << endl;
+      //   for (int j = 0; j < temp_pool5.size(); j ++) {
+      //     cout << temp_pool5[j] << endl;
+      //   }
+
+      //   std::vector<cv::Mat> temp_pool5_p;
+      //   WrapOutputBlob("pool5_p", &temp_pool5_p);
+      //   // cout << "candidate" << i << ", pool5_p[0] after forward candidate:\n" <<temp_pool5_p[0] << endl;
+      //   // cout << "candidate" << i << ", pool5_p[1] after forward candidate:\n" <<temp_pool5_p[1] << endl;
+      //   for (int j = 0; j < temp_pool5_p.size(); j ++) {
+      //     cout << temp_pool5_p[j] << endl;
+      //   }
+
+      //   std::vector<cv::Mat> temp_pool5_c;
+      //   WrapOutputBlob("pool5_c", &temp_pool5_c);
+      //   // cout << "candidate" << i << ", pool5_c[0] after forward candidate:\n" <<temp_pool5_c[0] << endl;
+      //   // cout << "candidate" << i << ", pool5_c[1] after forward candidate:\n" <<temp_pool5_c[1] << endl;
+      //   for (int j = 0; j < temp_pool5_c.size(); j ++) {
+      //     cout << temp_pool5_c[j] << endl;
+      //   }
+      // }
+
+      // TODO: check if need to re-pass the input to pool5, pool5_p, pool5_c
+      net_->ForwardFromTo(layer_pool5_concat_idx, layer_fc8_idx);
+
+      vector<float> temp_fc8;
+      GetFeatures("fc8", &temp_fc8);
+      cout << "candidate" << i << ", fc8: " <<temp_fc8[0] << ", " << temp_fc8[1] << endl;
+
+      vector<float> this_candidate_prob; 
+      GetProbOutput(&this_candidate_prob); // batch size * 2, here batch size is 1
+      return_probabilities->push_back(this_candidate_prob[1]);
+    }
+
+    // for (int j = 0; j < 256; j++) {
+    //   // check if the 256 maps are all the same across candidates
+    //   for (int m = 0; m < candidates.size(); m ++) {
+    //     for (int n = m + 1; n < candidates.size(); n++) {
+    //       if(!equalMat(pool5_cs[m][j], pool5_cs[n][j])) {
+    //         cout << "candidate " << m << " and " << n << "have different pool 5 map at channel" << j << endl;
+    //       }
+    //     }
+    //   }
+    // }
+
+    // for (int i = 0; i < pool5_cs_flattened.size(); i ++) {
+    //   for (int j = 0; j < pool5_cs_flattened.size(); j++) {
+    //     if (!equalVector(pool5_cs_flattened[i], pool5_cs_flattened[j])) {
+    //       cout << "candidate " << i << " and " << j << "have different pool5 feature map flattened" << endl;
+    //     }
+    //   }
+    // }
+
+
+
+    // initialize original index locations
+    vector<int> idx(return_probabilities->size());
+    iota(idx.begin(), idx.end(), 0); // fill with 0,1,...n_candidates - 1
+
+    // sort indexes based on comparing values in v
+    sort(idx.begin(), idx.end(),
+        [return_probabilities](int i1, int i2) {return (*return_probabilities)[i1] > (*return_probabilities)[i2];});
+
+    double x1_weighted = 0;
+    double y1_weighted = 0;
+    double x2_weighted = 0;
+    double y2_weighted = 0;
+    double denominator = 0;
+
+    for (int i = 0 ; i< TOP_ESTIMATES; i ++) {
+      double this_prob = (*return_probabilities)[idx[i]];
+      
+      x1_weighted += candidate_bboxes[idx[i]].x1_ * this_prob;
+      y1_weighted += candidate_bboxes[idx[i]].y1_ * this_prob;
+      x2_weighted += candidate_bboxes[idx[i]].x2_ * this_prob;
+      y2_weighted += candidate_bboxes[idx[i]].y2_ * this_prob;
+
+      denominator += this_prob;
+    }
+
+    x1_weighted /= denominator;
+    y1_weighted /= denominator;
+    x2_weighted /= denominator;
+    y2_weighted /= denominator;
+
+    *bbox = BoundingBox(x1_weighted, y1_weighted, x2_weighted, y2_weighted);
+    *return_sorted_indexes = idx; 
+  */
+
+
+  // Option2: batch
+  
+  // reshape to include batch now
+  input_target = net_->input_blobs()[0];
+  input_target->Reshape(candidates.size(), num_channels_,
+                       input_geometry_.height, input_geometry_.width);
+
+  input_image = net_->input_blobs()[1];
+  input_image->Reshape(candidates.size(), num_channels_,
+                       input_geometry_.height, input_geometry_.width);
+
+  SetCandidates(candidates);
+
+  // Reshape the labels if it is there
+  if (net_->input_blobs().size() == 4) {
+    // get the input blob for labels, reshape to include batch number
+    Blob<float> * input_label_blob = net_->input_blobs()[3];
+    const size_t num_labels = candidates.size();
+
+    // reshape to batch size
+    vector<int> shape;
+    shape.push_back(num_labels);
+    shape.push_back(1);
+    input_label_blob->Reshape(shape);
+  }
+
+  // Forward dimension change to all layers.
+  net_->Reshape();
+
+  net_->ForwardFromTo(layer_conv1_c_idx, layer_pool5_c_idx);
+
+  // wrap pool5 and pool5_p memory in opencv mat
+  std::vector<std::vector<cv::Mat> > pool5_channels;
+  std::vector<std::vector<cv::Mat> > pool5_p_channels;
+
+  WrapBlobByNameBatch("pool5", &pool5_channels);
+  WrapBlobByNameBatch("pool5_p", &pool5_p_channels);
+
+  PreprocessDuplicateIn(pool5_image, &pool5_channels);
+  PreprocessDuplicateIn(pool5_p_image, &pool5_p_channels);
+
+  net_->ForwardFromTo(layer_pool5_concat_idx, layer_fc8_idx);
+  
+  // vector<float> fc8;
+  // GetFeatures("fc8", &fc8);
+  // for (int i =0 ; i < candidates.size(); i++) {
+  //   cout << "candidate" << i << ", fc8: " <<fc8[2*i] << ", " << fc8[2*i + 1] << endl;
+  // }
+
+  vector<float> probabilities;
+  GetProbOutput(&probabilities);
+
+  assert (probabilities.size() == candidates.size() * 2); // since binary classification, prob[1] is POSITIVE probability
+
+  vector<float> positive_probabilities;
+  for(int i = 0; i < candidates.size(); i++) {
+    positive_probabilities.push_back(probabilities[2*i+1]);
+  }
+
+  // initialize original index locations
+  vector<int> idx(positive_probabilities.size());
+  iota(idx.begin(), idx.end(), 0);
+
+  // sort indexes based on comparing values in v
+  sort(idx.begin(), idx.end(),
+       [&positive_probabilities](int i1, int i2) {return positive_probabilities[i1] > positive_probabilities[i2];});
+
+  double x1_weighted = 0;
+  double y1_weighted = 0;
+  double x2_weighted = 0;
+  double y2_weighted = 0;
+  double denominator = 0;
+
+  for (int i = 0 ; i< TOP_ESTIMATES; i ++) {
+    double this_prob = positive_probabilities[idx[i]];
+    
+    x1_weighted += candidate_bboxes[idx[i]].x1_ * this_prob;
+    y1_weighted += candidate_bboxes[idx[i]].y1_ * this_prob;
+    x2_weighted += candidate_bboxes[idx[i]].x2_ * this_prob;
+    y2_weighted += candidate_bboxes[idx[i]].y2_ * this_prob;
+
+    denominator += this_prob;
+  }
+
+  x1_weighted /= denominator;
+  y1_weighted /= denominator;
+  x2_weighted /= denominator;
+  y2_weighted /= denominator;
+
+  *bbox = BoundingBox(x1_weighted, y1_weighted, x2_weighted, y2_weighted);
+  *return_probabilities = positive_probabilities;
+  *return_sorted_indexes = idx;
+
+
+  hrt_.stop();
+  cout << "time spent for PredictFast: " << hrt_.getMilliseconds() << " ms" << endl;
+}
+
 void Regressor::Predict(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, 
                        const std::vector<BoundingBox> &candidate_bboxes, 
                        BoundingBox* bbox,
                        std::vector<float> *return_probabilities, 
                        std::vector<int> *return_sorted_indexes) {
+  // hrt timer
+  hrt_.reset();
+  hrt_.start();
+
   // Prepare the corresponding vector<cv::Mat> for images, targets, candidates to feed into network
   std::vector<cv::Mat> images_flattened;
   std::vector<cv::Mat> targets_flattened;
@@ -242,12 +570,99 @@ void Regressor::Predict(const cv::Mat& image_curr, const cv::Mat& image, const c
   *bbox = BoundingBox(x1_weighted, y1_weighted, x2_weighted, y2_weighted);
   *return_probabilities = positive_probabilities;
   *return_sorted_indexes = idx;
+
+  //report time
+  hrt_.stop();
+  cout << "time spent for Predict: " << hrt_.getMilliseconds() << " ms" << endl;
+}
+
+int Regressor::FindLayerIndexByName( const vector<string> & layer_names, const string & target) {
+  for (int i = 0; i< layer_names.size(); i++) {
+    if (layer_names[i].compare(target) == 0) {
+      return i;
+    }
+  }
+
+  return -1;
 }
 
 void Regressor::Estimate(std::vector<cv::Mat> &images_flattened,
                            std::vector<cv::Mat> &targets_flattened,
                            std::vector<cv::Mat> &candidates_flattened,
                            std::vector<float>* output) {
+
+  // // DEBUG
+
+  // std::vector<std::vector<cv::Mat> > pool5_cs;
+  // std::vector<std::vector<float> > pool5_cs_flattened;
+
+  // for (int i = 0; i < images_flattened.size();i++) {
+  //   std::vector<cv::Mat> this_image_flattened;
+  //   std::vector<cv::Mat> this_targets_flattened;
+  //   std::vector<cv::Mat> this_candidates_flattened;
+
+  //   this_image_flattened.push_back(images_flattened[i]);
+  //   this_targets_flattened.push_back(targets_flattened[i]);
+  //   this_candidates_flattened.push_back(candidates_flattened[i]);
+
+  //   SetImages(this_image_flattened, this_targets_flattened);
+
+  
+  //   SetCandidates(this_candidates_flattened);
+
+  //   if (net_->input_blobs().size() == 4) {
+  //     // get the input blob for labels, reshape to include batch number
+  //     Blob<float> * input_label_blob = net_->input_blobs()[3];
+
+  //     // reshape to batch size
+  //     vector<int> shape;
+  //     shape.push_back(1);
+  //     shape.push_back(1);
+  //     input_label_blob->Reshape(shape);
+  //   }
+
+  //   // Forward dimension change to all layers.
+  //   net_->Reshape();
+
+  //   // Perform a forward-pass in the network, until fc8 layer
+  //   // net_->ForwardPrefilled();
+  //   int layers_size = net_->layers().size();
+  //   net_->ForwardTo(layers_size-2); // forward until fc8 layer, inclusive
+
+    
+  //   vector<float> temp_fc8;
+  //   GetFeatures("fc8", &temp_fc8);
+  //   cout << "candidate" << i << ", fc8: " <<temp_fc8[0] << ", " << temp_fc8[1] << endl;
+
+  //   std::vector<cv::Mat> temp_pool5_c;
+  //   WrapOutputBlob("pool5_c", &temp_pool5_c);
+  //   pool5_cs.push_back(temp_pool5_c);
+
+  //   std::vector<float> temp_pool5_c_flattened;
+  //   GetFeatures("pool5_c", &temp_pool5_c_flattened);
+  //   pool5_cs_flattened.push_back(temp_pool5_c_flattened);
+    
+  // }
+
+  // for (int j = 0; j < 256; j++) {
+  //   // check if the 256 maps are all the same across candidates
+  //   for (int m = 0; m < images_flattened.size(); m ++) {
+  //     for (int n = m + 1; n < images_flattened.size(); n++) {
+  //       if(!equalMat(pool5_cs[m][j], pool5_cs[n][j])) {
+  //         cout << "candidate " << m << " and " << n << "have different pool 5 map at channel" << j << endl;
+  //       }
+  //     }
+  //   }
+  // }
+
+  // for (int i = 0; i < pool5_cs_flattened.size(); i ++) {
+  //   for (int j = 0; j < pool5_cs_flattened.size(); j++) {
+  //     if (!equalVector(pool5_cs_flattened[i], pool5_cs_flattened[j])) {
+  //       cout << "candidate " << i << " and " << j << "have different pool5 feature map flattened" << endl;
+  //     }
+  //   }
+  // }
+
 
   assert(images_flattened.size() == targets_flattened.size());
   assert(images_flattened.size() == candidates_flattened.size());
@@ -277,7 +692,54 @@ void Regressor::Estimate(std::vector<cv::Mat> &images_flattened,
   // Perform a forward-pass in the network, until fc8 layer
   // net_->ForwardPrefilled();
   int layers_size = net_->layers().size();
-  net_->ForwardTo(layers_size-2); // forward until fc8 layer
+  net_->ForwardTo(layers_size-2); // forward until fc8 layer, inclusive
+  
+  // const vector<string> & layer_names = net_->layer_names();
+  // const vector<boost::shared_ptr<Layer<float> > > & layer_ptrs = net_->layers();
+  // for (int i = 0; i< layer_ptrs.size(); i++) {
+  //   const LayerParameter & layer_parameter = layer_ptrs[i]->layer_param();
+  //   cout << "layer " << i << "'s name: " << layer_parameter.name()<< endl;
+  //   cout << "layer_names["<< i << "]: "<< layer_names[i]<< endl;
+
+  //   int found_idx = FindLayerIndexByName(layer_names, layer_parameter.name());
+  //   assert (i == found_idx);
+  // }
+
+  // // FOR DEBUG PREDICTFAST
+  // std::vector<std::vector<cv::Mat> > pool5_targets;
+  // WrapOutputBlob("pool5", &pool5_targets);
+  // // cout << "First candidate, pool5[0] :\n" << pool5_targets[0][0] << endl;
+  // // cout << "First candidate, pool5[1] :\n" << pool5_targets[0][1] << endl;
+  // for (int i = 0; i < pool5_targets[0].size(); i ++) {
+  //   cout << pool5_targets[0][i] << endl;
+  // }
+
+  // std::vector<std::vector<cv::Mat> > pool5_images;
+  // WrapOutputBlob("pool5_p", &pool5_images);
+  // // cout << "First candidate, pool5_p[0] :\n" << pool5_images[0][0] << endl;
+  // // cout << "First candidate, pool5_p[1] :\n" << pool5_images[0][1] << endl;
+  // for (int i = 0; i < pool5_images[0].size(); i ++) {
+  //   cout << pool5_images[0][i] << endl;
+  // }
+  
+  // std::vector<std::vector<cv::Mat> > pool5_candidates;
+  // WrapOutputBlob("pool5_c", &pool5_candidates);
+  // for (int i = 0; i < pool5_candidates[0].size(); i ++) {
+  //   cout << pool5_candidates[0][i] << endl;
+  // } 
+  // // cout << "First candidate, pool5_c[0] :\n" << pool5_candidates[0][0] << endl;
+  // // cout << "First candidate, pool5_c[1] :\n" << pool5_candidates[0][1] << endl;
+
+  // std::vector<float> fc8;
+  // GetFeatures("fc8", &fc8);
+  // cout << "First candidate, fc8: " << fc8[0] << ", " << fc8[1] << endl;
+
+
+  // vector<float> fc8;
+  // GetFeatures("fc8", &fc8);
+  // for (int i =0 ; i < candidates_flattened.size(); i++) {
+  //   cout << "candidate" << i << ", fc8: " <<fc8[2*i] << ", " << fc8[2*i + 1] << endl;
+  // }
 
   // Get softmax output
   GetProbOutput(output);
@@ -332,6 +794,42 @@ void Regressor::ReshapeCandidateInputs(const size_t num_candidates) {
     Blob<float>* input_candidates = net_->input_blobs()[2];
     input_candidates->Reshape(num_candidates, num_channels_,
                        input_geometry_.height, input_geometry_.width);
+}
+
+void Regressor::WrapOutputBlob(const std::string & blob_name, std::vector<cv::Mat>* output_channels) {
+  const boost::shared_ptr<Blob<float> > layer = net_->blob_by_name(blob_name.c_str());
+  if (blob_name.compare("pool5") == 0 || blob_name.compare("pool5_p") == 0 || blob_name.compare("pool5_c") == 0) {
+    assert (layer->channels() == 256); 
+  }
+
+  int out_width = layer->width();
+  int out_height = layer->height();
+  float* out_data = layer->mutable_cpu_data();
+  for (int i = 0; i < layer->channels(); ++i) {
+    cv::Mat channel(out_height, out_width, CV_32FC1, out_data);
+    output_channels->push_back(channel.clone()); // clone is needed, so that data at this call time will be pushed
+    out_data += out_width * out_height;
+  }
+}
+
+void Regressor::WrapOutputBlob(const std::string & blob_name, std::vector<std::vector<cv::Mat> > *output_channels) {
+  const boost::shared_ptr<Blob<float> > layer = net_->blob_by_name(blob_name.c_str());
+  if (blob_name.compare("pool5") == 0 || blob_name.compare("pool5_p") == 0 || blob_name.compare("pool5_c") == 0) {
+    assert (layer->channels() == 256); 
+  }
+
+  output_channels->resize(layer->shape(0)); // make sure output_channels has number of vectors that is the same as batch size
+
+  int out_width = layer->width();
+  int out_height = layer->height();
+  float* out_data = layer->mutable_cpu_data();
+  for (int n = 0; n < layer->shape(0); ++n) {
+      for (int i = 0; i < layer->channels(); ++i) {
+        cv::Mat channel(out_height, out_width, CV_32FC1, out_data);
+        (*output_channels)[n].push_back(channel.clone());
+        out_data += out_width * out_height;
+      }
+    }
 }
 
 void Regressor::GetFeatures(const string& feature_name, std::vector<float>* output) const {
@@ -517,6 +1015,20 @@ void Regressor::WrapInputLayer(std::vector<cv::Mat>* target_channels, std::vecto
   }
 }
 
+// Wrap candidate, just one image
+void Regressor::WrapInputLayer(std::vector<cv::Mat>* candidate_channels) {
+  Blob<float>* input_layer_candidate = net_->input_blobs()[2];
+
+  int candidate_width = input_layer_candidate->width();
+  int candidate_height = input_layer_candidate->height();
+  float* candidate_data = input_layer_candidate->mutable_cpu_data();
+  for (int i = 0; i < input_layer_candidate->channels(); ++i) {
+    cv::Mat channel(candidate_height, candidate_width, CV_32FC1, candidate_data);
+    candidate_channels->push_back(channel);
+    candidate_data += candidate_width * candidate_height;
+  }
+}
+
 // Wrap the input layer of the network in separate cv::Mat objects
 // (one per channel). This way we save one memcpy operation and we
 // don't need to rely on cudaMemcpy2D. The last preprocessing
@@ -567,6 +1079,26 @@ void Regressor::WrapInputLayer(const size_t num_candidates, std::vector<std::vec
         cv::Mat channel(candidate_height, candidate_width, CV_32FC1, candidate_data);
         (*candidate_channels)[n].push_back(channel);
         candidate_data += candidate_width * candidate_height;
+      }
+    }
+}
+
+void Regressor::WrapBlobByNameBatch(const string & blob_name, std::vector<std::vector<cv::Mat> >* blob_channels) {
+    const boost::shared_ptr<Blob<float> > this_blob = net_->blob_by_name(blob_name.c_str());
+    
+    if (blob_name.compare("pool5") == 0 || blob_name.compare("pool5_p") == 0 || blob_name.compare("pool5_c") == 0) {
+      assert (this_blob->channels() == 256); 
+    }
+    blob_channels->resize(this_blob->shape(0));
+
+    int this_width = this_blob->width();
+    int this_height = this_blob->height();
+    float* blob_data = this_blob->mutable_cpu_data();
+    for (int n = 0; n < this_blob->shape(0); ++n) {
+      for (int i = 0; i < this_blob->channels(); ++i) {
+        cv::Mat channel(this_height, this_width, CV_32FC1, blob_data);
+        (*blob_channels)[n].push_back(channel);
+        blob_data += this_width * this_height;
       }
     }
 }
@@ -658,5 +1190,14 @@ void Regressor::Preprocess(const std::vector<cv::Mat>& images,
     /*CHECK(reinterpret_cast<float*>(input_channels->at(0).data)
           == net_->input_blobs()[0]->cpu_data())
       << "Input channels are not wrapping the input layer of the network.";*/
+  }
+}
+
+void Regressor::PreprocessDuplicateIn(std::vector<cv::Mat> &data_to_duplicate, std::vector<std::vector<cv::Mat> >* blob_channels) {
+  for (int batch_id = 0; batch_id < blob_channels->size(); batch_id ++) {
+    // copy for each channel
+    for (int channel_id = 0; channel_id < data_to_duplicate.size(); channel_id ++) {
+      data_to_duplicate[channel_id].copyTo((*blob_channels)[batch_id][channel_id]);
+    }
   }
 }
