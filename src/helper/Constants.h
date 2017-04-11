@@ -15,7 +15,7 @@
 #define KEEP_SD 2.0
 #define MOTION_SCALE_FACTOR 1.05 // scaling std: MOTION_SCALE_FACTOR^(SD_SCALE)
 
-#define AP_SCALE 1.0
+#define SD_AP 1.0
 #define MOTION_AP_FACTOR 1.2
 
 // for random sampling
