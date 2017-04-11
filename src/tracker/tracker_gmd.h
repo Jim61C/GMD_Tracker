@@ -77,10 +77,11 @@ private:
 
   // samples collected along each frame
   std::vector<BoundingBox> gts_;
+  std::vector<cv::Mat> image_currs_;
   std::vector<cv::Mat> images_finetune_;
   std::vector<cv::Mat> targets_finetune_;
-  std::vector<std::vector<cv::Mat> > candidates_finetune_pos_;
-  std::vector<std::vector<cv::Mat> > candidates_finetune_neg_; 
+  std::vector<std::vector<BoundingBox> > candidates_finetune_pos_;
+  std::vector<std::vector<BoundingBox> > candidates_finetune_neg_; 
   // std::vector<std::vector<double> > labels_finetune_pos_;
   // std::vector<std::vector<double> > labels_finetune_neg_;
 

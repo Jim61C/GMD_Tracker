@@ -16,7 +16,7 @@
 #define MOTION_SCALE_FACTOR 1.05 // scaling std: MOTION_SCALE_FACTOR^(SD_SCALE)
 
 #define SD_AP 1.0
-#define MOTION_AP_FACTOR 1.2
+#define MOTION_AP_FACTOR 1.05
 
 // for random sampling
 #define SCALE_FACTOR 1.05
@@ -42,8 +42,8 @@ const int NEG_CANDIDATES_FINETUNE = 40;
 
 // long/short term update
 #define LONG_TERM_BAG_SIZE 50
-#define SHORT_TERM_BAG_SIZE 10
-#define LONG_TERM_UPDATE_INTERVAL 10
+#define SHORT_TERM_BAG_SIZE 20
+#define LONG_TERM_UPDATE_INTERVAL 20
 #define LONG_TERM_CANDIDATE_UPPER_BOUND 50
 const double SHORT_TERM_FINE_TUNE_TH = 0.85;
 
@@ -59,6 +59,11 @@ const double SHORT_TERM_FINE_TUNE_TH = 0.85;
 
 #define FIRST_FRAME_POS_SAMPLES 50
 #define FIRST_FRAME_NEG_SAMPLES 500
+
+
+// ROI Pooling
+const double TARGET_SIZE = 600.0; // compare to min (W, H)
+const double MAX_SIZE = 1000.0; // make sure the image_curr does not exceed this size
 
 
 #endif

@@ -32,7 +32,7 @@ TrackerTrainerMultiDomain::TrackerTrainerMultiDomain(ExampleGenerator* example_g
 void TrackerTrainerMultiDomain::MakeTrainingExamples(std::vector<cv::Mat>* images,
                                           std::vector<cv::Mat>* targets,
                                           std::vector<BoundingBox>* bboxes_gt_scaled,
-                                          std::vector<std::vector<cv::Mat> > *candidates, 
+                                          std::vector<std::vector<BoundingBox> > *candidates, 
                                           std::vector<std::vector<double> >  *labels) {
   // use the previously Reset()'s frame to generate examples and store output in the given containers
 
@@ -49,15 +49,15 @@ void TrackerTrainerMultiDomain::MakeTrainingExamples(std::vector<cv::Mat>* image
   example_generator_->MakeTrainingExamples(kGeneratedExamplesPerImage, images,
                                            targets, bboxes_gt_scaled);
                                            
-  std::vector<cv::Mat> this_frame_candidates;
+  std::vector<BoundingBox> this_frame_candidates;
   std::vector<double> this_frame_labels;
 
   // generate examples and push to this_frame_candidates and this_frame_labels
-  example_generator_->MakeCandidatesAndLabels(&this_frame_candidates, &this_frame_labels);
+  example_generator_->MakeCandidatesAndLabelsBBox(&this_frame_candidates, &this_frame_labels);
 
   // TODO: avoid the copying and just pass a vector of one frame's +/- candidates to train
   for(int i = 0; i< images->size(); i ++ ) {
-    candidates->push_back(std::vector<cv::Mat>(this_frame_candidates)); // copy
+    candidates->push_back(std::vector<BoundingBox>(this_frame_candidates)); // copy
     labels->push_back(std::vector<double>(this_frame_labels)); // copy
   }
 }
@@ -65,7 +65,8 @@ void TrackerTrainerMultiDomain::MakeTrainingExamples(std::vector<cv::Mat>* image
 void TrackerTrainerMultiDomain::ProcessBatch() {
   // cout << "about to invoke actual traning with k: " << current_k_ << endl;
   //// Train the neural network tracker with these examples.
-  regressor_train_->TrainBatch(images_batch_,
+  regressor_train_->TrainBatchFast(image_currs_batch_, 
+                               images_batch_,
                                targets_batch_,
                                bboxes_gt_scaled_batch_,
                                candidates_batch_,
@@ -81,12 +82,16 @@ void TrackerTrainerMultiDomain::Train(const cv::Mat& image_prev, const cv::Mat& 
                            const BoundingBox& bbox_prev, const BoundingBox& bbox_curr) {
   // Check that the saved batches are of appropriate dimensions.
   CHECK_EQ(images_batch_.size(), targets_batch_.size())
-      << " images_batch: " << images_batch_.size() <<
-         " targets_batch: " << targets_batch_.size();
+      << " images_batch_: " << images_batch_.size() <<
+         " targets_batch_: " << targets_batch_.size();
 
   CHECK_EQ(images_batch_.size(), bboxes_gt_scaled_batch_.size())
       << " images_batch: " << images_batch_.size() <<
          " bboxes_gt_scaled_batch_: " << bboxes_gt_scaled_batch_.size();
+  
+  CHECK_EQ(images_batch_.size(), image_currs_batch_.size())
+    << " images_batch: " << images_batch_.size() <<
+        " image_currs_batch_: " << image_currs_batch_.size();
 
   // Set up example generator.
   example_generator_->Reset(bbox_prev,
@@ -100,11 +105,17 @@ void TrackerTrainerMultiDomain::Train(const cv::Mat& image_prev, const cv::Mat& 
   std::vector<BoundingBox> bboxes_gt_scaled;
 
   // Make +/- candidates and labels
-  std::vector<std::vector<cv::Mat> > candidates; // sampled candiates using IOU
+  std::vector<std::vector<BoundingBox> > candidates; // sampled candiates using IOU
   std::vector<std::vector<double> >  labels; // +/-'s
 
   // TODO: Better to flatten in MakeTrainingExamples, so images.size() will be 11 * 250, and shuffle here
   MakeTrainingExamples(&images, &targets, &bboxes_gt_scaled, &candidates, &labels);
+
+  std::vector<cv::Mat> image_currs;
+  image_currs.push_back(image_curr);
+  for (int augment_id = 0; augment_id < kGeneratedExamplesPerImage; augment_id ++) {
+    image_currs.push_back(image_curr);
+  }
 
   while (images.size() > 0) {
     // Compute the number of images left to complete the batch.
@@ -120,6 +131,8 @@ void TrackerTrainerMultiDomain::Train(const cv::Mat& image_prev, const cv::Mat& 
     }
 
     // Add the approrpriate number of images to the batch.
+    image_currs_batch_.insert(image_currs_batch_.end(), 
+                              image_currs.begin(), image_currs.begin() + num_use);
     images_batch_.insert(images_batch_.end(),
                          images.begin(), images.begin() + num_use);
     targets_batch_.insert(targets_batch_.end(),
@@ -144,6 +157,7 @@ void TrackerTrainerMultiDomain::Train(const cv::Mat& image_prev, const cv::Mat& 
       ProcessBatch();
 
       // After training, clear the batch.
+      image_currs_batch_.clear();
       images_batch_.clear();
       targets_batch_.clear();
       bboxes_gt_scaled_batch_.clear();
@@ -151,6 +165,7 @@ void TrackerTrainerMultiDomain::Train(const cv::Mat& image_prev, const cv::Mat& 
       labels_batch_.clear();
 
       // Reserve the appropriate amount of space for the next batch.
+      image_currs_batch_.reserve(kBatchSize);
       images_batch_.reserve(kBatchSize);
       targets_batch_.reserve(kBatchSize);
       bboxes_gt_scaled_batch_.reserve(kBatchSize);
@@ -160,6 +175,7 @@ void TrackerTrainerMultiDomain::Train(const cv::Mat& image_prev, const cv::Mat& 
     }
 
     // Remove the images that were used.
+    image_currs.erase(image_currs.begin(), image_currs.begin() + num_use);
     images.erase(images.begin(), images.begin() + num_use);
     targets.erase(targets.begin(), targets.begin() + num_use);
     bboxes_gt_scaled.erase(bboxes_gt_scaled.begin(), bboxes_gt_scaled.begin() + num_use);
@@ -186,6 +202,7 @@ void TrackerTrainerMultiDomain::set_batch_filled(bool val) {
 // clear remaining data in the batch
 void TrackerTrainerMultiDomain::clear_batch_remaining() {
     // After training, clear the batch.
+    image_currs_batch_.clear();
     images_batch_.clear();
     targets_batch_.clear();
     bboxes_gt_scaled_batch_.clear();
@@ -193,6 +210,7 @@ void TrackerTrainerMultiDomain::clear_batch_remaining() {
     labels_batch_.clear();
 
     // Reserve the appropriate amount of space for the next batch.
+    image_currs_batch_.reserve(kBatchSize);
     images_batch_.reserve(kBatchSize);
     targets_batch_.reserve(kBatchSize);
     bboxes_gt_scaled_batch_.reserve(kBatchSize);

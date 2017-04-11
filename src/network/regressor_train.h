@@ -43,22 +43,25 @@ public:
                            std::vector<double> &labels_flattened,
                            int k);
   
-  void TrainForwardBackwardWorker(const std::vector<cv::Mat> &candidates_flattened,
-                            const std::vector<double> &labels_flattened,
-                            const cv::Mat & image,
-                            const cv::Mat & target);
+  void TrainForwardBackwardWorker(const cv::Mat & image_curr,
+                          const std::vector<BoundingBox> &candidates_bboxes, 
+                          const std::vector<double> &labels,
+                          const cv::Mat & image,
+                          const cv::Mat & target);
 
-  void TrainForwardBackward(const std::vector<cv::Mat> &candidates_flattened,
-                            const std::vector<double> &labels_flattened,
-                            const cv::Mat & image,
-                            const cv::Mat & target,
-                            int k);
+  void TrainForwardBackward(const cv::Mat & image_curr,
+                          const std::vector<BoundingBox> &candidates_bboxes, 
+                          const std::vector<double> &labels_flattened,
+                          const cv::Mat & image,
+                          const cv::Mat & target,
+                          int k);
   
   // Forward and Backward. TODO: add Online Hard Example Mining
-  void TrainBatchFast(const std::vector<cv::Mat>& images,
+  void TrainBatchFast(const std::vector<cv::Mat>& image_currs,
+                           const std::vector<cv::Mat>& images,
                            const std::vector<cv::Mat>& targets,
                            const std::vector<BoundingBox>& bboxes_gt,
-                           const std::vector<std::vector<cv::Mat> > &candidates,
+                           const std::vector<std::vector<BoundingBox> > &candidate_bboxes,
                            const std::vector<std::vector<double> > &labels,
                            int k);
 

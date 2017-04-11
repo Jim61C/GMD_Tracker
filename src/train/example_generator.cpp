@@ -20,8 +20,8 @@ using std::string;
 // Choose whether to shift boxes using the motion model or using a uniform distribution.
 const bool shift_motion_model = true;
 
-std::mt19937 ExampleGenerator::engine_(time(NULL)); // static attributes declaration
-// std::mt19937 ExampleGenerator::engine_(SEED_ENGINE); // static attributes declaration
+// std::mt19937 ExampleGenerator::engine_(time(NULL)); // static attributes declaration
+std::mt19937 ExampleGenerator::engine_(SEED_ENGINE); // static attributes declaration
 
 ExampleGenerator::ExampleGenerator(const double lambda_shift,
                                    const double lambda_scale,
@@ -35,8 +35,8 @@ ExampleGenerator::ExampleGenerator(const double lambda_shift,
 
     gsl_rng_env_setup();
     rng_ = gsl_rng_alloc(gsl_rng_mt19937);
-    gsl_rng_set(rng_, time(NULL));
-    // gsl_rng_set(rng_, SEED_RNG_EXAMPLE_GENERATOR); // to reproduce
+    // gsl_rng_set(rng_, time(NULL));
+    gsl_rng_set(rng_, SEED_RNG_EXAMPLE_GENERATOR); // to reproduce
 }
 
 void ExampleGenerator::Reset(const BoundingBox& bbox_prev,
@@ -237,7 +237,7 @@ void ExampleGenerator::MakeCandidatesAndLabelsBBox(vector<BoundingBox> *candidat
   assert (candidate_bboxes->size() == labels->size());
 }
 
-void ExampleGenerator::MakeCandidatesPos(vector<Mat> *candidates, const int num,
+void ExampleGenerator::MakeCandidatesPos(vector<BoundingBox> *candidates, const int num,
                                 const string method, const double trans_range, const double scale_range,
                                 const double sd_x, const double sd_y, const double sd_scale
                                 ) {
@@ -252,13 +252,7 @@ void ExampleGenerator::MakeCandidatesPos(vector<Mat> *candidates, const int num,
     // no need to crop as the bbox_curr_gt_ is the current estimate, which will never go out of boundary
     if (this_box.valid_bbox_against_width_height(image_curr_.size().width, image_curr_.size().height) && bbox_curr_gt_.compute_IOU(this_box) >= POS_IOU_TH) {
       // enqueue
-      Mat this_candidate;
-      this_box.CropBoundingBoxOutImage(image_curr_, this_candidate);
-      if (this_candidate.size().width == 0 || this_candidate.size().height == 0) {
-        cout << "empty candidate:" << this_box.x1_ <<", " << this_box.y1_ << ", " << this_box.x2_ << ", " << this_box.y2_ << endl;
-        cout << "bbox_curr_gt_" << bbox_curr_gt_.x1_ << ", " << bbox_curr_gt_.y1_ << ", " << bbox_curr_gt_.x2_ << ", " << bbox_curr_gt_.y2_ << endl;
-      }
-      candidates->push_back(this_candidate);
+      candidates->push_back(this_box);
       count ++;
 #ifdef VISUALIZE_FINETUNE_SAMPLES
       this_box.Draw(255, 0, 0, &canvas);
@@ -273,7 +267,7 @@ void ExampleGenerator::MakeCandidatesPos(vector<Mat> *candidates, const int num,
 #endif     
 }
 
-void ExampleGenerator::MakeCandidatesNeg(vector<Mat> *candidates, const int num,
+void ExampleGenerator::MakeCandidatesNeg(vector<BoundingBox> *candidates, const int num,
                                          const string method, const double trans_range, const double scale_range,
                                          const double sd_x, const double sd_y, const double sd_scale) {
   int count = 0;
@@ -287,13 +281,7 @@ void ExampleGenerator::MakeCandidatesNeg(vector<Mat> *candidates, const int num,
     // no need to crop as the bbox_curr_gt_ is the current estimate, which will never go out of boundary
     if (this_box.valid_bbox_against_width_height(image_curr_.size().width, image_curr_.size().height) && bbox_curr_gt_.compute_IOU(this_box) <= NEG_IOU_TH) {
       // enqueue
-      Mat this_candidate;
-      this_box.CropBoundingBoxOutImage(image_curr_, this_candidate);
-      if (this_candidate.size().width == 0 || this_candidate.size().height == 0) {
-        cout << "empty candidate:" << this_box.x1_ <<", " << this_box.y1_ << ", " << this_box.x2_ << ", " << this_box.y2_ << endl;
-        cout << "bbox_curr_gt_" << bbox_curr_gt_.x1_ << ", " << bbox_curr_gt_.y1_ << ", " << bbox_curr_gt_.x2_ << ", " << bbox_curr_gt_.y2_ << endl;
-      }
-      candidates->push_back(this_candidate);
+      candidates->push_back(this_box);
       count ++;
 
 #ifdef VISUALIZE_FINETUNE_SAMPLES

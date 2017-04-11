@@ -49,10 +49,11 @@ public:
              const std::vector<BoundingBox>& bboxes_gt) = 0;
   
   // Use forward and backward
-  virtual void TrainBatchFast(const std::vector<cv::Mat>& images,
+  virtual void TrainBatchFast(const std::vector<cv::Mat>& image_currs,
+                           const std::vector<cv::Mat>& images,
                            const std::vector<cv::Mat>& targets,
                            const std::vector<BoundingBox>& bboxes_gt,
-                           const std::vector<std::vector<cv::Mat> > &candidates,
+                           const std::vector<std::vector<BoundingBox> > &candidate_bboxes,
                            const std::vector<std::vector<double> > &labels,
                            int k) = 0;
 

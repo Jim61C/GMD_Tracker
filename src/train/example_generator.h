@@ -75,11 +75,11 @@ public:
                                    const int num_pos = POS_CANDIDATES,
                                    const int num_neg = NEG_CANDIDATES);
   
-  void MakeCandidatesPos(vector<Mat> *candidates, const int num = POS_CANDIDATES,
+  void MakeCandidatesPos(vector<BoundingBox> *candidates, const int num = POS_CANDIDATES,
                                   const string method = "gaussian", const double trans_range = POS_TRANS_RANGE, const double scale_range = POS_SCALE_RANGE,
                                   const double sd_x = SD_X, const double sd_y = SD_Y, const double sd_scale = SD_SCALE);
 
-  void MakeCandidatesNeg(vector<Mat> *candidates, const int num = NEG_CANDIDATES,
+  void MakeCandidatesNeg(vector<BoundingBox> *candidates, const int num = NEG_CANDIDATES,
                                   const string method = "uniform", const double trans_range = 2 * SD_X, const double scale_range = POS_SCALE_RANGE,
                                   const double sd_x = SD_X, const double sd_y = SD_Y, const double sd_scale = SD_SCALE);
 

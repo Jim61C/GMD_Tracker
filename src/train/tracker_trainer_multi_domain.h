@@ -54,18 +54,19 @@ private:
   virtual void MakeTrainingExamples(std::vector<cv::Mat>* images,
                                           std::vector<cv::Mat>* targets,
                                           std::vector<BoundingBox>* bboxes_gt_scaled,
-                                          std::vector<std::vector<cv::Mat> > *candidates, 
+                                          std::vector<std::vector<BoundingBox> > *candidates, 
                                           std::vector<std::vector<double> >  *labels);
 
   // Train on the batch.
   virtual void ProcessBatch();
 
   // Data in the current training batch.
+  std::vector<cv::Mat> image_currs_batch_;
   std::vector<cv::Mat> images_batch_; // each images_batch_[i] will be repeated according to labels_batch_[i].size()
   std::vector<cv::Mat> targets_batch_; // each targets_batch_[i] will be repeated according to labels_batch_[i].size()
   std::vector<BoundingBox> bboxes_gt_scaled_batch_;
   std::vector<std::vector<double> > labels_batch_;
-  std::vector<std::vector<cv::Mat> > candidates_batch_;
+  std::vector<std::vector<BoundingBox> > candidates_batch_;
 
   // Used to generate additional training examples through synthetic transformations.
   ExampleGenerator* example_generator_;

@@ -23,10 +23,10 @@ TrackerGMD::TrackerGMD(const bool show_tracking, ExampleGenerator* example_gener
 {
     gsl_rng_env_setup();
     rng_ = gsl_rng_alloc(gsl_rng_mt19937);
-    gsl_rng_set(rng_, time(NULL));
-    // gsl_rng_set(rng_, SEED_RNG_TRACKER); // to reproduce
-    engine_.seed(time(NULL));
-    // engine_.seed(SEED_ENGINE);
+    // gsl_rng_set(rng_, time(NULL));
+    gsl_rng_set(rng_, SEED_RNG_TRACKER); // to reproduce
+    // engine_.seed(time(NULL));
+    engine_.seed(SEED_ENGINE);
 
     sd_trans_ = SD_X;
     sd_scale_ = SD_SCALE;
@@ -61,7 +61,6 @@ void TrackerGMD::Track(const cv::Mat& image_curr, RegressorBase* regressor, Boun
     candidate_probabilities_.clear();
     sorted_idxes_.clear(); // sorted indexes of candidates from highest positive prob to lowest
     // Estimate the bounding box location as the ML estimate of the candidate_bboxes
-    // regressor->Predict(image_curr, curr_search_region, target_pad, candidates_bboxes_, bbox_estimate_uncentered, &candidate_probabilities_, &sorted_idxes_);
     regressor->PredictFast(image_curr, curr_search_region, target_pad, candidates_bboxes_, bbox_estimate_uncentered, &candidate_probabilities_, &sorted_idxes_);
 
 #ifdef DEBUG_SHOW_CANDIDATES
@@ -171,16 +170,17 @@ void TrackerGMD::FineTuneWorker(ExampleGenerator* example_generator,
     std::shuffle(this_bag_permuted.begin(), this_bag_permuted.end(), engine_);
 
     // Actually perform fine tuning, note that do not do data augmentation for GOTURN part here
+    std::vector<cv::Mat> image_currs;
     std::vector<cv::Mat> images;
     std::vector<cv::Mat> targets;
     std::vector<BoundingBox> bboxes_gt_scaled;
-    std::vector<std::vector<cv::Mat> > candidates; 
+    std::vector<std::vector<BoundingBox> > candidates; 
     std::vector<std::vector<double> >  labels;
     
     for (int i = 0; i< this_bag_permuted.size(); i ++) {
-        vector<pair<double, Mat> > label_to_candidate;
+        vector<pair<double, BoundingBox> > label_to_candidate;
         vector<double> this_frame_labels;
-        vector<Mat> this_frame_candidates;
+        vector<BoundingBox> this_frame_candidates;
         
         int this_update_idx = this_bag_permuted[i];
         for (int j = 0; j < std::min((int)(candidates_finetune_pos_[this_update_idx].size()), pos_candidate_upper_bound);j++) {
@@ -198,7 +198,7 @@ void TrackerGMD::FineTuneWorker(ExampleGenerator* example_generator,
             this_frame_labels.push_back(label_to_candidate[i].first);
         }
 
-
+        image_currs.push_back(image_currs_[this_update_idx]);
         images.push_back(images_finetune_[this_update_idx]);
         targets.push_back(targets_finetune_[this_update_idx]);
         bboxes_gt_scaled.push_back(gts_[this_update_idx]);
@@ -215,13 +215,8 @@ void TrackerGMD::FineTuneWorker(ExampleGenerator* example_generator,
 #endif
 
     // feed to network to train
-    // regressor_train->TrainBatch(images,
-    //                         targets,
-    //                         bboxes_gt_scaled,
-    //                         candidates,
-    //                         labels,
-    //                         -1); // -1 indicating fine tuning
-    regressor_train->TrainBatchFast(images,
+    regressor_train->TrainBatchFast(image_currs,
+                            images,
                             targets,
                             bboxes_gt_scaled,
                             candidates,
@@ -270,8 +265,8 @@ void TrackerGMD::FineTuneOnline(ExampleGenerator* example_generator,
 
 void TrackerGMD::EnqueueOnlineTraningSamples(ExampleGenerator* example_generator, const cv::Mat &image_curr, const BoundingBox &estimate,  bool success_frame) {
 
-    std::vector<cv::Mat> this_frame_candidates_pos;
-    std::vector<cv::Mat> this_frame_candidates_neg;
+    std::vector<BoundingBox> this_frame_candidates_pos;
+    std::vector<BoundingBox> this_frame_candidates_neg;
 
     cv::Mat image;
     cv::Mat target;
@@ -314,6 +309,7 @@ void TrackerGMD::EnqueueOnlineTraningSamples(ExampleGenerator* example_generator
     candidates_finetune_pos_.push_back(this_frame_candidates_pos);
     candidates_finetune_neg_.push_back(this_frame_candidates_neg); 
 
+    image_currs_.push_back(image_curr);
     images_finetune_.push_back(image);
     targets_finetune_.push_back(target);
     gts_.push_back(bbox_gt_scaled);
@@ -364,6 +360,7 @@ void TrackerGMD::Reset(RegressorBase *regressor) {
 
     // samples collected along each frame
     gts_.clear();
+    image_currs_.clear();
     images_finetune_.clear();
     targets_finetune_.clear();
     candidates_finetune_pos_.clear();
@@ -394,10 +391,11 @@ void TrackerGMD::Init(const cv::Mat& image_curr, const BoundingBox& bbox_gt,
                                 image_curr); // use the same image as initial step fine-tuning
 
         // data structures to invoke fine tune
+        std::vector<cv::Mat> image_currs;
         std::vector<cv::Mat> images;
         std::vector<cv::Mat> targets;
         std::vector<BoundingBox> bboxes_gt_scaled;
-        std::vector<std::vector<cv::Mat> > candidates; 
+        std::vector<std::vector<BoundingBox> > candidates; 
         std::vector<std::vector<double> >  labels;
 
         // Generate true example.
@@ -406,6 +404,7 @@ void TrackerGMD::Init(const cv::Mat& image_curr, const BoundingBox& bbox_gt,
         BoundingBox bbox_gt_scaled;
         example_generator_->MakeTrueExample(&image, &target, &bbox_gt_scaled);
         
+        image_currs.push_back(image_curr);
         images.push_back(image);
         targets.push_back(target);
         bboxes_gt_scaled.push_back(bbox_gt_scaled);
@@ -413,12 +412,16 @@ void TrackerGMD::Init(const cv::Mat& image_curr, const BoundingBox& bbox_gt,
         // Generate additional training examples through synthetic transformations.
         example_generator_->MakeTrainingExamples(FINE_TUNE_AUGMENT_NUM, &images,
                                                 &targets, &bboxes_gt_scaled);
+        
+        for (int augment_id = 0; augment_id < FINE_TUNE_AUGMENT_NUM; augment_id ++) {
+            image_currs.push_back(image_curr);
+        }
                                                 
-        std::vector<cv::Mat> this_frame_candidates;
+        std::vector<BoundingBox> this_frame_candidates;
         std::vector<double> this_frame_labels;
 
-        std::vector<cv::Mat> this_frame_candidates_pos;
-        std::vector<cv::Mat> this_frame_candidates_neg;
+        std::vector<BoundingBox> this_frame_candidates_pos;
+        std::vector<BoundingBox> this_frame_candidates_neg;
 
         // generate candidates and push to this_frame_candidates and this_frame_labels
         // example_generator_->MakeCandidatesAndLabels(&this_frame_candidates, &this_frame_labels, FIRST_FRAME_POS_SAMPLES, FIRST_FRAME_NEG_SAMPLES);
@@ -428,7 +431,7 @@ void TrackerGMD::Init(const cv::Mat& image_curr, const BoundingBox& bbox_gt,
         example_generator_->MakeCandidatesNeg(&this_frame_candidates_neg, FIRST_FRAME_NEG_SAMPLES/2, "whole", NEG_TRANS_RANGE, 5.0);
 
         // shuffling
-        std::vector<std::pair<double, cv::Mat> > label_to_candidate;
+        std::vector<std::pair<double, BoundingBox> > label_to_candidate;
         for (int i =0; i < this_frame_candidates_pos.size(); i++) {
         label_to_candidate.push_back(std::make_pair(POS_LABEL, this_frame_candidates_pos[i]));
         }
@@ -460,18 +463,13 @@ void TrackerGMD::Init(const cv::Mat& image_curr, const BoundingBox& bbox_gt,
 
         // TODO: avoid the copying and just pass a vector of one frame's +/- candidates to train
         for(int i = 0; i< images.size(); i ++ ) {
-        candidates.push_back(std::vector<cv::Mat>(this_frame_candidates)); // copy
+        candidates.push_back(std::vector<BoundingBox>(this_frame_candidates)); // copy
         labels.push_back(std::vector<double>(this_frame_labels)); // copy
         }
 
         //Fine Tune!
-        // regressor_train_->TrainBatch(images,
-        //                             targets,
-        //                             bboxes_gt_scaled,
-        //                             candidates,
-        //                             labels,
-        //                             -1); // -1 indicating fine tuning
-        regressor_train_->TrainBatchFast(images,
+        regressor_train_->TrainBatchFast(image_currs,
+                                    images,
                                     targets,
                                     bboxes_gt_scaled,
                                     candidates,

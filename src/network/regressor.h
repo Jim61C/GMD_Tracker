@@ -73,6 +73,9 @@ protected:
   // Set the candidates inputs at input[2]
   void SetCandidates(const std::vector<cv::Mat>& candidates);
 
+  // Set the rois
+  void set_rois(const std::vector<BoundingBox>& candidate_bboxes, const double scale);
+
   // Get the features corresponding to the output of the network.
   virtual void GetOutput(std::vector<float>* output);
 
@@ -85,9 +88,10 @@ protected:
   virtual void ReshapeCandidateInputs(const size_t num_candidates);
 
   // Does all the preparations needed, i.e., forward until concat layer to finish the complete forwarding
-  void PreForwardFast(const std::vector<cv::Mat> &candidates,
-                               const cv::Mat & image,
-                               const cv::Mat & target);
+  void PreForwardFast(const cv::Mat image_curr, 
+                      const std::vector<BoundingBox> &candidate_bboxes,
+                      const cv::Mat & image,
+                      const cv::Mat & target);
 
   // TODO: current wrap WrapOutputBlob is BUGGY!!! check how to copy out memory to cv Mat
   void WrapOutputBlob(const std::string & blob_name, std::vector<cv::Mat>* output_channels);
@@ -134,7 +138,7 @@ protected:
   void WrapBlobByNameBatch(const string & blob_name, std::vector<std::vector<cv::Mat> >* blob_channels);
 
   // Set the inputs to the network.
-  void Preprocess(const cv::Mat& img, std::vector<cv::Mat>* input_channels);
+  void Preprocess(const cv::Mat& img, std::vector<cv::Mat>* input_channels, bool keep_original_size = false);
   void Preprocess(const std::vector<cv::Mat>& images,
                   std::vector<std::vector<cv::Mat> >* input_channels);
   
