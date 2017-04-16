@@ -109,14 +109,14 @@ void RegressorTrain::set_bboxes_gt(const std::vector<BoundingBox>& bboxes_gt) {
 void RegressorTrain::set_labels(const vector<double>  &labels_flattened) {
   assert(net_->phase() == caffe::TRAIN);
 
-  // get the input blob for labels, reshape to include batch number
-  Blob<float> * input_label_blob = net_->input_blobs()[3];
+  Blob<float> * input_label_blob = net_->input_blobs()[LABEL_NETWORK_INPUT_IDX];
   const size_t num_labels = labels_flattened.size();
+  assert (num_labels == ROIS_NUM);
 
-  // reshape to batch size
+  // reshape to (1, |R|)
   vector<int> shape;
-  shape.push_back(num_labels);
   shape.push_back(1);
+  shape.push_back(num_labels);
   input_label_blob->Reshape(shape);
   
   // get a pointer to the label input blob memory.
@@ -166,7 +166,6 @@ void RegressorTrain::TrainBatchFast(const std::vector<cv::Mat>& image_currs,
     assert (images.size() == candidate_bboxes.size());
     assert (images.size() == labels.size());
 
-    // TODO: shuffing, i.e., swap the i and j in the loop here to have alternating frame candidate_bboxes training
     for (int i = 0; i< candidate_bboxes.size(); i++) {
       assert (candidate_bboxes[i].size() == labels[i].size());
       const std::vector<BoundingBox> &this_image_candidates = candidate_bboxes[i];
@@ -175,20 +174,12 @@ void RegressorTrain::TrainBatchFast(const std::vector<cv::Mat>& image_currs,
       const cv::Mat &this_target = targets[i];
       const cv::Mat &this_image_curr = image_currs[i];
 
-      int total_size = this_image_candidates.size();
-      int num_inner_batches =  total_size / INNER_BATCH_SIZE;
-      // flatten and get corresponding image/target index
-      for (int j = 0; j < num_inner_batches; j ++) {
-        std::vector<BoundingBox> this_candidates_flattened(this_image_candidates.begin() + j*INNER_BATCH_SIZE, this_image_candidates.begin() + std::min((j+1)*INNER_BATCH_SIZE, total_size));
-        std::vector<double> this_labels_flattened(this_image_labels.begin() + j*INNER_BATCH_SIZE, this_image_labels.begin() + std::min((j+1)*INNER_BATCH_SIZE, total_size));
-
-        TrainForwardBackward(this_image_curr,
-                          this_candidates_flattened,
-                          this_labels_flattened,
-                          this_image,
-                          this_target,
-                          k);
-      }
+      TrainForwardBackward(this_image_curr,
+                  this_image_candidates,
+                  this_image_labels,
+                  this_image,
+                  this_target,
+                  k);
     }
 }
 
@@ -196,20 +187,29 @@ void RegressorTrain::TrainForwardBackwardWorker(const cv::Mat & image_curr,
                           const std::vector<BoundingBox> &candidates_bboxes, 
                           const std::vector<double> &labels,
                           const cv::Mat & image,
-                          const cv::Mat & target) {
+                          const cv::Mat & target,
+                          int k) {
+
+  // Here: only batch size 1 is implemented, TODO: incorporate batch size > 1, i.e., have a vector<cv::Mat> image_currs coming in
   
   assert(candidates_bboxes.size() == labels.size());
   // actual worker to forward and backward for this pair of image and target with the given candidates
   
   net_->ClearParamDiffs(); // clear the previous param diff
 
+  /**
   // forward until concat and prepare duplicated images and targets for keep forwarding
   PreForwardFast(image_curr, candidates_bboxes, image, target);
 
   // now put the labels ready
   set_labels(labels);
+
+  // Forward Labels
+  const vector<string> & layer_names = net_->layer_names();
+  int flatten_label_layer = FindLayerIndexByName(layer_names, "flatten");
+  net_->ForwardFromTo(flatten_label_layer, flatten_label_layer);
   
-  // // TODO: check if just put in will be faster as the following
+  // // TODO: check if just put in will be faster as the following instead of calling set_labels
   // Blob<float> * input_label_blob = net_->input_blobs()[3];
   // const size_t num_labels = labels.size();
   // float* input_label_data = input_label_blob->mutable_cpu_data();
@@ -217,15 +217,23 @@ void RegressorTrain::TrainForwardBackwardWorker(const cv::Mat & image_curr,
   //   input_label_data[i] = labels[i];
   // }
 
-  const vector<string> & layer_names = net_->layer_names();
   int layer_pool5_concat_idx = FindLayerIndexByName(layer_names, "concat");
-  int layer_loss = net_->layers().size() - 1;
+  int layer_loss = FindLayerIndexByName(layer_names, LOSS_LAYER_PREFIX + std::to_string(k));
   net_->ForwardFromTo(layer_pool5_concat_idx, layer_loss);
   net_->BackwardFromTo(layer_loss, layer_pool5_concat_idx);
   
   // update weights
   // no need: UpdateSmoothedLoss(loss, start_iter, average_loss); as here only 1 iter
   solver_.apply_update();
+  */
+
+
+  // TODO: do not use step but find a way to log loss and snapshot
+  PrepareInputs(image_curr, candidates_bboxes, image, target);
+  // now put the labels ready
+  set_labels(labels);
+  // Train the network.
+  Step();
 }
 
 void RegressorTrain::TrainForwardBackward( const cv::Mat & image_curr,
@@ -250,7 +258,7 @@ void RegressorTrain::TrainForwardBackward( const cv::Mat & image_curr,
         layer_pt->set_param_propagate_down(1, true);
       }
       
-      TrainForwardBackwardWorker(image_curr, candidates_bboxes, labels_flattened, image, target);
+      TrainForwardBackwardWorker(image_curr, candidates_bboxes, labels_flattened, image, target, k);
 
       //lock this layer back
       // cout << this_layer_name << " freeze back" << endl;
@@ -277,7 +285,7 @@ void RegressorTrain::TrainForwardBackward( const cv::Mat & image_curr,
       // const float* end = begin + ptr->count();
       // fc6_gmd_weights_before = std::vector<float>(begin, end);
       
-      TrainForwardBackwardWorker(image_curr, candidates_bboxes, labels_flattened, image, target);
+      TrainForwardBackwardWorker(image_curr, candidates_bboxes, labels_flattened, image, target, k);
     }
 }
 

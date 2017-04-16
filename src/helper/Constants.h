@@ -65,5 +65,12 @@ const double SHORT_TERM_FINE_TUNE_TH = 0.85;
 const double TARGET_SIZE = 600.0; // compare to min (W, H)
 const double MAX_SIZE = 1000.0; // make sure the image_curr does not exceed this size
 
+// network input index
+#define TARGET_NETWORK_INPUT_IDX 0
+#define CANDIDATE_NETWORK_INPUT_IDX 1
+#define ROIS_NETWORK_INPUT_IDX 2
+#define LABEL_NETWORK_INPUT_IDX 3
+
+#define ROIS_NUM 250 // hard coded
 
 #endif

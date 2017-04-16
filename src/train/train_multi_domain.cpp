@@ -22,7 +22,7 @@ const int kNumBatches = 500000;
 
 // Desired number of iterations, within each iteration, each of K domains is passed 1 batch
 // const int NUM_CYCLES = 800;
-const int NUM_CYCLES = 210;
+const int NUM_CYCLES = 220;
 
 namespace {
 

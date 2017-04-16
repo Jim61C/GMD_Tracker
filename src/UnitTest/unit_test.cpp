@@ -3,6 +3,7 @@
 #include <memory>
 #include <boost/shared_ptr.hpp>
 #include <helper/bounding_box.h>
+#include <helper/CommonCV.h>
 using namespace std;
 
 class A {
@@ -25,6 +26,11 @@ public:
     A::foo_invoker();
   }
 };
+
+void doSomethingMat(Mat & mat) {
+  Mat M = (Mat_<double>(3,3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
+  M.copyTo(mat);
+}
 
 int main (int argc, char *argv[]) {
   boost::shared_ptr<BoundingBox> sp;  // empty
@@ -111,6 +117,14 @@ int main (int argc, char *argv[]) {
   }
   cout << endl;
 
+  Mat temp_mat = (Mat_<double>(3,3) << 0, 0, 0, 0, 0, 0, 0, 0, 0);
+  doSomethingMat(temp_mat);
+  cout << "after doSomethingMat: \n" << temp_mat << endl;
+  temp_mat.at<double>(2,2) = 10;
+  cout << "after assign (2, 2): \n" << temp_mat << endl;
+
+  doSomethingMat(temp_mat);
+  cout << "after doSomethingMat: \n" << temp_mat << endl;
 
   return 0;
 }

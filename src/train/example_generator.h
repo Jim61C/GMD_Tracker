@@ -50,6 +50,8 @@ public:
   // bounding box (true motion).
   void MakeTrueExample(cv::Mat* image_focus, cv::Mat* target_pad,
                        BoundingBox* bbox_gt_scaled) const;
+  void MakeTrueExampleTight(cv::Mat* image_focus, cv::Mat* target_tight,
+                      BoundingBox* bbox_gt_scaled) const;
 
   // Make batch_size training examples according to the input parameters.
   void MakeTrainingExamples(const int num_examples, std::vector<cv::Mat>* images,
@@ -119,6 +121,8 @@ private:
 
   // Cropped and scaled image of the target object from the previous image.
   cv::Mat target_pad_;
+  // tight previous target in previous image
+  cv::Mat target_tight_;
 
   // Video and frame index from which the current example was generated.
   // These values are only used when saving images to a file, to assign them

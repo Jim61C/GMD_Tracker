@@ -5,11 +5,11 @@
 #include "network/regressor.h"
 
 // Number of images in each batch, favourately multiplication of 11
-const int kBatchSize = 11;
+const int kBatchSize = 8;
 
 // Number of examples that we generate (by applying synthetic transformations)
 // to each image.
-const int kGeneratedExamplesPerImage = 10;
+const int kGeneratedExamplesPerImage = 0;
 
 TrackerTrainerMultiDomain::TrackerTrainerMultiDomain(ExampleGenerator* example_generator)
   : example_generator_(example_generator),
@@ -40,14 +40,10 @@ void TrackerTrainerMultiDomain::MakeTrainingExamples(std::vector<cv::Mat>* image
   cv::Mat image;
   cv::Mat target;
   BoundingBox bbox_gt_scaled;
-  example_generator_->MakeTrueExample(&image, &target, &bbox_gt_scaled);
+  example_generator_->MakeTrueExampleTight(&image, &target, &bbox_gt_scaled);
   images->push_back(image);
   targets->push_back(target);
   bboxes_gt_scaled->push_back(bbox_gt_scaled);
-
-  // Generate additional training examples through synthetic transformations.
-  example_generator_->MakeTrainingExamples(kGeneratedExamplesPerImage, images,
-                                           targets, bboxes_gt_scaled);
                                            
   std::vector<BoundingBox> this_frame_candidates;
   std::vector<double> this_frame_labels;
@@ -108,7 +104,7 @@ void TrackerTrainerMultiDomain::Train(const cv::Mat& image_prev, const cv::Mat& 
   std::vector<std::vector<BoundingBox> > candidates; // sampled candiates using IOU
   std::vector<std::vector<double> >  labels; // +/-'s
 
-  // TODO: Better to flatten in MakeTrainingExamples, so images.size() will be 11 * 250, and shuffle here
+  // Here, only one will be enqueued
   MakeTrainingExamples(&images, &targets, &bboxes_gt_scaled, &candidates, &labels);
 
   std::vector<cv::Mat> image_currs;
@@ -182,11 +178,6 @@ void TrackerTrainerMultiDomain::Train(const cv::Mat& image_prev, const cv::Mat& 
     candidates.erase(candidates.begin(), candidates.begin() + num_use);
     labels.erase(labels.begin(), labels.begin() + num_use);
   }
-}
-
-void TrackerTrainerMultiDomain::FineTune(const cv::Mat& image_prev, const cv::Mat& image_curr,
-                           const BoundingBox& bbox_prev) {
-  return;
 }
 
 // get if full batch

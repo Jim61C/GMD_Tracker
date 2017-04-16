@@ -176,94 +176,48 @@ void Regressor::Regress(const cv::Mat& image_curr,
   *bbox = BoundingBox(estimation);
 }
 
-void Regressor::PreForwardFast(const cv::Mat image_curr, 
+void Regressor::PrepareInputs(const cv::Mat image_curr, 
                                const std::vector<BoundingBox> &candidate_bboxes,
                                const cv::Mat & image,
                                const cv::Mat & target) {
-  
-  // get a hold of image and target pool5 features
-  Blob<float>* input_target = net_->input_blobs()[0];
+  // Reshape target input
+  Blob<float>* input_target = net_->input_blobs()[TARGET_NETWORK_INPUT_IDX];
   input_target->Reshape(1, num_channels_,
                        input_geometry_.height, input_geometry_.width);
 
-  Blob<float>* input_image = net_->input_blobs()[1];
-  input_image->Reshape(1, num_channels_,
-                       input_geometry_.height, input_geometry_.width);
-
-  // full image's input, i.e., image_curr
-  Blob<float>* input_candidate = net_->input_blobs()[2];
+  // Reshape Candidate input, full image's input, i.e., image_curr
+  Blob<float>* input_candidate = net_->input_blobs()[CANDIDATE_NETWORK_INPUT_IDX];
   input_candidate->Reshape(1, num_channels_,
                        input_geometry_.height, input_geometry_.width);
 
-  // Reshape the labels if it is there
-  if (net_->input_blobs().size() >= 4) {
-    // get the input blob for labels, reshape to include batch number
-    Blob<float> * input_label_blob = net_->input_blobs()[3];
-    const size_t num_labels = 1;
+  // Reshape the labels
+  Blob<float> * input_label_blob = net_->input_blobs()[LABEL_NETWORK_INPUT_IDX];
+  const size_t num_labels = candidate_bboxes.size();
+  // reshape to |R|
+  vector<int> shape_label;
+  shape_label.push_back(1);
+  shape_label.push_back(num_labels);
+  input_label_blob->Reshape(shape_label);
 
-    // reshape to batch size
-    vector<int> shape;
-    shape.push_back(num_labels);
-    shape.push_back(1);
-    input_label_blob->Reshape(shape);
-  }
-
-  // Reshape the rois, assume just one so that net_->Reshape() will be success
-  if (net_->input_blobs().size() >= 5) {
-    Blob<float> * input_rois_blob = net_->input_blobs()[4];
-    const size_t num_rois = 1;
-
-    // reshape to batch size
-    vector<int> shape;
-    shape.push_back(num_rois);
-    shape.push_back(5);
-    input_rois_blob->Reshape(shape);
-  }
+  // Reshape the rois
+  Blob<float> * input_rois_blob = net_->input_blobs()[ROIS_NETWORK_INPUT_IDX];
+  const size_t num_rois = candidate_bboxes.size();
+  // reshape to |R|
+  vector<int> shape_rois;
+  shape_rois.push_back(num_rois);
+  shape_rois.push_back(5);
+  input_rois_blob->Reshape(shape_rois);
 
   // Forward dimension change to all layers.
   net_->Reshape();
 
   // Process the inputs so we can set them.
   std::vector<cv::Mat> target_channels;
-  std::vector<cv::Mat> image_channels;
-  WrapInputLayer(&target_channels, &image_channels);
-
-  // Set the inputs to the network.
-  Preprocess(image, &image_channels);
+  WrapInputLayerGivenIndex(&target_channels, TARGET_NETWORK_INPUT_IDX);
+  // Set the t-1 target
   Preprocess(target, &target_channels);
 
-  const vector<string> & layer_names = net_->layer_names();
-  int layer_conv1_idx = FindLayerIndexByName(layer_names, "conv1");
-  int layer_pool5_idx = FindLayerIndexByName(layer_names, "pool5");
-
-  int layer_conv1_p_idx = FindLayerIndexByName(layer_names, "conv1_p");
-  int layer_pool5_p_idx = FindLayerIndexByName(layer_names, "pool5_p");
-
-  std::vector<cv::Mat> pool5_image;
-  std::vector<cv::Mat> pool5_p_image;
-
-  // Perform a forward-pass in the network.
-  net_->ForwardFromTo(layer_conv1_idx, layer_pool5_idx);
-  WrapOutputBlob("pool5", &pool5_image);
-
-  net_->ForwardFromTo(layer_conv1_p_idx, layer_pool5_p_idx);
-  WrapOutputBlob("pool5_p", &pool5_p_image);
-
-  // now forward the candidates
-  int layer_conv1_c_idx = FindLayerIndexByName(layer_names, "conv1_c");
-  int layer_pool5_c_idx = FindLayerIndexByName(layer_names, "roi_pool5_c");
-
-  // reshape 
-  input_target = net_->input_blobs()[0];
-  input_target->Reshape(candidate_bboxes.size(), num_channels_,
-                       input_geometry_.height, input_geometry_.width);
-
-  input_image = net_->input_blobs()[1];
-  input_image->Reshape(candidate_bboxes.size(), num_channels_,
-                       input_geometry_.height, input_geometry_.width);
-
-  // full image's input, i.e., image_curr, just one! Also record the scales
-  input_candidate = net_->input_blobs()[2];
+  // Process the candidate, full image's input, i.e., image_curr, just one! Also record the scales
   int im_min_size = std::min(image_curr.size().width, image_curr.size().height);
   int im_max_size = std::max(image_curr.size().width, image_curr.size().height);
 
@@ -275,40 +229,74 @@ void Regressor::PreForwardFast(const cv::Mat image_curr,
   cv::Mat image_scaled;
   cv::resize(image_curr, image_scaled, cv::Size(), scale_curr, scale_curr);
 
+  // Put image_curr
+  std::vector<cv::Mat> image_curr_channels;
+  WrapInputLayerGivenIndex(&image_curr_channels, CANDIDATE_NETWORK_INPUT_IDX);
+
+  // Set the inputs to the network.
+  Preprocess(image_scaled, &image_curr_channels, true); // set retain the original image size
+
+  // Put the ROIs
+  set_rois(candidate_bboxes, scale_curr);
+}
+
+void Regressor::PreForwardFast(const cv::Mat image_curr, 
+                               const std::vector<BoundingBox> &candidate_bboxes,
+                               const cv::Mat & image,
+                               const cv::Mat & target) {
+  
+  // Reshape target input
+  Blob<float>* input_target = net_->input_blobs()[TARGET_NETWORK_INPUT_IDX];
+  input_target->Reshape(1, num_channels_,
+                       input_geometry_.height, input_geometry_.width);
+
+  // Reshape Candidate input, full image's input, i.e., image_curr
+  Blob<float>* input_candidate = net_->input_blobs()[CANDIDATE_NETWORK_INPUT_IDX];
   input_candidate->Reshape(1, num_channels_,
-                       image_scaled.size().height, image_scaled.size().width);
+                       input_geometry_.height, input_geometry_.width);
 
-  // Reshape the labels if it is there
-  if (net_->input_blobs().size() >= 4) {
-    // get the input blob for labels, reshape to include batch number
-    Blob<float> * input_label_blob = net_->input_blobs()[3];
-    const size_t num_labels = candidate_bboxes.size();
+  // Reshape the labels
+  Blob<float> * input_label_blob = net_->input_blobs()[LABEL_NETWORK_INPUT_IDX];
+  const size_t num_labels = candidate_bboxes.size();
+  // reshape to |R|
+  vector<int> shape_label;
+  shape_label.push_back(1);
+  shape_label.push_back(num_labels);
+  input_label_blob->Reshape(shape_label);
 
-    // reshape to batch size
-    vector<int> shape;
-    shape.push_back(num_labels);
-    shape.push_back(1);
-    input_label_blob->Reshape(shape);
-  }
+  // Reshape the rois
+  Blob<float> * input_rois_blob = net_->input_blobs()[ROIS_NETWORK_INPUT_IDX];
+  const size_t num_rois = candidate_bboxes.size();
+  // reshape to |R|
+  vector<int> shape_rois;
+  shape_rois.push_back(num_rois);
+  shape_rois.push_back(5);
+  input_rois_blob->Reshape(shape_rois);
 
-
-  if (net_->input_blobs().size() >= 5) {
-    // get the input blob for labels, reshape to include batch number
-    Blob<float> * input_rois_blob = net_->input_blobs()[4];
-    const size_t num_rois = candidate_bboxes.size();
-
-    // reshape to batch size
-    vector<int> shape;
-    shape.push_back(num_rois);
-    shape.push_back(5);
-    input_rois_blob->Reshape(shape);
-  }
-
+  // Forward dimension change to all layers.
   net_->Reshape();
+
+  // Process the inputs so we can set them.
+  std::vector<cv::Mat> target_channels;
+  WrapInputLayerGivenIndex(&target_channels, TARGET_NETWORK_INPUT_IDX);
+  // Set the t-1 target
+  Preprocess(target, &target_channels);
+
+  // Process the candidate, full image's input, i.e., image_curr, just one! Also record the scales
+  int im_min_size = std::min(image_curr.size().width, image_curr.size().height);
+  int im_max_size = std::max(image_curr.size().width, image_curr.size().height);
+
+  double scale_curr = TARGET_SIZE / im_min_size;
+  if (round(scale_curr * im_max_size) > MAX_SIZE) {
+    scale_curr = MAX_SIZE / im_max_size;
+  }
+
+  cv::Mat image_scaled;
+  cv::resize(image_curr, image_scaled, cv::Size(), scale_curr, scale_curr);
 
   // Put image_curr
   std::vector<cv::Mat> image_curr_channels;
-  WrapInputLayer(&image_curr_channels); // wrap input[2], candidate (full_image)
+  WrapInputLayerGivenIndex(&image_curr_channels, CANDIDATE_NETWORK_INPUT_IDX);
 
   // Set the inputs to the network.
   Preprocess(image_scaled, &image_curr_channels, true); // set retain the original image size
@@ -317,11 +305,13 @@ void Regressor::PreForwardFast(const cv::Mat image_curr,
   set_rois(candidate_bboxes, scale_curr);
 
   // ROI poolings
-  net_->ForwardFromTo(layer_conv1_c_idx, layer_pool5_c_idx);
+  const vector<string> & layer_names = net_->layer_names();
+  int layer_reshape_pool5_c_idx = FindLayerIndexByName(layer_names, "reshape_roi_pool5_c");
+  net_->ForwardTo(layer_reshape_pool5_c_idx);
 
 #ifdef DEBUG_PRE_FORWARDFAST
   std::vector<std::vector<cv::Mat> > roi_pool5_c_features;
-  WrapOutputBlob("pool5_c", &roi_pool5_c_features);
+  WrapOutputBlob("roi_pool5_c", &roi_pool5_c_features);
 
   for (int j = 0; j < 256; j++) {
     // check if the 256 maps are all the same across candidates
@@ -335,15 +325,12 @@ void Regressor::PreForwardFast(const cv::Mat image_curr,
   }
 #endif
 
-  // wrap pool5 and pool5_p memory in opencv mat
-  std::vector<std::vector<cv::Mat> > pool5_channels;
-  std::vector<std::vector<cv::Mat> > pool5_p_channels;
+  // // wrap pool5 and pool5_p memory in opencv mat
+  // std::vector<std::vector<cv::Mat> > pool5_channels;
 
-  WrapBlobByNameBatch("pool5", &pool5_channels);
-  WrapBlobByNameBatch("pool5_p", &pool5_p_channels);
+  // WrapBlobByNameBatch("pool5", &pool5_channels);
 
-  PreprocessDuplicateIn(pool5_image, &pool5_channels);
-  PreprocessDuplicateIn(pool5_p_image, &pool5_p_channels);
+  // PreprocessDuplicateIn(pool5_image, &pool5_channels);
 }
 
 void Regressor::PredictFast(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, 
@@ -371,20 +358,14 @@ void Regressor::PredictFast(const cv::Mat& image_curr, const cv::Mat& image, con
   net_->ForwardFromTo(layer_pool5_concat_idx, layer_fc8_idx);
   
   vector<float> fc8;
-  // GetFeatures("fc8", &fc8);
-  // for (int i =0 ; i < candidate_bboxes.size(); i++) {
-  //   cout << "candidate" << i << ", fc8: " <<fc8[2*i] << ", " << fc8[2*i + 1] << endl;
-  // }
-
-  vector<float> probabilities;
-  GetProbOutput(&probabilities);
-
-  assert (probabilities.size() == candidate_bboxes.size() * 2); // since binary classification, prob[1] is POSITIVE probability
+  GetFeatures("fc8", &fc8);
 
   vector<float> positive_probabilities;
-  for(int i = 0; i < candidate_bboxes.size(); i++) {
-    positive_probabilities.push_back(probabilities[2*i+1]);
+  for(int i = 0; i < fc8.size(); i++) {
+    positive_probabilities.push_back(sigmoid(fc8[i]));
   }
+
+  assert (positive_probabilities.size() == candidate_bboxes.size());
 
   // initialize original index locations
   vector<int> idx(positive_probabilities.size());
@@ -571,11 +552,11 @@ void Regressor::Estimate(std::vector<cv::Mat> &images_flattened,
   //   cout << "candidate" << i << ", fc8: " <<temp_fc8[0] << ", " << temp_fc8[1] << endl;
 
   //   std::vector<cv::Mat> temp_pool5_c;
-  //   WrapOutputBlob("pool5_c", &temp_pool5_c);
+  //   WrapOutputBlob("roi_pool5_c", &temp_pool5_c);
   //   pool5_cs.push_back(temp_pool5_c);
 
   //   std::vector<float> temp_pool5_c_flattened;
-  //   GetFeatures("pool5_c", &temp_pool5_c_flattened);
+  //   GetFeatures("roi_pool5_c", &temp_pool5_c_flattened);
   //   pool5_cs_flattened.push_back(temp_pool5_c_flattened);
     
   // }
@@ -659,7 +640,7 @@ void Regressor::Estimate(std::vector<cv::Mat> &images_flattened,
   // }
   
   // std::vector<std::vector<cv::Mat> > pool5_candidates;
-  // WrapOutputBlob("pool5_c", &pool5_candidates);
+  // WrapOutputBlob("roi_pool5_c", &pool5_candidates);
   // for (int i = 0; i < pool5_candidates[0].size(); i ++) {
   //   cout << pool5_candidates[0][i] << endl;
   // } 
@@ -735,7 +716,7 @@ void Regressor::ReshapeCandidateInputs(const size_t num_candidates) {
 void Regressor::WrapOutputBlob(const std::string & blob_name, std::vector<cv::Mat>* output_channels) {
   const boost::shared_ptr<Blob<float> > layer = net_->blob_by_name(blob_name.c_str());
   if (blob_name.compare("pool5") == 0 || blob_name.compare("pool5_p") == 0 || blob_name.compare("pool5_c") == 0) {
-    assert (layer->channels() == 256); 
+    assert (layer->channels() % 256 == 0); 
   }
 
   int out_width = layer->width();
@@ -756,7 +737,7 @@ void Regressor::WrapOutputBlob(const std::string & blob_name, std::vector<std::v
   // }
 
   if (blob_name.compare("pool5") == 0 || blob_name.compare("pool5_p") == 0 || blob_name.compare("pool5_c") == 0) {
-    assert (layer->channels() == 256); 
+    assert (layer->channels() % 256 == 0); 
   }
 
   output_channels->resize(layer->shape(0)); // make sure output_channels has number of vectors that is the same as batch size
@@ -865,10 +846,10 @@ void Regressor::SetCandidates(const std::vector<cv::Mat>& candidates) {
 }
 
 
-void Regressor::set_rois(const std::vector<BoundingBox>& candidate_bboxes, const double scale) {
+void Regressor::set_rois(const std::vector<BoundingBox>& candidate_bboxes, const double scale, const int batch_id) {
 
   // Reshape the bbox.
-  Blob<float>* input_rois = net_->input_blobs()[4];
+  Blob<float>* input_rois = net_->input_blobs()[ROIS_NETWORK_INPUT_IDX];
   const size_t num_candidates = candidate_bboxes.size();
   vector<int> shape;
   shape.push_back(num_candidates);
@@ -888,7 +869,7 @@ void Regressor::set_rois(const std::vector<BoundingBox>& candidate_bboxes, const
     bbox_vect.push_back(this_rois.x2_ * scale);
     bbox_vect.push_back(this_rois.y2_ * scale);
 
-    input_rois_data[input_rois_data_counter] = 0; // put the batch id as first col
+    input_rois_data[input_rois_data_counter] = batch_id; // put the batch id as first col
     input_rois_data_counter++;
     for (size_t j = 0; j < 4; ++j) {
       input_rois_data[input_rois_data_counter] = bbox_vect[j];
@@ -1003,6 +984,19 @@ void Regressor::WrapInputLayer(std::vector<cv::Mat>* candidate_channels) {
   }
 }
 
+void Regressor::WrapInputLayerGivenIndex(std::vector<cv::Mat>* channels, int input_idx) {
+  Blob<float>* input_layer = net_->input_blobs()[input_idx];
+
+  int width = input_layer->width();
+  int height = input_layer->height();
+  float* data = input_layer->mutable_cpu_data();
+  for (int i = 0; i < input_layer->channels(); ++i) {
+    cv::Mat channel(height, width, CV_32FC1, data);
+    channels->push_back(channel);
+    data += width * height;
+  }
+}
+
 // Wrap the input layer of the network in separate cv::Mat objects
 // (one per channel). This way we save one memcpy operation and we
 // don't need to rely on cudaMemcpy2D. The last preprocessing
@@ -1061,7 +1055,7 @@ void Regressor::WrapBlobByNameBatch(const string & blob_name, std::vector<std::v
     const boost::shared_ptr<Blob<float> > this_blob = net_->blob_by_name(blob_name.c_str());
     
     if (blob_name.compare("pool5") == 0 || blob_name.compare("pool5_p") == 0 || blob_name.compare("pool5_c") == 0) {
-      assert (this_blob->channels() == 256); 
+      assert (this_blob->channels() % 256 == 0); 
     }
     blob_channels->resize(this_blob->shape(0));
 

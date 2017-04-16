@@ -239,7 +239,8 @@ void BoundingBox::DrawBoundingBox(cv::Mat* image) const {
 
 void BoundingBox::CropBoundingBoxOutImage(const cv::Mat &image, cv::Mat &out) const {
   cv::Rect this_rect = cv::Rect((int)(round(x1_)), (int)(round(y1_)), (int)(round(x2_ - x1_)), (int)(round(y2_ - y1_)));
-  out = image(this_rect).clone();
+  // out = image(this_rect).clone();
+  image(this_rect).copyTo(out);
 }
 
 void BoundingBox::Shift(const cv::Mat& image,

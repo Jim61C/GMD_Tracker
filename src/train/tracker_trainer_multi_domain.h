@@ -23,9 +23,6 @@ public:
   void Train(const cv::Mat& image_prev, const cv::Mat& image_curr,
              const BoundingBox& bbox_prev, const BoundingBox& bbox_curr);
 
-  void FineTune(const cv::Mat& image_prev, const cv::Mat& image_curr,
-                           const BoundingBox& bbox_prev);
-
   // Number of total batches trained on so far.
   int get_num_batches() { return num_batches_; }
 

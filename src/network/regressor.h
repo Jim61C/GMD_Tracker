@@ -75,7 +75,7 @@ protected:
   void SetCandidates(const std::vector<cv::Mat>& candidates);
 
   // Set the rois
-  void set_rois(const std::vector<BoundingBox>& candidate_bboxes, const double scale);
+  void set_rois(const std::vector<BoundingBox>& candidate_bboxes, const double scale, const int batch_id = 0);
 
   // Get the features corresponding to the output of the network.
   virtual void GetOutput(std::vector<float>* output);
@@ -93,6 +93,12 @@ protected:
                       const std::vector<BoundingBox> &candidate_bboxes,
                       const cv::Mat & image,
                       const cv::Mat & target);
+  
+  // Temporary created so that can use Step in regressor_train
+  void PrepareInputs(const cv::Mat image_curr, 
+                               const std::vector<BoundingBox> &candidate_bboxes,
+                               const cv::Mat & image,
+                               const cv::Mat & target);
 
   // TODO: current wrap WrapOutputBlob is BUGGY!!! check how to copy out memory to cv Mat
   void WrapOutputBlob(const std::string & blob_name, std::vector<cv::Mat>* output_channels);
@@ -125,6 +131,9 @@ protected:
 
   // Wrap candidate, just one imge
   void WrapInputLayer(std::vector<cv::Mat>* candidate_channels);
+
+  // Wrap input according to the given input index, just one image
+  void WrapInputLayerGivenIndex(std::vector<cv::Mat>* channels, int input_idx);
 
   // Wrap the input layer of the network in separate cv::Mat objects
   // (one per channel per image, for num_images images).

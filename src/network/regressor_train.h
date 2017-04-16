@@ -48,7 +48,8 @@ public:
                           const std::vector<BoundingBox> &candidates_bboxes, 
                           const std::vector<double> &labels,
                           const cv::Mat & image,
-                          const cv::Mat & target);
+                          const cv::Mat & target,
+                          int k);
 
   void TrainForwardBackward(const cv::Mat & image_curr,
                           const std::vector<BoundingBox> &candidates_bboxes, 

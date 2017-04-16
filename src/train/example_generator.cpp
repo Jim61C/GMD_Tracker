@@ -46,6 +46,11 @@ void ExampleGenerator::Reset(const BoundingBox& bbox_prev,
   // Get padded target from previous image to feed the network.
   CropPadImage(bbox_prev, image_prev, &target_pad_);
 
+  // bbox_prev might be out of boundary
+  BoundingBox bbox_prev_within(bbox_prev);
+  bbox_prev_within.crop_against_width_height(image_prev.size().width, image_prev.size().height);
+  bbox_prev_within.CropBoundingBoxOutImage(image_prev, target_tight_);
+
   // Save the current image.
   image_curr_ = image_curr;
 
@@ -301,6 +306,30 @@ void ExampleGenerator::MakeTrueExample(cv::Mat* curr_search_region,
                                        cv::Mat* target_pad,
                                        BoundingBox* bbox_gt_scaled) const {
   *target_pad = target_pad_;
+
+  // Get a tight prior prediction of the target's location in the current image.
+  // For simplicity, we use the object's previous location as our guess.
+  // TODO - use a motion model?
+  const BoundingBox& curr_prior_tight = bbox_prev_gt_;
+
+  // Crop the current image based on the prior estimate, with some padding
+  // to define a search region within the current image.
+  BoundingBox curr_search_location;
+  double edge_spacing_x, edge_spacing_y;
+  CropPadImage(curr_prior_tight, image_curr_, curr_search_region, &curr_search_location, &edge_spacing_x, &edge_spacing_y);
+
+  // Recenter the ground-truth bbox relative to the search location.
+  BoundingBox bbox_gt_recentered;
+  bbox_curr_gt_.Recenter(curr_search_location, edge_spacing_x, edge_spacing_y, &bbox_gt_recentered);
+
+  // Scale the bounding box relative to current crop.
+  bbox_gt_recentered.Scale(*curr_search_region, bbox_gt_scaled);
+}
+
+void ExampleGenerator::MakeTrueExampleTight(cv::Mat* curr_search_region, cv::Mat* target_tight,
+                      BoundingBox* bbox_gt_scaled) const {
+  
+  *target_tight = target_tight_;
 
   // Get a tight prior prediction of the target's location in the current image.
   // For simplicity, we use the object's previous location as our guess.

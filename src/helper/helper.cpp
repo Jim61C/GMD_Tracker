@@ -10,6 +10,7 @@
 #include <string>
 #include <cstdio>
 #include <vector>
+#include <cmath>
 
 namespace bfs = boost::filesystem;
 
@@ -162,4 +163,8 @@ bool equalVector(std::vector<float> &a, std::vector<float> &b) {
   }
 
   return true; 
+}
+
+float sigmoid(float x) {
+  return 0.5 * tanh(0.5 * x) + 0.5;
 }

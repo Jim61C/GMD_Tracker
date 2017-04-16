@@ -70,5 +70,7 @@ bool equalMat(cv::Mat &mat1, cv::Mat &mat2);
 
 bool equalVector(std::vector<float> &a, std::vector<float> &b);
 
+float sigmoid(float x);
+
 #endif /* HELPER_H_ */
 
