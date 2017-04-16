@@ -283,8 +283,8 @@ void TrackerGMD::EnqueueOnlineTraningSamples(ExampleGenerator* example_generator
 #endif
         example_generator->MakeCandidatesPos(&this_frame_candidates_pos, POS_CANDIDATES_FINETUNE, "gaussian", POS_TRANS_RANGE, POS_SCALE_RANGE, 
                                              0.05, 0.05, 2.5); // trans sd 0.05, scale sd 2.5
-        example_generator->MakeCandidatesNeg(&this_frame_candidates_neg, NEG_CANDIDATES_FINETUNE/2, "uniform", 1.0, 2.5); // trans range 1, scale range 2.5
-        example_generator->MakeCandidatesNeg(&this_frame_candidates_neg, NEG_CANDIDATES_FINETUNE/2, "whole", NEG_TRANS_RANGE, 5.0);
+        example_generator->MakeCandidatesNeg(&this_frame_candidates_neg, NEG_CANDIDATES_FINETUNE, "uniform", 1.0, 2.5); // trans range 1, scale range 2.5
+        // example_generator->MakeCandidatesNeg(&this_frame_candidates_neg, NEG_CANDIDATES_FINETUNE/2, "whole", NEG_TRANS_RANGE, 5.0);
         example_generator->MakeTrueExample(&image, &target, &bbox_gt_scaled);
 
         // enqueue this frame index
@@ -450,15 +450,15 @@ void TrackerGMD::Init(const cv::Mat& image_curr, const BoundingBox& bbox_gt,
     #ifdef VISUALIZE_FIRST_FRAME_SAMPLES
         Mat visualise_first_frame = image_curr.clone();
         for (int i = 0; i < this_frame_candidates.size(); i++) {
-            if (this_frame_labels[i] == POS_LABEL) {
-            cv::imshow("pos first frame sample", this_frame_candidates[i]);
+            if(this_frame_labels[i] == POS_LABEL) {
+                this_frame_candidates[i].Draw(255,0,0,&visualise_first_frame);
             }
             else {
-            cv::imshow("neg first frame sample", this_frame_candidates[i]);
+                this_frame_candidates[i].Draw(0,0,255,&visualise_first_frame);
             }
-
-            cv::waitKey(0);
         }
+        cv::imshow("first frame samples", visualise_first_frame);
+        cv::waitKey(1);
     #endif
 
         // TODO: avoid the copying and just pass a vector of one frame's +/- candidates to train
