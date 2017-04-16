@@ -19,6 +19,7 @@ using namespace std;
 // #define DEBUG_FREEZE_LAYER
 // #define DEBUG_GETPROBOUTPUT
 // #define LOG_TIME
+// #define DEBUG_PRE_FORWARDFAST
 
 // We need 2 inputs: one for the current frame and one for the previous frame.
 const int kNumInputs = 2;
@@ -175,30 +176,6 @@ void Regressor::Regress(const cv::Mat& image_curr,
   *bbox = BoundingBox(estimation);
 }
 
-bool equalMat(cv::Mat &mat1, cv::Mat &mat2) {
-  cv::Mat dst;
-  cv::bitwise_xor(mat1, mat2, dst);        
-  if(cv::countNonZero(dst) > 0) //check non-0 pixels
-    //do stuff in case cv::Mat are not the same
-    return false;
-  else
-    return true;
-}
-
-bool equalVector(std::vector<float> &a, std::vector<float> &b) {
-  if (a.size() != b.size()) {
-    return false;
-  }
-  for (int i =0;i < a.size(); i++) {
-    if(a[i] != b[i]) {
-      return false;
-    }
-  }
-
-  return true; 
-}
-
-
 void Regressor::PreForwardFast(const cv::Mat image_curr, 
                                const std::vector<BoundingBox> &candidate_bboxes,
                                const cv::Mat & image,
@@ -314,7 +291,7 @@ void Regressor::PreForwardFast(const cv::Mat image_curr,
     input_label_blob->Reshape(shape);
   }
 
-  // Reshape the rois, assume just one so that net_->Reshape() will be success
+
   if (net_->input_blobs().size() >= 5) {
     // get the input blob for labels, reshape to include batch number
     Blob<float> * input_rois_blob = net_->input_blobs()[4];
@@ -341,6 +318,22 @@ void Regressor::PreForwardFast(const cv::Mat image_curr,
 
   // ROI poolings
   net_->ForwardFromTo(layer_conv1_c_idx, layer_pool5_c_idx);
+
+#ifdef DEBUG_PRE_FORWARDFAST
+  std::vector<std::vector<cv::Mat> > roi_pool5_c_features;
+  WrapOutputBlob("pool5_c", &roi_pool5_c_features);
+
+  for (int j = 0; j < 256; j++) {
+    // check if the 256 maps are all the same across candidates
+    for (int m = 0; m < candidate_bboxes.size(); m ++) {
+      for (int n = m + 1; n < candidate_bboxes.size(); n++) {
+        if(!equalMat(roi_pool5_c_features[m][j], roi_pool5_c_features[n][j])) {
+          cout << "candidate " << m << " and " << n << "have different pool5_c map at channel" << j << endl;
+        }
+      }
+    }
+  }
+#endif
 
   // wrap pool5 and pool5_p memory in opencv mat
   std::vector<std::vector<cv::Mat> > pool5_channels;
@@ -757,6 +750,11 @@ void Regressor::WrapOutputBlob(const std::string & blob_name, std::vector<cv::Ma
 
 void Regressor::WrapOutputBlob(const std::string & blob_name, std::vector<std::vector<cv::Mat> > *output_channels) {
   const boost::shared_ptr<Blob<float> > layer = net_->blob_by_name(blob_name.c_str());
+
+  // for (int i = 0; i < layer->num_axes(); i++) {
+  //   cout <<blob_name << " axis " << i << ", dim: " << layer->shape(i) << endl;
+  // }
+
   if (blob_name.compare("pool5") == 0 || blob_name.compare("pool5_p") == 0 || blob_name.compare("pool5_c") == 0) {
     assert (layer->channels() == 256); 
   }

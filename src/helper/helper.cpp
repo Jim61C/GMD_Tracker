@@ -138,3 +138,28 @@ double sample_exp_two_sided(const double lambda) {
   const double rand_uniform = sample_rand_uniform();
   return log(rand_uniform) / lambda * pos_or_neg;
 }
+
+
+
+bool equalMat(cv::Mat &mat1, cv::Mat &mat2) {
+  cv::Mat dst;
+  cv::bitwise_xor(mat1, mat2, dst);        
+  if(cv::countNonZero(dst) > 0) //check non-0 pixels
+    //do stuff in case cv::Mat are not the same
+    return false;
+  else
+    return true;
+}
+
+bool equalVector(std::vector<float> &a, std::vector<float> &b) {
+  if (a.size() != b.size()) {
+    return false;
+  }
+  for (int i =0;i < a.size(); i++) {
+    if(a[i] != b[i]) {
+      return false;
+    }
+  }
+
+  return true; 
+}

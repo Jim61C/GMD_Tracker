@@ -65,5 +65,10 @@ double sample_exp(const double lambda);
 // Sample from a Laplacian distribution, aka two-sided exponential.
 double sample_exp_two_sided(const double lambda);
 
+// Comparison function
+bool equalMat(cv::Mat &mat1, cv::Mat &mat2);
+
+bool equalVector(std::vector<float> &a, std::vector<float> &b);
+
 #endif /* HELPER_H_ */
 

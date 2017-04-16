@@ -100,6 +100,17 @@ int main (int argc, char *argv[]) {
   cout << "b.foo_invoker():" << endl;
   b.foo_invoker();
 
+  // Test memcpy
+  vector<float> src = {1, 2, 3, 4};
+  vector<float> dst (src);
+  // memcpy(&dst, &src, 4);
+  cout << "dst.size(): " << dst.size() << endl;
+  
+  for (int i =0 ; i < 4; i ++) { // note that beyond will be undefined
+    cout << dst[i] << " ";
+  }
+  cout << endl;
+
 
   return 0;
 }

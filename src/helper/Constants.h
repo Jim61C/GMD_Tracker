@@ -11,7 +11,7 @@
 // for gaussian sampling
 #define SD_X 0.3 // translation std: mean(width,height)*SD_X
 #define SD_Y 0.3
-#define SD_SCALE 0.5 
+#define SD_SCALE 1.0 
 #define KEEP_SD 2.0
 #define MOTION_SCALE_FACTOR 1.05 // scaling std: MOTION_SCALE_FACTOR^(SD_SCALE)
 
@@ -33,8 +33,8 @@ const double POS_IOU_TH = 0.7;
 const double NEG_IOU_TH = 0.5;
 
 // for fine tune sample generation
-const int POS_CANDIDATES_FINETUNE = 10;
-const int NEG_CANDIDATES_FINETUNE = 40;
+const int POS_CANDIDATES_FINETUNE = 50;
+const int NEG_CANDIDATES_FINETUNE = 200;
 
 // for training labels
 #define POS_LABEL 1.0

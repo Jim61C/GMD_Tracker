@@ -92,11 +92,11 @@ target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${GLOG_L
 target_link_libraries(${PROJECT_NAME} /home/jimxing/proj/trax/build/libtrax.so)
 target_link_libraries (test_tracker_vot ${PROJECT_NAME})
 
-add_executable (test_tracker_vot_gmd_finetune src/test/test_tracker_vot_gmd_finetune.cpp)
+add_executable (test_tracker_vot_gmd_finetune_roipool src/test/test_tracker_vot_gmd_finetune.cpp)
 target_link_libraries(${PROJECT_NAME}  ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
 # # Note: If can't find trax, please download trax and build it, then uncomment the below line and set the path manually
 target_link_libraries(${PROJECT_NAME} /home/jimxing/proj/trax/build/libtrax.so)
-target_link_libraries (test_tracker_vot_gmd_finetune ${PROJECT_NAME})
+target_link_libraries (test_tracker_vot_gmd_finetune_roipool ${PROJECT_NAME})
 
 add_executable (test_tracker_alov src/test/test_tracker_alov.cpp)
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})

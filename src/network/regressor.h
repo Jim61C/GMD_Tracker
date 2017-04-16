@@ -15,6 +15,7 @@
 #include "helper/high_res_timer.h"
 #include "network/regressor_base.h"
 #include "helper/Constants.h"
+#include "helper/helper.h"
 
 using namespace std;
 

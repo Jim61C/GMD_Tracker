@@ -4,6 +4,7 @@
 #include "network/regressor.h"
 #include "network/regressor_train_base.h"
 #include "helper/CommonCV.h"
+#include "helper/helper.h"
 
 class RegressorTrain : public Regressor, public RegressorTrainBase
 {

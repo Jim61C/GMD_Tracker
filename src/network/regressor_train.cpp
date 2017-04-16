@@ -268,6 +268,15 @@ void RegressorTrain::TrainForwardBackward( const cv::Mat & image_curr,
       loss_history_k_domain_[k].push_back(this_loss_output[0]);
     }
     else {
+      // // make sure that weights are actually updated
+      // const vector<boost::shared_ptr<Blob<float> > > & net_params = net_->params();
+      // cout << "net_params.size():" << net_params.size() << endl;
+      // vector<float> fc6_gmd_weights_before;
+      // Blob<float> *ptr = net_params[36].get();
+      // const float* begin = ptr->cpu_data();
+      // const float* end = begin + ptr->count();
+      // fc6_gmd_weights_before = std::vector<float>(begin, end);
+      
       TrainForwardBackwardWorker(image_curr, candidates_bboxes, labels_flattened, image, target);
     }
 }
