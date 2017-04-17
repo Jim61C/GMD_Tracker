@@ -415,6 +415,19 @@ void BoundingBox::crop_against_width_height(int W, int H) {
   }
 }
 
+bool BoundingBox::valid_bbox() {
+    // at least one pixel wide
+    if ((int)(floor(x2_ - x1_)) < 1) {
+        return false;
+    }
+
+    if ((int)(floor(y2_ - y1_)) < 1) {
+        return false;
+    }
+
+  return true;
+}
+
 bool BoundingBox::valid_bbox_against_width_height(int W, int H) {
     // at least one pixel wide
     if ((int)(floor(x2_ - x1_)) < 1) {

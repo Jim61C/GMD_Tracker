@@ -60,7 +60,7 @@ void train_video_k(const Video &video, TrackerTrainerMultiDomain* tracker_traine
   }
 
   // Choose a random annotation.
-  const int annotation_index = rand() % (annotations.size() - 1);
+  int annotation_index = rand() % (annotations.size() - 1);
 
   // Load the frame's annotation.
   int frame_num_prev;
@@ -73,6 +73,14 @@ void train_video_k(const Video &video, TrackerTrainerMultiDomain* tracker_traine
   cv::Mat image_curr;
   BoundingBox bbox_curr;
   video.LoadAnnotation(annotation_index + 1, &frame_num_curr, &image_curr, &bbox_curr);
+
+  // make sure both bboxes are valid before process
+  while(!(bbox_prev.valid_bbox() && bbox_curr.valid_bbox())) {
+    // reload
+    annotation_index = rand() % (annotations.size() - 1);
+    video.LoadAnnotation(annotation_index, &frame_num_prev, &image_prev, &bbox_prev);
+    video.LoadAnnotation(annotation_index + 1, &frame_num_curr, &image_curr, &bbox_curr);
+  }
 
   // Train on this example, actually enqueue into batch
   tracker_trainer_multi_domain->Train(image_prev, image_curr, bbox_prev, bbox_curr);
@@ -216,9 +224,6 @@ int main (int argc, char *argv[]) {
     // cycle though K domains
     cout << "cycle " << i << endl;
     for (int k = 0; k < K; k++) {
-      if (i == 21 && k == 10) {
-        cout << "potential stuck" << endl;
-      }
       // pass one batch for this video k
       train_video_k_one_batch(train_videos, &tracker_trainer_multi_domain, k);
     }

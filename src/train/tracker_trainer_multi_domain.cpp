@@ -50,7 +50,6 @@ void TrackerTrainerMultiDomain::MakeTrainingExamples(std::vector<cv::Mat>* image
 
   // generate examples and push to this_frame_candidates and this_frame_labels
   example_generator_->MakeCandidatesAndLabelsBBox(&this_frame_candidates, &this_frame_labels);
-  cout << "after MakeCandidatesAndLabelsBBox, k == " << current_k_ << endl;
   // TODO: avoid the copying and just pass a vector of one frame's +/- candidates to train
   for(int i = 0; i< images->size(); i ++ ) {
     candidates->push_back(std::vector<BoundingBox>(this_frame_candidates)); // copy
