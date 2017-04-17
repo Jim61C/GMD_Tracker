@@ -89,6 +89,15 @@ void TrackerTrainerMultiDomain::Train(const cv::Mat& image_prev, const cv::Mat& 
     << " images_batch: " << images_batch_.size() <<
         " image_currs_batch_: " << image_currs_batch_.size();
 
+  CHECK_EQ(images_batch_.size(), candidates_batch_.size())
+    << " images_batch: " << images_batch_.size() <<
+        " candidates_batch_: " << candidates_batch_.size();
+  
+  CHECK_EQ(images_batch_.size(), labels_batch_.size())
+    << " images_batch: " << images_batch_.size() <<
+        " labels_batch_: " << labels_batch_.size();
+  
+
   // Set up example generator.
   example_generator_->Reset(bbox_prev,
                            bbox_curr,
