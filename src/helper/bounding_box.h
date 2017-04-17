@@ -101,6 +101,8 @@ public:
   // crops against the given W and H
   void crop_against_width_height(int W, int H);
 
+  bool valid_bbox();
+
   bool valid_bbox_against_width_height(int W, int H);
 
   // Bounding box coordiantes: top left, bottom right.
