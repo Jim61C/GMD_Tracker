@@ -216,6 +216,9 @@ int main (int argc, char *argv[]) {
     // cycle though K domains
     cout << "cycle " << i << endl;
     for (int k = 0; k < K; k++) {
+      if (i == 21 && k == 10) {
+        cout << "potential stuck" << endl;
+      }
       // pass one batch for this video k
       train_video_k_one_batch(train_videos, &tracker_trainer_multi_domain, k);
     }
