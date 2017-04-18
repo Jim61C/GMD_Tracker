@@ -86,65 +86,65 @@ include_directories(src/native)
 # message ("** GSL_INCLUDE_DIRS: ${GSL_INCLUDE_DIRS}")
 # message ("** Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
 
-add_executable (test_tracker_vot src/test/test_tracker_vot.cpp)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
+# add_executable (test_tracker_vot src/test/test_tracker_vot.cpp)
+# target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
 # # Note: If can't find trax, please download trax and build it, then uncomment the below line and set the path manually
-target_link_libraries(${PROJECT_NAME} /home/jimxing/proj/trax/build/libtrax.so)
-target_link_libraries (test_tracker_vot ${PROJECT_NAME})
+# target_link_libraries(${PROJECT_NAME} /home/jimxing/proj/trax/build/libtrax.so)
+# target_link_libraries (test_tracker_vot ${PROJECT_NAME})
 
-add_executable (test_tracker_vot_gmd_finetune_roipool src/test/test_tracker_vot_gmd_finetune.cpp)
-target_link_libraries(${PROJECT_NAME}  ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
+# add_executable (test_tracker_vot_gmd_finetune_roipool src/test/test_tracker_vot_gmd_finetune.cpp)
+# target_link_libraries(${PROJECT_NAME}  ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
 # # Note: If can't find trax, please download trax and build it, then uncomment the below line and set the path manually
-target_link_libraries(${PROJECT_NAME} /home/jimxing/proj/trax/build/libtrax.so)
-target_link_libraries (test_tracker_vot_gmd_finetune_roipool ${PROJECT_NAME})
+# target_link_libraries(${PROJECT_NAME} /home/jimxing/proj/trax/build/libtrax.so)
+# target_link_libraries (test_tracker_vot_gmd_finetune_roipool ${PROJECT_NAME})
 
-add_executable (test_tracker_alov src/test/test_tracker_alov.cpp)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
-target_link_libraries (test_tracker_alov ${PROJECT_NAME})
+# add_executable (test_tracker_alov src/test/test_tracker_alov.cpp)
+# target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
+# target_link_libraries (test_tracker_alov ${PROJECT_NAME})
 
-add_executable (save_videos_vot src/test/save_videos_vot.cpp)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
-target_link_libraries (save_videos_vot ${PROJECT_NAME})
+# add_executable (save_videos_vot src/test/save_videos_vot.cpp)
+# target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
+# target_link_libraries (save_videos_vot ${PROJECT_NAME})
 
-add_executable (train src/train/train.cpp)
+# add_executable (train src/train/train.cpp)
+# target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${Caffe_LIBRARIES} ${TinyXML_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
+# target_link_libraries (train ${PROJECT_NAME})
+
+add_executable (train_multi_domain_no_middle_250 src/train/train_multi_domain.cpp)
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${Caffe_LIBRARIES} ${TinyXML_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
-target_link_libraries (train ${PROJECT_NAME})
+target_link_libraries (train_multi_domain_no_middle_250 ${PROJECT_NAME})
 
-add_executable (train_multi_domain src/train/train_multi_domain.cpp)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${Caffe_LIBRARIES} ${TinyXML_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
-target_link_libraries (train_multi_domain ${PROJECT_NAME})
+# add_executable (show_tracker_vot src/visualizer/show_tracker_vot.cpp)
+# target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
+# target_link_libraries (show_tracker_vot ${PROJECT_NAME})
 
-add_executable (show_tracker_vot src/visualizer/show_tracker_vot.cpp)
+# add_executable (show_tracker_vot_gmd src/visualizer/show_tracker_vot_gmd.cpp)
+# target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
+# target_link_libraries (show_tracker_vot_gmd ${PROJECT_NAME})
+
+add_executable (show_tracker_vot_gmd_finetune_no_middle_250 src/visualizer/show_tracker_vot_gmd_finetune.cpp)
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
-target_link_libraries (show_tracker_vot ${PROJECT_NAME})
-
-add_executable (show_tracker_vot_gmd src/visualizer/show_tracker_vot_gmd.cpp)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
-target_link_libraries (show_tracker_vot_gmd ${PROJECT_NAME})
-
-add_executable (show_tracker_vot_gmd_finetune src/visualizer/show_tracker_vot_gmd_finetune.cpp)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
-target_link_libraries (show_tracker_vot_gmd_finetune ${PROJECT_NAME})
+target_link_libraries (show_tracker_vot_gmd_finetune_no_middle_250 ${PROJECT_NAME})
 
 add_executable (UnitTest src/UnitTest/unit_test.cpp)
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${Caffe_LIBRARIES} ${TinyXML_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
 target_link_libraries (UnitTest ${PROJECT_NAME})
 
 
-add_executable (show_tracker_otb src/visualizer/show_tracker_otb.cpp)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
-target_link_libraries (show_tracker_otb ${PROJECT_NAME})
+# add_executable (show_tracker_otb src/visualizer/show_tracker_otb.cpp)
+# target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
+# target_link_libraries (show_tracker_otb ${PROJECT_NAME})
 
-add_executable (show_tracker_alov src/visualizer/show_tracker_alov.cpp)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
-target_link_libraries (show_tracker_alov ${PROJECT_NAME})
+# add_executable (show_tracker_alov src/visualizer/show_tracker_alov.cpp)
+# target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
+# target_link_libraries (show_tracker_alov ${PROJECT_NAME})
 
-add_executable (show_imagenet src/visualizer/show_imagenet.cpp)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${TinyXML_LIBRARIES} ${PROTOBUF_LIBRARIES} ${GSLLIB})
-target_link_libraries (show_imagenet ${PROJECT_NAME})
+# add_executable (show_imagenet src/visualizer/show_imagenet.cpp)
+# target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${TinyXML_LIBRARIES} ${PROTOBUF_LIBRARIES} ${GSLLIB})
+# target_link_libraries (show_imagenet ${PROJECT_NAME})
 
-add_executable (show_alov src/visualizer/show_alov.cpp)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${PROTOBUF_LIBRARIES} ${GSLLIB})
-target_link_libraries (show_alov ${PROJECT_NAME})
+# add_executable (show_alov src/visualizer/show_alov.cpp)
+# target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${PROTOBUF_LIBRARIES} ${GSLLIB})
+# target_link_libraries (show_alov ${PROJECT_NAME})
 
 

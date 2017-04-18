@@ -49,7 +49,7 @@ void ExampleGenerator::Reset(const BoundingBox& bbox_prev,
   // bbox_prev might be out of boundary
   BoundingBox bbox_prev_within(bbox_prev);
   bbox_prev_within.crop_against_width_height(image_prev.size().width, image_prev.size().height);
-  bbox_prev_within.CropBoundingBoxOutImage(image_prev, target_tight_);
+  bbox_prev_within.CropBoundingBoxOutImage(image_prev, &target_tight_);
 
   // Save the current image.
   image_curr_ = image_curr;
@@ -176,7 +176,7 @@ void ExampleGenerator::MakeCandidatesAndLabels(vector<Mat> *candidates, vector<d
 
   for (int i = 0; i < candidate_bboxes.size(); i++) {
     Mat this_candidate;
-    candidate_bboxes[i].CropBoundingBoxOutImage(image_curr_, this_candidate);
+    candidate_bboxes[i].CropBoundingBoxOutImage(image_curr_, &this_candidate);
     candidates->push_back(this_candidate);
   }
   assert (candidates->size() == labels->size());

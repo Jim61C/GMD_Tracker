@@ -237,10 +237,11 @@ void BoundingBox::DrawBoundingBox(cv::Mat* image) const {
   Draw(255, 255, 255, image);
 }
 
-void BoundingBox::CropBoundingBoxOutImage(const cv::Mat &image, cv::Mat &out) const {
+void BoundingBox::CropBoundingBoxOutImage(const cv::Mat &image, cv::Mat *out) const {
   cv::Rect this_rect = cv::Rect((int)(round(x1_)), (int)(round(y1_)), (int)(round(x2_ - x1_)), (int)(round(y2_ - y1_)));
   // out = image(this_rect).clone();
-  image(this_rect).copyTo(out);
+  cv::Mat this_rect_im = image(this_rect);
+  *out = this_rect_im;
 }
 
 void BoundingBox::Shift(const cv::Mat& image,

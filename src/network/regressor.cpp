@@ -428,7 +428,7 @@ void Regressor::Predict(const cv::Mat& image_curr, const cv::Mat& image, const c
     // Crop the candidate
     const BoundingBox &this_box = candidate_bboxes[i];
     cv::Mat this_candidate;
-    this_box.CropBoundingBoxOutImage(image_curr, this_candidate);
+    this_box.CropBoundingBoxOutImage(image_curr, &this_candidate);
 
     candidates_flattened.push_back(this_candidate);
     images_flattened.push_back(image.clone());
