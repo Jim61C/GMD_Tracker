@@ -33,3 +33,9 @@ nets/*/*
 *.exe
 *.out
 *.app
+
+# loss history
+loss_history/
+
+# logs
+*.log
