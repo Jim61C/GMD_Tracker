@@ -110,9 +110,9 @@ include_directories(src/native)
 # target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${Caffe_LIBRARIES} ${TinyXML_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
 # target_link_libraries (train ${PROJECT_NAME})
 
-add_executable (train_multi_domain_no_middle_250 src/train/train_multi_domain.cpp)
+add_executable (train_multi_domain_no_middle_batch src/train/train_multi_domain.cpp)
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${Caffe_LIBRARIES} ${TinyXML_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
-target_link_libraries (train_multi_domain_no_middle_250 ${PROJECT_NAME})
+target_link_libraries (train_multi_domain_no_middle_batch ${PROJECT_NAME})
 
 # add_executable (show_tracker_vot src/visualizer/show_tracker_vot.cpp)
 # target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
@@ -122,9 +122,9 @@ target_link_libraries (train_multi_domain_no_middle_250 ${PROJECT_NAME})
 # target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
 # target_link_libraries (show_tracker_vot_gmd ${PROJECT_NAME})
 
-add_executable (show_tracker_vot_gmd_finetune_no_middle_250 src/visualizer/show_tracker_vot_gmd_finetune.cpp)
+add_executable (show_tracker_vot_gmd_finetune_no_middle_batch src/visualizer/show_tracker_vot_gmd_finetune.cpp)
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
-target_link_libraries (show_tracker_vot_gmd_finetune_no_middle_250 ${PROJECT_NAME})
+target_link_libraries (show_tracker_vot_gmd_finetune_no_middle_batch ${PROJECT_NAME})
 
 add_executable (UnitTest src/UnitTest/unit_test.cpp)
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${Caffe_LIBRARIES} ${TinyXML_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})

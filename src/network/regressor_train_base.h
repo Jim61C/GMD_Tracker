@@ -14,6 +14,8 @@
 #include "helper/bounding_box.h"
 #include "network/regressor_base.h"
 
+using caffe::Caffe; 
+
 // We subclass the Caffe solver object so that we can set protected variables like net_ and test_nets_.
 // (Admittedly, this is probably not the intended use of the abstraction).
 class MySolver : public caffe::SGDSolver<float>
@@ -24,6 +26,24 @@ public:
   void apply_update() {
     this->ApplyUpdate();
   }
+
+  void increment_iter_save_snapshot() {
+    ++iter_;
+
+    caffe::SolverAction::Enum request = GetRequestedAction();
+
+    // Save a snapshot if needed.
+    if ((param_.snapshot()
+         && iter_ % param_.snapshot() == 0
+         && Caffe::root_solver())) {
+      Snapshot();
+    }
+    if (caffe::SolverAction::STOP == request) {
+      requested_early_exit_ = true;
+      // // Break out of training loop.
+      // break;
+    }
+}
 
   void set_net(const boost::shared_ptr<caffe::Net<float> >& net) {
     net_ = net;

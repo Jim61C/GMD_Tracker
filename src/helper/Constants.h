@@ -71,6 +71,4 @@ const double MAX_SIZE = 1000.0; // make sure the image_curr does not exceed this
 #define ROIS_NETWORK_INPUT_IDX 2
 #define LABEL_NETWORK_INPUT_IDX 3
 
-#define ROIS_NUM 250 // hard coded
-
 #endif

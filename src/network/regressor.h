@@ -93,12 +93,6 @@ protected:
                       const std::vector<BoundingBox> &candidate_bboxes,
                       const cv::Mat & image,
                       const cv::Mat & target);
-  
-  // Temporary created so that can use Step in regressor_train
-  void PrepareInputs(const cv::Mat image_curr, 
-                               const std::vector<BoundingBox> &candidate_bboxes,
-                               const cv::Mat & image,
-                               const cv::Mat & target);
 
   // TODO: current wrap WrapOutputBlob is BUGGY!!! check how to copy out memory to cv Mat
   void WrapOutputBlob(const std::string & blob_name, std::vector<cv::Mat>* output_channels);
