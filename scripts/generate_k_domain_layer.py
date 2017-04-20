@@ -36,7 +36,7 @@ def main():
     decay_mult: {decay_mult_bias} 
   }}
   inner_product_param {{
-    num_output: 250
+    num_output: 2
     weight_filler {{
       type: "gaussian"
       std: 0.01
@@ -49,11 +49,10 @@ def main():
 }}
 layer {{
   name: "{loss_layer_name}"
-  type: "SigmoidCrossEntropyLoss"
+  type: "SoftmaxWithLoss"
   bottom: "{fc_blob_name}"
   bottom: "{bottom_label_layer}"
   top: "{loss_layer_name}"
-  include {{ phase: TRAIN }}
 }}\n""".format(fc_layer_name = layer_name_prefix+str(i), \
 			fc_blob_name = blob_name_prefix+str(i), \
 			lr_mult_weights = lr_mult_weights, \
