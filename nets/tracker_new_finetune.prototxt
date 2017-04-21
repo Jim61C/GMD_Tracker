@@ -511,21 +511,9 @@ layer {
 }
 
 layer {
-  name: "pool6"
-  type: "Pooling"
-  bottom: "pool5_concat"
-  top: "pool6"
-  pooling_param {
-    pool: AVE
-    kernel_size: 2
-    stride: 2
-  }
-}
-
-layer {
   name: "fc6-gmd"
   type: "InnerProduct"
-  bottom: "pool6"
+  bottom: "pool5_concat"
   top: "fc6"
   param {
     lr_mult: 10
@@ -536,7 +524,7 @@ layer {
     decay_mult: 0
   }
   inner_product_param {
-    num_output: 1024
+    num_output: 4096
     weight_filler {
       type: "gaussian"
       std: 0.005
@@ -576,7 +564,7 @@ layer {
     decay_mult: 0
   }
   inner_product_param {
-    num_output: 512
+    num_output: 4096
     weight_filler {
       type: "gaussian"
       std: 0.005
@@ -616,7 +604,7 @@ layer {
     decay_mult: 0
   }
   inner_product_param {
-    num_output: 512
+    num_output: 4096
     weight_filler {
       type: "gaussian"
       std: 0.005
