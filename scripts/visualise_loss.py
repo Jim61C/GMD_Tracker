@@ -10,10 +10,11 @@ import sys
 def main():
 	loss_history_file = sys.argv[1]
 	loss_history_total = np.genfromtxt(loss_history_file, delimiter = ' ') # since now each column is for one domain
+
 	# k = int(sys.argv[2])
 	for k in range(0, 89):
 		loss_history = loss_history_total[:, k]
-		avg_period = 100
+		avg_period = 10
 
 		print "minimum loss:", np.min(loss_history)
 		print "maximum loss:", np.max(loss_history)
