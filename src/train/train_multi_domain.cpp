@@ -22,7 +22,7 @@ const int kNumBatches = 500000;
 
 // Desired number of iterations, within each iteration, each of K domains is passed 1 batch
 // const int NUM_CYCLES = 800;
-const int NUM_CYCLES = 220;
+const int NUM_CYCLES = 3200;
 
 namespace {
 
@@ -207,9 +207,20 @@ int main (int argc, char *argv[]) {
   ExampleGenerator example_generator(lambda_shift, lambda_scale,
                                      min_scale, max_scale);
 
+  // save the loss_history when done, TODO: save loss along training instead end of training
+  string save_dir = "loss_history/";
+  string save_path = save_dir + "train_multi_domain_loss_no_middle_batch_history_cycle" + std::to_string(NUM_CYCLES) + ".txt";
+  if (!boost::filesystem::exists(save_dir)) {
+    boost::filesystem::create_directories(save_dir);
+  }
+  if (boost::filesystem::exists(save_path)) {
+    // clean previous run loss log
+    boost::filesystem::remove(save_path);
+  }
+
   // Set up network.
   RegressorTrain regressor_train(train_proto, caffe_model,
-                                 gpu_id, solver_file, K);
+                                 gpu_id, solver_file, save_path, K);
 
   // Set up trainer.
   TrackerTrainerMultiDomain tracker_trainer_multi_domain(&example_generator, &regressor_train);
@@ -228,15 +239,6 @@ int main (int argc, char *argv[]) {
       train_video_k_one_batch(train_videos, &tracker_trainer_multi_domain, k);
     }
   }
-
-  // save the loss_history when done, TODO: save loss along training instead end of training
-  string save_dir = "loss_history/train_multi_domain_loss_history_cycle";
-  string save_path = save_dir + std::to_string(NUM_CYCLES) + ".txt";
-  if (!boost::filesystem::exists(save_dir)) {
-   boost::filesystem::create_directories(save_dir);
-  }
-  cout << "Training GOTURN MDNet Completed, saving loss to" << save_path << "..." << endl;
-  tracker_trainer_multi_domain.SaveLossHistoryToFile(save_path);
 
   return 0;
 }

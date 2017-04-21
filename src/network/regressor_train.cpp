@@ -5,6 +5,7 @@
 const int kNumInputs = 4;
 const bool kDoTrain = true;
 const int INNER_BATCH_SIZE = 50;
+const int LOSS_SAVE_ITER_PER_DOMAIN = 20;
 
 using std::string;
 using std::vector;
@@ -19,7 +20,8 @@ RegressorTrain::RegressorTrain(const std::string& deploy_proto,
                                const int num_input,
                                const bool do_train)
   : Regressor(deploy_proto, caffe_model, gpu_id, num_input, do_train),
-    RegressorTrainBase(solver_file)
+    RegressorTrainBase(solver_file),
+    loss_save_path_("")
 {
   solver_.set_net(net_);
 }
@@ -31,7 +33,8 @@ RegressorTrain::RegressorTrain(const std::string& deploy_proto,
                                const string& solver_file,
                                const bool do_train)
   : Regressor(deploy_proto, caffe_model, gpu_id, kNumInputs, do_train),
-    RegressorTrainBase(solver_file)
+    RegressorTrainBase(solver_file),
+    loss_save_path_("")
 {
   solver_.set_net(net_);
 }
@@ -41,7 +44,8 @@ RegressorTrain::RegressorTrain(const std::string& deploy_proto,
                                const int gpu_id,
                                const string& solver_file)
   : Regressor(deploy_proto, caffe_model, gpu_id, kNumInputs, kDoTrain),
-    RegressorTrainBase(solver_file)
+    RegressorTrainBase(solver_file),
+    loss_save_path_("")
 {
   solver_.set_net(net_);
 }
@@ -50,9 +54,11 @@ RegressorTrain::RegressorTrain(const std::string& deploy_proto,
                                const std::string& caffe_model,
                                const int gpu_id,
                                const string& solver_file,
+                               const string& loss_save_path,
                                const int K)
   : Regressor(deploy_proto, caffe_model, gpu_id, kNumInputs, kDoTrain, K),
-    RegressorTrainBase(solver_file)
+    RegressorTrainBase(solver_file),
+    loss_save_path_(loss_save_path)
 {
   solver_.set_net(net_);
 
@@ -164,6 +170,15 @@ void RegressorTrain::TrainBatchFast(const std::vector<cv::Mat>& image_currs,
     assert (images.size() == targets.size());
     assert (images.size() == candidate_bboxes.size());
     assert (images.size() == labels.size());
+
+    // Save loss on before new record for domain 0
+    if (k == 0 && loss_history_k_domain_[0].size() >= LOSS_SAVE_ITER_PER_DOMAIN) {
+      SaveLossHistoryToFile(loss_save_path_);
+      // clear to avoid duplicates in next save
+      for (int i = 0; i < loss_history_k_domain_.size(); i ++) {
+        loss_history_k_domain_[i].clear();
+      }
+    }
 
     for (int i = 0; i< candidate_bboxes.size(); i++) {
       assert (candidate_bboxes[i].size() == labels[i].size());
@@ -436,10 +451,10 @@ void RegressorTrain::Step() {
 
 void RegressorTrain::SaveLossHistoryToFile(const std::string &save_path) {
   ofstream out_loss_file;
-  out_loss_file.open(save_path.c_str());
-  for (int i = 0;i< loss_history_k_domain_.size();i++) {
-    for (int j = 0;j< loss_history_k_domain_[i].size();j++) {
-      out_loss_file << loss_history_k_domain_[i][j] << " ";
+  out_loss_file.open(save_path.c_str(), std::ios_base::app);
+  for (int i = 0; i< loss_history_k_domain_[0].size(); i++) {
+    for (int j = 0;j< loss_history_k_domain_.size();j++) {
+      out_loss_file << loss_history_k_domain_[j][i] << " ";
     }
     out_loss_file << endl;
   }

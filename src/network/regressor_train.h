@@ -31,6 +31,7 @@ public:
                                const std::string& caffe_model,
                                const int gpu_id,
                                const string& solver_file,
+                               const string& loss_save_path,
                                const int K);
 
   // Train the tracker.
@@ -97,6 +98,8 @@ private:
   boost::shared_ptr<caffe::Net<float> > test_net_;
 
   std::vector<std::vector<double> > loss_history_k_domain_;
+
+  const std::string loss_save_path_;
 };
 
 #endif // REGRESSOR_TRAIN_H

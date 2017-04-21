@@ -41,9 +41,6 @@ public:
   // clear remaining data in the batch
   void clear_batch_remaining();
 
-  // save the loss history
-  void SaveLossHistoryToFile(const std::string &save_path);
-
 private:
   // Generate training examples and return them.
   // Note that we do not clear the input variables, so if they already contain

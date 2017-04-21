@@ -69,9 +69,6 @@ void TrackerTrainerMultiDomain::ProcessBatch() {
                                current_k_);
 }
 
-void TrackerTrainerMultiDomain::SaveLossHistoryToFile(const std::string &save_path) {
-  regressor_train_->SaveLossHistoryToFile(save_path);
-}
 
 void TrackerTrainerMultiDomain::Train(const cv::Mat& image_prev, const cv::Mat& image_curr,
                            const BoundingBox& bbox_prev, const BoundingBox& bbox_curr) {
