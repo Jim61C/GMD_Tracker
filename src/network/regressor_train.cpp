@@ -236,15 +236,8 @@ void RegressorTrain::TrainForwardBackwardWorker(const cv::Mat & image_curr,
   const vector<string> & layer_names = net_->layer_names();
   int layer_pool5_concat_idx = FindLayerIndexByName(layer_names, "concat");
   
-  int layer_loss;
-  if (k != -1) {
-    layer_loss = FindLayerIndexByName(layer_names, LOSS_LAYER_PREFIX + std::to_string(k));
-  }
-  else {
-    layer_loss = net_->layers().size() -1; // last layer is the loss for single domain
-  }
-  net_->ForwardFromTo(layer_pool5_concat_idx, layer_loss);
-  net_->BackwardFromTo(layer_loss, layer_pool5_concat_idx);
+  net_->ForwardFrom(layer_pool5_concat_idx);
+  net_->BackwardTo(layer_pool5_concat_idx);
   
   // update weights
   // no need: UpdateSmoothedLoss(loss, start_iter, average_loss); as here only 1 iter
