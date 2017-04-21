@@ -285,7 +285,7 @@ void TrackerGMD::EnqueueOnlineTraningSamples(ExampleGenerator* example_generator
                                              0.05, 0.05, 2.5); // trans sd 0.05, scale sd 2.5
         example_generator->MakeCandidatesNeg(&this_frame_candidates_neg, NEG_CANDIDATES_FINETUNE, "uniform", 1.0, 2.5); // trans range 1, scale range 2.5
         // example_generator->MakeCandidatesNeg(&this_frame_candidates_neg, NEG_CANDIDATES_FINETUNE/2, "whole", NEG_TRANS_RANGE, 5.0);
-        example_generator->MakeTrueExample(&image, &target, &bbox_gt_scaled);
+        example_generator->MakeTrueExampleTight(&image, &target, &bbox_gt_scaled);
 
         // enqueue this frame index
         short_term_bag_.push_back(cur_frame_);
@@ -402,20 +402,12 @@ void TrackerGMD::Init(const cv::Mat& image_curr, const BoundingBox& bbox_gt,
         cv::Mat image;
         cv::Mat target;
         BoundingBox bbox_gt_scaled;
-        example_generator_->MakeTrueExample(&image, &target, &bbox_gt_scaled);
+        example_generator_->MakeTrueExampleTight(&image, &target, &bbox_gt_scaled);
         
         image_currs.push_back(image_curr);
         images.push_back(image);
         targets.push_back(target);
         bboxes_gt_scaled.push_back(bbox_gt_scaled);
-
-        // Generate additional training examples through synthetic transformations.
-        example_generator_->MakeTrainingExamples(FINE_TUNE_AUGMENT_NUM, &images,
-                                                &targets, &bboxes_gt_scaled);
-        
-        for (int augment_id = 0; augment_id < FINE_TUNE_AUGMENT_NUM; augment_id ++) {
-            image_currs.push_back(image_curr);
-        }
                                                 
         std::vector<BoundingBox> this_frame_candidates;
         std::vector<double> this_frame_labels;
