@@ -129,7 +129,7 @@ void train_video(const std::vector<Video>& videos, TrackerTrainerMultiDomain* tr
   }
 
   // Choose a random annotation.
-  const int annotation_index = rand() % (annotations.size() - 1);
+  int annotation_index = rand() % (annotations.size() - 1);
 
   // Load the frame's annotation.
   int frame_num_prev;
@@ -143,7 +143,15 @@ void train_video(const std::vector<Video>& videos, TrackerTrainerMultiDomain* tr
   BoundingBox bbox_curr;
   video.LoadAnnotation(annotation_index + 1, &frame_num_curr, &image_curr, &bbox_curr);
 
-  // Train on this example
+  // make sure both bboxes are valid before process
+  while(!(bbox_prev.valid_bbox() && bbox_curr.valid_bbox())) {
+    // reload
+    annotation_index = rand() % (annotations.size() - 1);
+    video.LoadAnnotation(annotation_index, &frame_num_prev, &image_prev, &bbox_prev);
+    video.LoadAnnotation(annotation_index + 1, &frame_num_curr, &image_curr, &bbox_curr);
+  }
+
+  // Train on this example, actually enqueue this example, if batch filled, train
   tracker_trainer_multi_domain->Train(image_prev, image_curr, bbox_prev, bbox_curr);
 
   // Save
@@ -201,7 +209,7 @@ int main (int argc, char *argv[]) {
   std::vector<Video> train_videos = otb_video_loader.get_videos();
   printf("Total training videos: %zu\n", train_videos.size());
 
-  int K = train_videos.size();
+  int K = -1; // single domain training
 
   // Create an ExampleGenerator to generate training examples.
   ExampleGenerator example_generator(lambda_shift, lambda_scale,
@@ -209,7 +217,7 @@ int main (int argc, char *argv[]) {
 
   // save the loss_history when done, TODO: save loss along training instead end of training
   string save_dir = "loss_history/";
-  string save_path = save_dir + "train_multi_domain_loss_no_middle_batch_history_cycle" + std::to_string(NUM_CYCLES) + ".txt";
+  string save_path = save_dir + "train_single_domain_loss_no_middle_batch_history_cycle" + std::to_string(NUM_CYCLES) + ".txt";
   if (!boost::filesystem::exists(save_dir)) {
     boost::filesystem::create_directories(save_dir);
   }
@@ -225,19 +233,8 @@ int main (int argc, char *argv[]) {
   // Set up trainer.
   TrackerTrainerMultiDomain tracker_trainer_multi_domain(&example_generator, &regressor_train);
 
-  // Train tracker.
-  // while (tracker_trainer_multi_domain.get_num_batches() < kNumBatches) {
-  //   // Train on a video example.
-  //   train_video(train_videos, &tracker_trainer_multi_domain);
-  // }
-
-  for (int i = 0;i < NUM_CYCLES; i ++) {
-    // cycle though K domains
-    cout << "cycle " << i << endl;
-    for (int k = 0; k < K; k++) {
-      // pass one batch for this video k
-      train_video_k_one_batch(train_videos, &tracker_trainer_multi_domain, k);
-    }
+  for (int i = 0;i < kNumBatches; i ++) {
+    train_video(train_videos, &tracker_trainer_multi_domain);
   }
 
   return 0;
