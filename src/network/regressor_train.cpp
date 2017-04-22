@@ -5,7 +5,7 @@
 const int kNumInputs = 4;
 const bool kDoTrain = true;
 const int INNER_BATCH_SIZE = 50;
-const int LOSS_SAVE_ITER_PER_DOMAIN = 20;
+const int LOSS_SAVE_ITER_PER_DOMAIN = 20; // when domain 0's number of iterations > LOSS_SAVE_ITER_PER_DOMAIN, save
 
 using std::string;
 using std::vector;
