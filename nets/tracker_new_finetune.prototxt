@@ -669,7 +669,7 @@ layer {
 # loss for finetuning
 layer {
   name: "prob"
-  type: "Sigmoid"
+  type: "Softmax"
   bottom: "fc8"
   top: "prob"
   include { phase: TEST }
