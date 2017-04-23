@@ -5,7 +5,7 @@
 const int kNumInputs = 4;
 const bool kDoTrain = true;
 const int INNER_BATCH_SIZE = 50;
-const int LOSS_SAVE_ITER_PER_DOMAIN = 20; // when domain 0's number of iterations > LOSS_SAVE_ITER_PER_DOMAIN, save
+const int LOSS_SAVE_ITER = 500;
 
 using std::string;
 using std::vector;
@@ -63,11 +63,6 @@ RegressorTrain::RegressorTrain(const std::string& deploy_proto,
     loss_save_path_(loss_save_path)
 {
   solver_.set_net(net_);
-
-  // set up the loss_history_k_domain_
-  for (int i = 0; i < K;i++) {
-    loss_history_k_domain_.push_back(std::vector<double>());
-  }
 }
 
 void RegressorTrain::ResetSolverNet() {
@@ -172,15 +167,6 @@ void RegressorTrain::TrainBatchFast(const std::vector<cv::Mat>& image_currs,
     assert (images.size() == targets.size());
     assert (images.size() == candidate_bboxes.size());
     assert (images.size() == labels.size());
-
-    // Save loss on before new record for domain 0
-    if (k == 0 && loss_history_k_domain_[0].size() >= LOSS_SAVE_ITER_PER_DOMAIN) {
-      SaveLossHistoryToFile(loss_save_path_);
-      // clear to avoid duplicates in next save
-      for (int i = 0; i < loss_history_k_domain_.size(); i ++) {
-        loss_history_k_domain_[i].clear();
-      }
-    }
 
     for (int i = 0; i< candidate_bboxes.size(); i++) {
       assert (candidate_bboxes[i].size() == labels[i].size());
@@ -324,12 +310,6 @@ void RegressorTrain::TrainForwardBackward( const cv::Mat & image_curr,
       if (layer_pt->param_propagate_down(1)) {
         layer_pt->set_param_propagate_down(1, false);
       }
-
-      //record the loss for domain k
-      vector<float> this_loss_output;
-      string this_loss_name = LOSS_LAYER_PREFIX + std::to_string(k);
-      GetFeatures(this_loss_name, &this_loss_output);
-      loss_history_k_domain_[k].push_back(this_loss_output[0]);
     }
     else {
       // // make sure that weights are actually updated
@@ -342,6 +322,14 @@ void RegressorTrain::TrainForwardBackward( const cv::Mat & image_curr,
       // fc6_gmd_weights_before = std::vector<float>(begin, end);
       
       TrainForwardBackwardWorker(image_curr, candidates_bboxes, labels_flattened, image, target, k);
+
+      if (loss_save_path_.length() != 0) {
+        vector<float> this_loss_output;
+        GetFeatures("loss", &this_loss_output);
+        loss_history_.push_back(this_loss_output[0]);
+      }
+
+      InvokeSaveLossIfNeeded();
     }
 }
 
@@ -457,12 +445,6 @@ void RegressorTrain::Train(std::vector<cv::Mat> &images_flattened,
       if (layer_pt->param_propagate_down(1)) {
         layer_pt->set_param_propagate_down(1, false);
       }
-
-      vector<float> this_loss_output;
-      string this_loss_name = LOSS_LAYER_PREFIX + std::to_string(k);
-      GetFeatures(this_loss_name, &this_loss_output);
-      //record the loss for domain k
-      loss_history_k_domain_[k].push_back(this_loss_output[0]);
     }
     else {
       // Fine Tuning, only one domain, just normally step
@@ -478,6 +460,15 @@ void RegressorTrain::Train(std::vector<cv::Mat> &images_flattened,
 
       // Train the network.
       Step();
+
+
+      if (loss_save_path_.length() != 0) {
+        vector<float> this_loss_output;
+        GetFeatures("loss", &this_loss_output);
+        loss_history_.push_back(this_loss_output[0]);
+      }
+
+      InvokeSaveLossIfNeeded();
     }
     
 }
@@ -489,15 +480,19 @@ void RegressorTrain::Step() {
   solver_.Step(1);
 }
 
+
 void RegressorTrain::SaveLossHistoryToFile(const std::string &save_path) {
   ofstream out_loss_file;
   out_loss_file.open(save_path.c_str(), std::ios_base::app);
-  for (int i = 0; i< loss_history_k_domain_[0].size(); i++) {
-    for (int j = 0;j< loss_history_k_domain_.size();j++) {
-      out_loss_file << loss_history_k_domain_[j][i] << " ";
-    }
-    out_loss_file << endl;
+  for (int i = 0;i< loss_history_.size();i++) {
+      out_loss_file << loss_history_[i] << " ";
   }
   out_loss_file.close();
+  loss_history_.clear(); // clear after write
 }
 
+void RegressorTrain::InvokeSaveLossIfNeeded() {
+  if (loss_history_.size() > LOSS_SAVE_ITER) {
+    SaveLossHistoryToFile(loss_save_path_);
+  }
+}

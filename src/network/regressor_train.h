@@ -79,6 +79,8 @@ public:
   // Implementing the loss saving Interface                  
   void SaveLossHistoryToFile(const std::string &save_path);
 
+  void InvokeSaveLossIfNeeded();
+
   // Set up the solver with the given test file for validation testing.
   void set_test_net(const std::string& test_proto);
 
@@ -97,7 +99,7 @@ private:
 
   boost::shared_ptr<caffe::Net<float> > test_net_;
 
-  std::vector<std::vector<double> > loss_history_k_domain_;
+  std::vector<double> loss_history_;
 
   const std::string loss_save_path_;
 };
