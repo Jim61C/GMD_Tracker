@@ -20,10 +20,11 @@ using namespace std;
 // #define DEBUG_GETPROBOUTPUT
 // #define LOG_TIME
 // #define DEBUG_PRE_FORWARDFAST
+// #define DEBUG_PRE_FORWARDFAST_IMAGE_SCALE
+// #define DEBUG_PREPROCESS_SAMPLE
 
 // We need 2 inputs: one for the current frame and one for the previous frame.
 const int kNumInputs = 2;
-const cv::Scalar mean_scalar(104, 117, 123);
 
 Regressor::Regressor(const string& deploy_proto,
                      const string& caffe_model,
@@ -205,11 +206,28 @@ void Regressor::PreForwardFast(const cv::Mat image_curr,
   // Reshape target input
   input_target->Reshape(candidate_bboxes.size(), num_channels_,
                        input_geometry_.height, input_geometry_.width);
+  
+  // Process the candidate, full image's input, i.e., image_curr, just one! Also record the scales
+  int im_min_size = std::min(image_curr.size().width, image_curr.size().height);
+  int im_max_size = std::max(image_curr.size().width, image_curr.size().height);
+
+  double scale_curr = TARGET_SIZE / im_min_size;
+  if (round(scale_curr * im_max_size) > MAX_SIZE) {
+    scale_curr = MAX_SIZE / im_max_size;
+  }
+
+  cv::Mat image_scaled;
+  cv::resize(image_curr, image_scaled, cv::Size(), scale_curr, scale_curr);
+
+#ifdef DEBUG_PRE_FORWARDFAST_IMAGE_SCALE 
+  cout << "scale_curr:" << scale_curr << endl;
+  cv::imshow("image_scaled:", image_scaled);
+#endif
 
   // Reshape Candidate input, full image's input, i.e., image_curr
   Blob<float>* input_candidate = net_->input_blobs()[CANDIDATE_NETWORK_INPUT_IDX];
   input_candidate->Reshape(1, num_channels_,
-                       input_geometry_.height, input_geometry_.width);
+                       image_scaled.size().height, image_scaled.size().width);
 
   // Reshape the labels
   Blob<float> * input_label_blob = net_->input_blobs()[LABEL_NETWORK_INPUT_IDX];
@@ -231,18 +249,6 @@ void Regressor::PreForwardFast(const cv::Mat image_curr,
 
   // Forward dimension change to all layers.
   net_->Reshape();
-
-  // Process the candidate, full image's input, i.e., image_curr, just one! Also record the scales
-  int im_min_size = std::min(image_curr.size().width, image_curr.size().height);
-  int im_max_size = std::max(image_curr.size().width, image_curr.size().height);
-
-  double scale_curr = TARGET_SIZE / im_min_size;
-  if (round(scale_curr * im_max_size) > MAX_SIZE) {
-    scale_curr = MAX_SIZE / im_max_size;
-  }
-
-  cv::Mat image_scaled;
-  cv::resize(image_curr, image_scaled, cv::Size(), scale_curr, scale_curr);
 
   // Put image_curr
   std::vector<cv::Mat> image_curr_channels;
@@ -1051,10 +1057,16 @@ void Regressor::Preprocess(const cv::Mat& img,
   else
     sample_resized.convertTo(sample_float, CV_32FC1);
 
+#ifdef DEBUG_PREPROCESS_SAMPLE
+  std::cout << "after conversion to CV_32FC3: " << sample_float << endl;
+#endif
   // Subtract the image mean to try to make the input 0-mean.
   cv::Mat sample_normalized;
   cv::subtract(sample_float, cv::Mat(sample_float.size(), CV_32FC3, mean_scalar), sample_normalized);
 
+#ifdef DEBUG_PREPROCESS_SAMPLE
+  std::cout << "after subtract mean: " << sample_normalized << endl;
+#endif
   // This operation will write the separate BGR planes directly to the
   // input layer of the network because it is wrapped by the cv::Mat
   // objects in input_channels.

@@ -1,6 +1,8 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+#include "CommonCV.h"
+
 #define EPSILON (1e-03)
 
 #define TOP_ESTIMATES 5 // number of top candidates to do the estimates, heuristic
@@ -69,5 +71,8 @@ const double MAX_SIZE = 1000.0; // make sure the image_curr does not exceed this
 #define CANDIDATE_NETWORK_INPUT_IDX 1
 #define ROIS_NETWORK_INPUT_IDX 2
 #define LABEL_NETWORK_INPUT_IDX 3
+
+// training image mean 
+const cv::Scalar mean_scalar(104, 117, 123);
 
 #endif

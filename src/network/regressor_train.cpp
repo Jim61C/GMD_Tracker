@@ -13,6 +13,8 @@ using caffe::Blob;
 using caffe::Layer;
 using caffe::LayerParameter;
 
+// #define DEBUG_ROI_POOL_INPUT
+
 RegressorTrain::RegressorTrain(const std::string& deploy_proto,
                                const std::string& caffe_model,
                                const int gpu_id,
@@ -224,6 +226,51 @@ void RegressorTrain::TrainForwardBackwardWorker(const cv::Mat & image_curr,
 
   // now put the labels ready
   set_labels(labels);
+
+#ifdef DEBUG_ROI_POOL_INPUT
+  vector<cv::Mat> image_curr_scaled_splitted;
+  WrapOutputBlob("candidate", &image_curr_scaled_splitted);
+  cv::Mat image_curr_scale;
+  cv::merge(image_curr_scaled_splitted, image_curr_scale);
+
+  cout << "image_curr_scale.channels(): " << image_curr_scale.channels() << endl;
+  cout << "image_curr_scale.size().width: " << image_curr_scale.size().width << endl;
+  cout << "image_curr_scale.size().height: " << image_curr_scale.size().height << endl;
+  // cout << image_curr_scale << endl;
+ 
+  cv::Mat image_curr_scale_origin;
+  cv::add(image_curr_scale, cv::Mat(image_curr_scale.size(), CV_32FC3, mean_scalar), image_curr_scale_origin);
+  image_curr_scale_origin.convertTo(image_curr_scale_origin, CV_8UC3);
+
+  vector<float> labels_in;
+  GetFeatures("label", &labels_in);
+
+  vector<float> rois_in;
+  GetFeatures("rois", &rois_in);
+
+  vector <BoundingBox> bboxes_in;
+  for (int i = 0; i < rois_in.size(); i+= 5) {
+    // each rois in the rois_in memory is [batch_id, x1, y1, x2, y2]
+    BoundingBox this_bbox(rois_in[i + 1],
+                          rois_in[i + 2],
+                          rois_in[i + 3],
+                          rois_in[i + 4]);
+    bboxes_in.push_back(this_bbox);
+  }
+
+  assert (labels_in.size() == bboxes_in.size());
+  for (int i = 0; i < labels_in.size(); i++) {
+    if(labels_in[i] == 1) {
+      bboxes_in[i].Draw(255, 0, 0, &image_curr_scale_origin);
+    }
+    else {
+      bboxes_in[i].Draw(0, 0, 255, &image_curr_scale_origin);
+    }
+  }
+
+  cv::imshow("rois on scaled image:", image_curr_scale_origin);
+  cv::waitKey(0);
+#endif
   
   // // TODO: check if just put in will be faster as the following instead of calling set_labels
   // Blob<float> * input_label_blob = net_->input_blobs()[3];
