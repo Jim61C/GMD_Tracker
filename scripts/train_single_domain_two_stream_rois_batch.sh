@@ -6,7 +6,7 @@ if [ -z "$1" ]
 fi
 VIDEOS_FOLDER=$1
 CAFFE_MODEL=nets/models/weights_init/tracker_init.caffemodel
-TRAIN_PROTO=nets/tracker_new_finetune.prototxt
+TRAIN_PROTO=nets/tracker_new_train.prototxt
 SOLVER=nets/solver_temp/solver_temp_GOTURN_MDNET_TWO_STREAM_ROIS_BATCH_SINGLE.prototxt
 LAMBDA_SHIFT=5
 LAMBDA_SCALE=15
