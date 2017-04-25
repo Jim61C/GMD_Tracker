@@ -508,19 +508,19 @@ void TrackerGMD::UpdateState(const cv::Mat& image_curr, BoundingBox &bbox_estima
     // Post processing after this frame, fine tune, invoke tracker_ -> finetune
     bool is_this_frame_success = IsSuccessEstimate();
 
-    // // update sd_trans_ in case of failure
-    // if (!is_this_frame_success) {
-    //     sd_trans_ = std::min(0.75, 1.1 * sd_trans_);
-    // }
-    // else {
-    //     sd_trans_ = SD_X;
-    // }
+    // update sd_trans_ in case of failure
+    if (!is_this_frame_success) {
+        sd_trans_ = std::min(0.75, 1.1 * sd_trans_);
+    }
+    else {
+        sd_trans_ = SD_X;
+    }
 
-    // // generate examples, if not success, just dummy values pushed in
-    // EnqueueOnlineTraningSamples(example_generator_, image_curr, bbox_estimate, is_this_frame_success);
+    // generate examples, if not success, just dummy values pushed in
+    EnqueueOnlineTraningSamples(example_generator_, image_curr, bbox_estimate, is_this_frame_success);
 
-    // // afte generate examples, check if need to fine tune, and acutally fine tune if needed 
-    // FineTuneOnline(example_generator_, regressor_train_, is_this_frame_success, is_last_frame);
+    // afte generate examples, check if need to fine tune, and acutally fine tune if needed 
+    FineTuneOnline(example_generator_, regressor_train_, is_this_frame_success, is_last_frame);
 
     // TODO: check if re-estimate after failure works better
     // Track(image_curr, regressor, bbox_estimate_uncentered);
