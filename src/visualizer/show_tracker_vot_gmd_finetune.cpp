@@ -27,7 +27,7 @@ int main (int argc, char *argv[]) {
   if (argc < 9) {
     std::cerr << "Usage: " << argv[0]
               << " deploy.prototxt network.caffemodel solver_file videos_folder LAMBDA_SHIFT LAMBDA_SCALE MIN_SCALE MAX_SCALE"
-              << " [gpu_id] [video_num] [pauseval]" << std::endl;
+              << " [gpu_id] [video_num] [pauseval] [output_folder]" << std::endl;
     return 1;
   }
 
@@ -61,6 +61,11 @@ int main (int argc, char *argv[]) {
     pause_val = atoi(argv[11]);
   }
 
+  string output_folder = "nets/tracker_output/GOTURN_MDNet";
+  if (argc >= 13) {
+    output_folder = argv[12];
+  }
+
   // Set up the neural network.
   const bool do_train = true;
   RegressorTrain regressor_train(model_file,
@@ -80,7 +85,7 @@ int main (int argc, char *argv[]) {
   std::vector<Video> videos = loader.get_videos();
 
   // Visualize the tracker performance.
-  TrackerFineTune tracker_fine_tune(videos, &regressor_train, &tracker_gmd);
+  TrackerFineTune tracker_fine_tune(videos, &regressor_train, &tracker_gmd, true, output_folder);
   tracker_fine_tune.TrackAll(start_video_num, pause_val);
 
   return 0;
