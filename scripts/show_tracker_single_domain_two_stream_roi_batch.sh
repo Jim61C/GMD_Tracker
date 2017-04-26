@@ -18,7 +18,7 @@ PAUSE_VAL=1
 
 VIDEOS_FOLDER=$1
 DEPLOY=nets/tracker_new_finetune.prototxt
-CAFFE_MODEL=nets/solverstate/GOTURN_MDNET_TWO_STREAM_ROIS_BATCH_SINGLE/caffenet_train_iter_1700000.caffemodel.h5
+CAFFE_MODEL=nets/solverstate/GOTURN_MDNET_TWO_STREAM_ROIS_BATCH_SINGLE/caffenet_train_iter_500000.caffemodel.h5
 SOLVER_FILE=nets/solver_temp/solver_temp_GOTURN_MDNET_TWO_STREAM_ROIS_BATCH_SINGLE_FINETUNE.prototxt
 LAMBDA_SHIFT=5
 LAMBDA_SCALE=15
