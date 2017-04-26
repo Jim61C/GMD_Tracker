@@ -9,11 +9,11 @@
 #include <algorithm>    // std::min
 
 // #define DEBUG_SHOW_CANDIDATES
-// #define DEBUG_FINETUNE_WORKER
+// // #define DEBUG_FINETUNE_WORKER
 // #define FISRT_FRAME_PAUSE
-// #define VISUALIZE_FIRST_FRAME_SAMPLES
+// // #define VISUALIZE_FIRST_FRAME_SAMPLES
 // #define DEBUG_LOG
-// #define LOG_TIME
+// // #define LOG_TIME
 
 TrackerGMD::TrackerGMD(const bool show_tracking, ExampleGenerator* example_generator,  RegressorTrainBase* regressor_train) :
     Tracker(show_tracking),
@@ -45,6 +45,12 @@ void TrackerGMD::Track(const cv::Mat& image_curr, RegressorBase* regressor, Boun
     double edge_spacing_x, edge_spacing_y;
     CropPadImage(bbox_curr_prior_tight_, image_curr, &curr_search_region, &search_location, &edge_spacing_x, &edge_spacing_y);
 
+    // get target_tight
+    cv::Mat target_tight;
+    BoundingBox bbox_prev_within(bbox_prev_tight_);
+    bbox_prev_within.crop_against_width_height(image_prev_.size().width, image_prev_.size().height);
+    bbox_prev_within.CropBoundingBoxOutImage(image_prev_, &target_tight);
+
     // Motion Model to get candidate_bboxes, use class attributes, record the scores and candidates
     candidates_bboxes_.clear();
 
@@ -61,7 +67,7 @@ void TrackerGMD::Track(const cv::Mat& image_curr, RegressorBase* regressor, Boun
     candidate_probabilities_.clear();
     sorted_idxes_.clear(); // sorted indexes of candidates from highest positive prob to lowest
     // Estimate the bounding box location as the ML estimate of the candidate_bboxes
-    regressor->PredictFast(image_curr, curr_search_region, target_pad, candidates_bboxes_, bbox_estimate_uncentered, &candidate_probabilities_, &sorted_idxes_);
+    regressor->PredictFast(image_curr, curr_search_region, target_tight, candidates_bboxes_, bbox_prev_tight_, bbox_estimate_uncentered, &candidate_probabilities_, &sorted_idxes_, sd_trans_, cur_frame_);
 
 #ifdef DEBUG_SHOW_CANDIDATES
 
@@ -88,6 +94,33 @@ void TrackerGMD::Track(const cv::Mat& image_curr, RegressorBase* regressor, Boun
     }
     cv::imshow("candidates", image_to_show);
     cv::waitKey(1);
+
+    // show the top few
+    int top_num = 5;
+    double top_few_min = 1.0;
+    double top_few_max = 0.0;
+    for (int i =0 ; i < top_num; i ++) {
+        if (candidate_probabilities_[sorted_idxes_[i]] > top_few_max) {
+            top_few_max = candidate_probabilities_[sorted_idxes_[i]];
+        }
+        if (candidate_probabilities_[sorted_idxes_[i]] < top_few_min) {
+            top_few_min = candidate_probabilities_[sorted_idxes_[i]];
+        }
+    }
+
+    Mat image_top_few = image_curr.clone();
+    min_w_color = 0;
+    max_w_color = 255;
+    for (int i = 0; i < top_num; i ++) {
+        float this_color = (int)((candidate_probabilities_[sorted_idxes_[i]] - top_few_min)/ (top_few_max - top_few_min) * (max_w_color - min_w_color) + min_w_color);
+        candidates_bboxes_[sorted_idxes_[i]].Draw(this_color, 0, 0, &image_top_few);
+        cv::putText(image_top_few, "box" + std::to_string(sorted_idxes_[i]) + ":" + std::to_string(candidate_probabilities_[sorted_idxes_[i]]),
+            cv::Point(candidates_bboxes_[sorted_idxes_[i]].get_center_x(), candidates_bboxes_[sorted_idxes_[i]].get_center_y()), 
+            FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
+    }
+
+    imshow("top few candidates used for estimation", image_top_few);
+    waitKey(1);
 #endif
 
 }

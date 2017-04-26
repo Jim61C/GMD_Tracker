@@ -33,10 +33,12 @@ public:
   
   // Predict faster, with ROI pooling
   virtual void PredictFast(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, 
-                       const std::vector<BoundingBox> &candidate_bboxes, 
+                       const std::vector<BoundingBox> &candidate_bboxes,  const BoundingBox & bbox_prev,
                        BoundingBox* bbox,
                        std::vector<float> *return_probabilities, 
-                       std::vector<int> *return_sorted_indexes) = 0;
+                       std::vector<int> *return_sorted_indexes,
+                       double sd_trans,
+                       int cur_frame) = 0;
 
   // Called at the beginning of tracking a new object to initialize the network.
   virtual void Init() { }

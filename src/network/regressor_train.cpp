@@ -219,10 +219,18 @@ void RegressorTrain::TrainForwardBackwardWorker(const cv::Mat & image_curr,
   cv::Mat image_curr_scale;
   cv::merge(image_curr_scaled_splitted, image_curr_scale);
 
-  cout << "image_curr_scale.channels(): " << image_curr_scale.channels() << endl;
-  cout << "image_curr_scale.size().width: " << image_curr_scale.size().width << endl;
-  cout << "image_curr_scale.size().height: " << image_curr_scale.size().height << endl;
-  // cout << image_curr_scale << endl;
+  vector<cv::Mat> target_splitted;
+  WrapOutputBlob("target", &target_splitted);
+  cv:: Mat target_merged;
+  cv::merge(target_splitted, target_merged);
+  cv::add(target_merged, cv::Mat(target_merged.size(), CV_32FC3, mean_scalar), target_merged);
+  target_merged.convertTo(target_merged, CV_8UC3);
+  imshow("t-1 target", target_merged);
+
+  // cout << "image_curr_scale.channels(): " << image_curr_scale.channels() << endl;
+  // cout << "image_curr_scale.size().width: " << image_curr_scale.size().width << endl;
+  // cout << "image_curr_scale.size().height: " << image_curr_scale.size().height << endl;
+  // // cout << image_curr_scale << endl;
  
   cv::Mat image_curr_scale_origin;
   cv::add(image_curr_scale, cv::Mat(image_curr_scale.size(), CV_32FC3, mean_scalar), image_curr_scale_origin);

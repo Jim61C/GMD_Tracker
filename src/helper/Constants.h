@@ -4,6 +4,7 @@
 #include "CommonCV.h"
 
 #define EPSILON (1e-03)
+#define PI 3.1415926
 
 #define TOP_ESTIMATES 5 // number of top candidates to do the estimates, heuristic
 
@@ -35,8 +36,8 @@ const double POS_IOU_TH = 0.7;
 const double NEG_IOU_TH = 0.5;
 
 // for fine tune sample generation
-const int POS_CANDIDATES_FINETUNE = 50;
-const int NEG_CANDIDATES_FINETUNE = 200;
+const int POS_CANDIDATES_FINETUNE = 10;
+const int NEG_CANDIDATES_FINETUNE = 40;
 
 // for training labels
 #define POS_LABEL 1.0
@@ -47,7 +48,8 @@ const int NEG_CANDIDATES_FINETUNE = 200;
 #define SHORT_TERM_BAG_SIZE 20
 #define LONG_TERM_UPDATE_INTERVAL 20
 #define LONG_TERM_CANDIDATE_UPPER_BOUND 50
-const double SHORT_TERM_FINE_TUNE_TH = 0.5;
+const double SHORT_TERM_FINE_TUNE_TH = 0.5; // if want less frequent short term fine tune when distance window is applied, make if < 0.5
+#define ADD_DISTANCE_PENALTY
 
 // DEBUGGING
 #define SEED_RNG_EXAMPLE_GENERATOR 800
@@ -56,7 +58,7 @@ const double SHORT_TERM_FINE_TUNE_TH = 0.5;
 
 // Online Learning
 
-#define FIRST_FRAME_FINETUNE_ITERATION 30
+#define FIRST_FRAME_FINETUNE_ITERATION 10
 
 #define FIRST_FRAME_POS_SAMPLES 50
 #define FIRST_FRAME_NEG_SAMPLES 500
@@ -74,5 +76,8 @@ const double MAX_SIZE = 1000.0; // make sure the image_curr does not exceed this
 
 // training image mean 
 const cv::Scalar mean_scalar(104, 117, 123);
+
+// distance penalty padding
+#define DISTANCE_PENALTY_PAD 0
 
 #endif

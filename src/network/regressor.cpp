@@ -23,6 +23,10 @@ using namespace std;
 // #define DEBUG_PRE_FORWARDFAST_IMAGE_SCALE
 // #define DEBUG_PREPROCESS_SAMPLE
 
+// #define DEBUG_CANDIDATE_IN_PREDICTFAST
+// #define INSPECT_TARGET_IN_PREFORWARD
+// #define DEBUG_TARGET_PREDICT_FAST
+
 // We need 2 inputs: one for the current frame and one for the previous frame.
 const int kNumInputs = 2;
 
@@ -202,6 +206,17 @@ void Regressor::PreForwardFast(const cv::Mat image_curr,
   std::vector<cv::Mat> pool5_image;
   WrapOutputBlob("pool5", &pool5_image);
 
+#ifdef INSPECT_TARGET_IN_PREFORWARD
+  vector<cv::Mat> target_splitted;
+  WrapOutputBlob("target", &target_splitted);
+  cv:: Mat target_merged;
+  cv::merge(target_splitted, target_merged);
+  cv::add(target_merged, cv::Mat(target_merged.size(), CV_32FC3, mean_scalar), target_merged);
+  target_merged.convertTo(target_merged, CV_8UC3);
+  imshow("t-1 target in PreforwardFast before reshape target input", target_merged);
+  waitKey(1);
+#endif
+
   //------------------------- Now Forward the ROIs -------------------
   // Reshape target input
   input_target->Reshape(candidate_bboxes.size(), num_channels_,
@@ -287,13 +302,30 @@ void Regressor::PreForwardFast(const cv::Mat image_curr,
   WrapBlobByNameBatch("pool5", &pool5_channels);
 
   PreprocessDuplicateIn(pool5_image, &pool5_channels);
+
+#ifdef INSPECT_TARGET_IN_PREFORWARD
+  bool inspect_target_after_reshape = false;
+  if (inspect_target_after_reshape) {
+    vector<vector<cv::Mat> > target_splitted;
+    WrapOutputBlob("target", &target_splitted);
+    cv:: Mat target_merged;
+    cv::merge(target_splitted[0], target_merged);
+    cv::add(target_merged, cv::Mat(target_merged.size(), CV_32FC3, mean_scalar), target_merged);
+    target_merged.convertTo(target_merged, CV_8UC3);
+    imshow("t-1 target end of PreForwardFast", target_merged);
+    waitKey(0);
+  }
+#endif
+
 }
 
 void Regressor::PredictFast(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, 
-                       const std::vector<BoundingBox> &candidate_bboxes, 
+                       const std::vector<BoundingBox> &candidate_bboxes, const BoundingBox & bbox_prev, 
                        BoundingBox* bbox,
                        std::vector<float> *return_probabilities, 
-                       std::vector<int> *return_sorted_indexes) {
+                       std::vector<int> *return_sorted_indexes, 
+                       double sd_trans,
+                       int cur_frame) {
 #ifdef LOG_TIME
   // hrt timer
   hrt_.reset();
@@ -302,11 +334,12 @@ void Regressor::PredictFast(const cv::Mat& image_curr, const cv::Mat& image, con
 
   // TODO: load another net with phase TEST and use Net::ShareTrainedLayersWith() to share weights with the train net
   // Or: Just use solver_'s net_ and test_nets_[0] which are shared weights
+#ifdef DEBUG_TARGET_PREDICT_FAST
+  imshow("target in Predict Fast", target);
+  waitKey(0);
+#endif
 
- PreForwardFast(image_curr, 
-                candidate_bboxes,
-                image,
-                target);
+  PreForwardFast(image_curr, candidate_bboxes, image, target);
 
   const vector<string> & layer_names = net_->layer_names();
   int layer_pool5_concat_idx = FindLayerIndexByName(layer_names, "concat");
@@ -322,6 +355,102 @@ void Regressor::PredictFast(const cv::Mat& image_curr, const cv::Mat& image, con
   }
 
   assert (positive_probabilities.size() == candidate_bboxes.size());
+
+
+#ifdef ADD_DISTANCE_PENALTY
+  vector<float> distance_scores;
+  for(int i = 0; i < candidate_bboxes.size(); i++) {
+    double d = candidate_bboxes[i].compute_center_distance(bbox_prev);
+    double w = bbox_prev.x2_ - bbox_prev.x1_;
+    double h = bbox_prev.y2_ - bbox_prev.y1_;
+    double r = round((w+h)/2.0);
+    double max_shift = sqrt(pow(KEEP_SD * sd_trans * r, 2) + pow(KEEP_SD * sd_trans * r, 2) + DISTANCE_PENALTY_PAD);
+    double this_distance_score = cos(d/ (max_shift) * PI/2);
+    if (this_distance_score < 0) {
+      cout << "out of range, problem, inspect" << endl;
+      exit(-1);
+    }
+    distance_scores.push_back(this_distance_score);
+  }
+#endif
+
+#ifdef DEBUG_CANDIDATE_IN_PREDICTFAST
+  vector<cv::Mat> image_curr_scaled_splitted;
+  WrapOutputBlob("candidate", &image_curr_scaled_splitted);
+  cv::Mat image_curr_scale;
+  cv::merge(image_curr_scaled_splitted, image_curr_scale);
+
+  vector<cv::Mat> target_in;
+  WrapOutputBlob("target", &target_in);
+  cv::Mat target_origin;
+  cv::merge(target_in, target_origin);
+
+  cv::add(target_origin, cv::Mat(target_origin.size(), CV_32FC3, mean_scalar), target_origin);
+  target_origin.convertTo(target_origin, CV_8UC3);
+ 
+  cv::Mat image_curr_scale_origin;
+  cv::add(image_curr_scale, cv::Mat(image_curr_scale.size(), CV_32FC3, mean_scalar), image_curr_scale_origin);
+  image_curr_scale_origin.convertTo(image_curr_scale_origin, CV_8UC3);
+
+  vector<float> rois_in;
+  GetFeatures("rois", &rois_in);
+
+  vector <BoundingBox> bboxes_in;
+  for (int i = 0; i < rois_in.size(); i+= 5) {
+    // each rois in the rois_in memory is [batch_id, x1, y1, x2, y2]
+    BoundingBox this_bbox(rois_in[i + 1],
+                          rois_in[i + 2],
+                          rois_in[i + 3],
+                          rois_in[i + 4]);
+    bboxes_in.push_back(this_bbox);
+  }
+
+  assert(positive_probabilities.size() == bboxes_in.size()); 
+
+  double min_prob = 1.0;
+  double max_prob = 0.0;
+  for (int i = 0; i < bboxes_in.size(); i ++) {
+    if (positive_probabilities[i] > max_prob) {
+      max_prob = positive_probabilities[i];
+    }
+    if (positive_probabilities[i] < min_prob) {
+      min_prob = positive_probabilities[i];
+    }
+  }
+
+  double min_color = 0;
+  double max_color = 255;
+
+  if (cur_frame >= 5) {
+    for (int i = 0; i < bboxes_in.size(); i++) {
+      if (positive_probabilities[i] > 0.2) {
+        Mat this_im_show = image_curr_scale_origin;
+        float this_color = (int)((positive_probabilities[i] - min_prob)/(max_prob - min_prob) * (max_color - min_color) + min_color);
+        bboxes_in[i].Draw(this_color, 0 , 0, &this_im_show);
+        cv::imshow("t-1 target", target_origin);
+        
+        cv::putText(this_im_show, "box" + std::to_string(i) + ":" + std::to_string(positive_probabilities[i]),
+                    cv::Point(bboxes_in[i].get_center_x(), bboxes_in[i].get_center_y()), 
+                    FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
+#ifdef ADD_DISTANCE_PENALTY
+        cv::putText(this_im_show, "box" + std::to_string(i) + ":" + std::to_string(distance_scores[i]),
+            cv::Point(bboxes_in[i].get_center_x(), bboxes_in[i].get_center_y() + 15.0), 
+            FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 0, 0), 1);
+#endif
+        cv::imshow("candidate rois on scaled image:", this_im_show);
+        cv::waitKey(0);
+      }
+    }
+  }
+
+#endif
+
+#ifdef ADD_DISTANCE_PENALTY
+  // add distance penalty to the positive_probabilities
+  for (int i = 0; i < positive_probabilities.size(); i++) {
+    positive_probabilities[i] *= distance_scores[i];
+  }
+#endif
 
   // initialize original index locations
   vector<int> idx(positive_probabilities.size());

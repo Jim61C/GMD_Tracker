@@ -376,6 +376,13 @@ double BoundingBox::compute_area() const {
   return get_width() * get_height();
 }
 
+double BoundingBox::compute_center_distance(const BoundingBox & bbox) const {
+  double this_center_x = get_center_x();
+  double this_center_y = get_center_y();
+
+  return sqrt(pow(bbox.get_center_x() - this_center_x, 2) + pow(bbox.get_center_y() - this_center_y, 2));
+}
+
 bool BoundingBox::check_within_image(cv::Mat &image) {
   int W = image.size().width;
   int H = image.size().height;

@@ -92,6 +92,9 @@ public:
   // Get Intersection over union between two boxes
   double compute_IOU(const BoundingBox & bbox);
 
+  // Get center distance against another bbox 
+  double compute_center_distance(const BoundingBox & bbox) const;
+
   // check if bbox within the image range
   bool check_within_image(cv::Mat &image);
 
