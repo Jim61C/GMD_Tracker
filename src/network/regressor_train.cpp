@@ -1,10 +1,10 @@
 #include "regressor_train.h"
 #include <iostream>
 #include <fstream>
+#include <unordered_set>
 
 const int kNumInputs = 4;
 const bool kDoTrain = true;
-const int INNER_BATCH_SIZE = 50;
 const int LOSS_SAVE_ITER = 500;
 
 using std::string;
@@ -161,7 +161,9 @@ void RegressorTrain::TrainBatchFast(const std::vector<cv::Mat>& image_currs,
                            const std::vector<BoundingBox>& bboxes_gt,
                            const std::vector<std::vector<BoundingBox> > &candidate_bboxes,
                            const std::vector<std::vector<double> > &labels,
-                           int k) {
+                           int k,
+                           int inner_batch_size,
+                           int num_nohem) {
     // make sure same number of inputs, images.size() is kBatchSize
     assert (images.size() == image_currs.size());
     assert (images.size() == targets.size());
@@ -177,19 +179,20 @@ void RegressorTrain::TrainBatchFast(const std::vector<cv::Mat>& image_currs,
       const cv::Mat &this_image_curr = image_currs[i];
 
       int total_size = this_image_candidates.size();
-      int num_inner_batches =  total_size / INNER_BATCH_SIZE;
+      int num_inner_batches =  total_size / inner_batch_size;
       // flatten and get corresponding image/target index
       for (int j = 0; j < num_inner_batches; j ++) {
-        std::vector<BoundingBox> this_candidates_flattened(this_image_candidates.begin() + j*INNER_BATCH_SIZE, this_image_candidates.begin() + std::min((j+1)*INNER_BATCH_SIZE, total_size));
-        std::vector<double> this_labels_flattened(this_image_labels.begin() + j*INNER_BATCH_SIZE, this_image_labels.begin() + std::min((j+1)*INNER_BATCH_SIZE, total_size));
+        std::vector<BoundingBox> this_candidates_flattened(this_image_candidates.begin() + j*inner_batch_size, this_image_candidates.begin() + std::min((j+1)*inner_batch_size, total_size));
+        std::vector<double> this_labels_flattened(this_image_labels.begin() + j*inner_batch_size, this_image_labels.begin() + std::min((j+1)*inner_batch_size, total_size));
 
         TrainForwardBackward(this_image_curr,
                           this_candidates_flattened,
                           this_labels_flattened,
                           this_image,
                           this_target,
-                          k);
-}
+                          k, 
+                          num_nohem);
+        }
     }
 }
 
@@ -198,7 +201,8 @@ void RegressorTrain::TrainForwardBackwardWorker(const cv::Mat & image_curr,
                           const std::vector<double> &labels,
                           const cv::Mat & image,
                           const cv::Mat & target,
-                          int k) {
+                          int k, 
+                          int num_nohem) {
 
   // Here: only batch size 1 is implemented, TODO: incorporate batch size > 1, i.e., have a vector<cv::Mat> image_currs coming in
   
@@ -276,9 +280,69 @@ void RegressorTrain::TrainForwardBackwardWorker(const cv::Mat & image_curr,
 
   const vector<string> & layer_names = net_->layer_names();
   int layer_pool5_concat_idx = FindLayerIndexByName(layer_names, "concat");
+  int layer_loss_idx = FindLayerIndexByName(layer_names, "loss");
+  int layer_fc8_idx = FindLayerIndexByName(layer_names, "fc8");
   
-  net_->ForwardFrom(layer_pool5_concat_idx);
-  net_->BackwardTo(layer_pool5_concat_idx);
+  if (num_nohem != -1) {
+    net_->ForwardFrom(layer_pool5_concat_idx);
+    
+    // record probs
+    vector<float> probs;
+    GetProbOutput(&probs);
+    vector<float> positive_probs;
+    for (int i = 0; i < candidates_bboxes.size(); i ++) {
+      positive_probs.push_back(probs[2*i + 1]);
+    }
+    net_->BackwardFromTo(layer_loss_idx, layer_loss_idx);
+
+    // conduct online hard example mining
+    string fc8_blob_name = "fc8";
+    const boost::shared_ptr<Blob<float> > blob_to_set_diff = net_->blob_by_name(fc8_blob_name.c_str());
+    float * diff_begin = blob_to_set_diff->mutable_cpu_diff();
+    float * diff_end = diff_begin + blob_to_set_diff->count();
+    std::vector<float> loss_diff_val(diff_begin, diff_end);
+
+    vector<int> neg_bag;
+    vector<float> neg_probs;
+    unordered_set<int> backprop_idxes;
+    for (int i = 0; i < candidates_bboxes.size(); i ++) {
+      if (labels[i] == POS_LABEL) {
+        // back prop all the positive ones
+        backprop_idxes.insert(i);
+      }
+      else {
+        neg_bag.push_back(i);
+        neg_probs.push_back(positive_probs[i]);
+      }
+    }
+
+    vector<int> idx(neg_probs.size());
+    iota(idx.begin(), idx.end(), 0);
+
+    // sort indexes based on comparing values in neg_prob, from large to small
+    sort(idx.begin(), idx.end(),
+        [&neg_probs](int i1, int i2) {return neg_probs[i1] > neg_probs[i2];});
+    
+    for (int i = 0; i < num_nohem; i ++) {
+      backprop_idxes.insert(neg_bag[idx[i]]);
+    }
+    
+    // set the mutable diff blob data
+    for (int i = 0; i < candidates_bboxes.size(); i ++) {
+      // back prop only for hard examples
+      if (backprop_idxes.find(i) == backprop_idxes.end()) {
+        // set the gradients to be zero for non hard examples
+        diff_begin[2*i] = 0;
+        diff_begin[2*i + 1] = 0;
+      }
+    }
+    net_->BackwardFromTo(layer_fc8_idx, layer_pool5_concat_idx);
+  }
+  else {
+    net_->ForwardFrom(layer_pool5_concat_idx);
+    net_->BackwardTo(layer_pool5_concat_idx);
+  }
+
   
   // update weights
   // no need: UpdateSmoothedLoss(loss, start_iter, average_loss); as here only 1 iter
@@ -291,7 +355,8 @@ void RegressorTrain::TrainForwardBackward( const cv::Mat & image_curr,
                           const std::vector<double> &labels_flattened,
                           const cv::Mat & image,
                           const cv::Mat & target,
-                          int k) {
+                          int k,
+                          int num_nohem) {
     assert(candidates_bboxes.size() == labels_flattened.size());
     
     if (k != -1) {
@@ -308,7 +373,7 @@ void RegressorTrain::TrainForwardBackward( const cv::Mat & image_curr,
         layer_pt->set_param_propagate_down(1, true);
       }
       
-      TrainForwardBackwardWorker(image_curr, candidates_bboxes, labels_flattened, image, target, k);
+      TrainForwardBackwardWorker(image_curr, candidates_bboxes, labels_flattened, image, target, k, num_nohem);
 
       //lock this layer back
       // cout << this_layer_name << " freeze back" << endl;
@@ -329,7 +394,7 @@ void RegressorTrain::TrainForwardBackward( const cv::Mat & image_curr,
       // const float* end = begin + ptr->count();
       // fc6_gmd_weights_before = std::vector<float>(begin, end);
       
-      TrainForwardBackwardWorker(image_curr, candidates_bboxes, labels_flattened, image, target, k);
+      TrainForwardBackwardWorker(image_curr, candidates_bboxes, labels_flattened, image, target, k, num_nohem);
 
       if (loss_save_path_.length() != 0) {
         vector<float> this_loss_output;

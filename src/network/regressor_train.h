@@ -50,14 +50,16 @@ public:
                           const std::vector<double> &labels,
                           const cv::Mat & image,
                           const cv::Mat & target,
-                          int k);
+                          int k,
+                          int num_nohem);
 
   void TrainForwardBackward(const cv::Mat & image_curr,
                           const std::vector<BoundingBox> &candidates_bboxes, 
                           const std::vector<double> &labels_flattened,
                           const cv::Mat & image,
                           const cv::Mat & target,
-                          int k);
+                          int k,
+                          int num_nohem);
   
   // Forward and Backward. TODO: add Online Hard Example Mining
   void TrainBatchFast(const std::vector<cv::Mat>& image_currs,
@@ -66,7 +68,9 @@ public:
                            const std::vector<BoundingBox>& bboxes_gt,
                            const std::vector<std::vector<BoundingBox> > &candidate_bboxes,
                            const std::vector<std::vector<double> > &labels,
-                           int k);
+                           int k,
+                           int inner_batch_size = INNER_BATCH_SIZE,
+                           int num_nohem = -1);
 
   // Implementing the TrainBatch Interface
   void TrainBatch(const std::vector<cv::Mat>& images,

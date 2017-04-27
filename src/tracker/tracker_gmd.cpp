@@ -248,13 +248,23 @@ void TrackerGMD::FineTuneWorker(ExampleGenerator* example_generator,
 #endif
 
     // feed to network to train
+    // regressor_train->TrainBatchFast(image_currs,
+    //                         images,
+    //                         targets,
+    //                         bboxes_gt_scaled,
+    //                         candidates,
+    //                         labels,
+    //                         -1,
+    //                         pos_candidate_upper_bound + neg_candidate_upper_bound, 
+    //                         NOHEM_FINETUNE); // k == -1 indicating fine tuning
+    
     regressor_train->TrainBatchFast(image_currs,
                             images,
                             targets,
                             bboxes_gt_scaled,
                             candidates,
                             labels,
-                            -1); // -1 indicating fine tuning
+                            -1); // k == -1 indicating fine tuning
 
 }
 
@@ -273,8 +283,8 @@ void TrackerGMD::FineTuneOnline(ExampleGenerator* example_generator,
         FineTuneWorker(example_generator,
                        regressor_train,
                        long_term_bag_,
-                       LONG_TERM_CANDIDATE_UPPER_BOUND, 
-                       LONG_TERM_CANDIDATE_UPPER_BOUND);
+                       LONG_TERM_POS_CANDIDATE_UPPER_BOUND, 
+                       LONG_TERM_NEG_CANDIDATE_UPPER_BOUND);
     }
     
 
@@ -499,7 +509,17 @@ void TrackerGMD::Init(const cv::Mat& image_curr, const BoundingBox& bbox_gt,
                                     bboxes_gt_scaled,
                                     candidates,
                                     labels,
-                                    -1); // -1 indicating fine tuning
+                                    -1,
+                                    (FIRST_FRAME_POS_SAMPLES + FIRST_FRAME_NEG_SAMPLES)/FIRST_FRAME_NUM_MINI_BATCH, // guaranteed that at least one frame candidates
+                                    FIRST_FRAME_ONHEM); // k == -1 indicating fine tuning
+        
+        // regressor_train_->TrainBatchFast(image_currs,
+        //                             images,
+        //                             targets,
+        //                             bboxes_gt_scaled,
+        //                             candidates,
+        //                             labels,
+        //                             -1); // k == -1 indicating fine tuning
 
     }
     printf("Fine tune the first frame completed!\n");

@@ -14,6 +14,8 @@
 #include "helper/bounding_box.h"
 #include "network/regressor_base.h"
 
+#include "helper/Constants.h"
+
 using caffe::Caffe; 
 
 // We subclass the Caffe solver object so that we can set protected variables like net_ and test_nets_.
@@ -75,7 +77,9 @@ public:
                            const std::vector<BoundingBox>& bboxes_gt,
                            const std::vector<std::vector<BoundingBox> > &candidate_bboxes,
                            const std::vector<std::vector<double> > &labels,
-                           int k) = 0;
+                           int k,
+                           int inner_batch_size = INNER_BATCH_SIZE,
+                           int num_nohem = -1) = 0;
 
   // Train the tracker, GOTURN, MDNet, k = -1 indicating Fine Tuning
   virtual void TrainBatch(const std::vector<cv::Mat>& images,
