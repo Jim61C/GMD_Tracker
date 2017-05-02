@@ -38,7 +38,7 @@ public:
   // Actual worker to do the finetune
   void FineTuneWorker(ExampleGenerator* example_generator,
                                 RegressorTrainBase* regressor_train,
-                                vector<int> &this_bag,
+                                std::vector<int> &this_bag,
                                 const int pos_candidate_upper_bound = INT_MAX, 
                                 const int neg_candidate_upper_bound = INT_MAX);
 
@@ -72,9 +72,9 @@ private:
 
 
   // this prediction scores for candidates
-  vector<float> candidate_probabilities_;
-  vector<BoundingBox> candidates_bboxes_;
-  vector<int> sorted_idxes_; // the sorted indexes of probabilities from high to low
+  std::vector<float> candidate_probabilities_;
+  std::vector<BoundingBox> candidates_bboxes_;
+  std::vector<int> sorted_idxes_; // the sorted indexes of probabilities from high to low
 
   // samples collected along each frame
   std::vector<BoundingBox> gts_;

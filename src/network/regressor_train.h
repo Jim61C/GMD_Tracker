@@ -89,7 +89,7 @@ public:
   void set_test_net(const std::string& test_proto);
 
   // Set the labels in the net_'s input[3]
-  void set_labels(const vector<double>  &labels_flattened);
+  void set_labels(const std::vector<double>  &labels_flattened);
 
   // Reset the solver's net to this->net_ initialised from regressor 
   void ResetSolverNet();

@@ -87,7 +87,7 @@ void RegressorTrain::set_bboxes_gt(const std::vector<BoundingBox>& bboxes_gt) {
   Blob<float>* input_bbox = net_->input_blobs()[2];
   const size_t num_images = bboxes_gt.size();
   const int bbox_dims = 4;
-  vector<int> shape;
+  std::vector<int> shape;
   shape.push_back(num_images);
   shape.push_back(bbox_dims);
   input_bbox->Reshape(shape);
@@ -109,14 +109,14 @@ void RegressorTrain::set_bboxes_gt(const std::vector<BoundingBox>& bboxes_gt) {
   }
 }
 
-void RegressorTrain::set_labels(const vector<double>  &labels_flattened) {
+void RegressorTrain::set_labels(const std::vector<double>  &labels_flattened) {
   assert(net_->phase() == caffe::TRAIN);
 
   Blob<float> * input_label_blob = net_->input_blobs()[LABEL_NETWORK_INPUT_IDX];
   const size_t num_labels = labels_flattened.size();
 
   // reshape to (|R|, 1)
-  vector<int> shape;
+  std::vector<int> shape;
   shape.push_back(num_labels);
   shape.push_back(1);
   input_label_blob->Reshape(shape);
@@ -218,12 +218,12 @@ void RegressorTrain::TrainForwardBackwardWorker(const cv::Mat & image_curr,
   set_labels(labels);
 
 #ifdef DEBUG_ROI_POOL_INPUT
-  vector<cv::Mat> image_curr_scaled_splitted;
+  std::vector<cv::Mat> image_curr_scaled_splitted;
   WrapOutputBlob("candidate", &image_curr_scaled_splitted);
   cv::Mat image_curr_scale;
   cv::merge(image_curr_scaled_splitted, image_curr_scale);
 
-  vector<cv::Mat> target_splitted;
+  std::vector<cv::Mat> target_splitted;
   WrapOutputBlob("target", &target_splitted);
   cv:: Mat target_merged;
   cv::merge(target_splitted, target_merged);
@@ -240,13 +240,13 @@ void RegressorTrain::TrainForwardBackwardWorker(const cv::Mat & image_curr,
   cv::add(image_curr_scale, cv::Mat(image_curr_scale.size(), CV_32FC3, mean_scalar), image_curr_scale_origin);
   image_curr_scale_origin.convertTo(image_curr_scale_origin, CV_8UC3);
 
-  vector<float> labels_in;
+  std::vector<float> labels_in;
   GetFeatures("label", &labels_in);
 
-  vector<float> rois_in;
+  std::vector<float> rois_in;
   GetFeatures("rois", &rois_in);
 
-  vector <BoundingBox> bboxes_in;
+  std::vector <BoundingBox> bboxes_in;
   for (int i = 0; i < rois_in.size(); i+= 5) {
     // each rois in the rois_in memory is [batch_id, x1, y1, x2, y2]
     BoundingBox this_bbox(rois_in[i + 1],
@@ -278,7 +278,7 @@ void RegressorTrain::TrainForwardBackwardWorker(const cv::Mat & image_curr,
   //   input_label_data[i] = labels[i];
   // }
 
-  const vector<string> & layer_names = net_->layer_names();
+  const std::vector<string> & layer_names = net_->layer_names();
   int layer_pool5_concat_idx = FindLayerIndexByName(layer_names, "concat");
   int layer_loss_idx = FindLayerIndexByName(layer_names, "loss");
   int layer_fc8_idx = FindLayerIndexByName(layer_names, "fc8");
@@ -287,9 +287,9 @@ void RegressorTrain::TrainForwardBackwardWorker(const cv::Mat & image_curr,
     net_->ForwardFrom(layer_pool5_concat_idx);
     
     // record probs
-    vector<float> probs;
+    std::vector<float> probs;
     GetProbOutput(&probs);
-    vector<float> positive_probs;
+    std::vector<float> positive_probs;
     for (int i = 0; i < candidates_bboxes.size(); i ++) {
       positive_probs.push_back(probs[2*i + 1]);
     }
@@ -302,8 +302,8 @@ void RegressorTrain::TrainForwardBackwardWorker(const cv::Mat & image_curr,
     float * diff_end = diff_begin + blob_to_set_diff->count();
     std::vector<float> loss_diff_val(diff_begin, diff_end);
 
-    vector<int> neg_bag;
-    vector<float> neg_probs;
+    std::vector<int> neg_bag;
+    std::vector<float> neg_probs;
     unordered_set<int> backprop_idxes;
     for (int i = 0; i < candidates_bboxes.size(); i ++) {
       if (labels[i] == POS_LABEL) {
@@ -316,7 +316,7 @@ void RegressorTrain::TrainForwardBackwardWorker(const cv::Mat & image_curr,
       }
     }
 
-    vector<int> idx(neg_probs.size());
+    std::vector<int> idx(neg_probs.size());
     iota(idx.begin(), idx.end(), 0);
 
     // sort indexes based on comparing values in neg_prob, from large to small
@@ -386,9 +386,9 @@ void RegressorTrain::TrainForwardBackward( const cv::Mat & image_curr,
     }
     else {
       // // make sure that weights are actually updated
-      // const vector<boost::shared_ptr<Blob<float> > > & net_params = net_->params();
+      // const std::vector<boost::shared_ptr<Blob<float> > > & net_params = net_->params();
       // cout << "net_params.size():" << net_params.size() << endl;
-      // vector<float> fc6_gmd_weights_before;
+      // std::vector<float> fc6_gmd_weights_before;
       // Blob<float> *ptr = net_params[36].get();
       // const float* begin = ptr->cpu_data();
       // const float* end = begin + ptr->count();
@@ -397,7 +397,7 @@ void RegressorTrain::TrainForwardBackward( const cv::Mat & image_curr,
       TrainForwardBackwardWorker(image_curr, candidates_bboxes, labels_flattened, image, target, k, num_nohem);
 
       if (loss_save_path_.length() != 0) {
-        vector<float> this_loss_output;
+        std::vector<float> this_loss_output;
         GetFeatures("loss", &this_loss_output);
         loss_history_.push_back(this_loss_output[0]);
       }
@@ -536,7 +536,7 @@ void RegressorTrain::Train(std::vector<cv::Mat> &images_flattened,
 
 
       if (loss_save_path_.length() != 0) {
-        vector<float> this_loss_output;
+        std::vector<float> this_loss_output;
         GetFeatures("loss", &this_loss_output);
         loss_history_.push_back(this_loss_output[0]);
       }

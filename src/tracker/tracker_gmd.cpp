@@ -195,11 +195,11 @@ BoundingBox TrackerGMD::GenerateOneGaussianCandidate(int W, int H, BoundingBox &
 
 void TrackerGMD::FineTuneWorker(ExampleGenerator* example_generator,
                                 RegressorTrainBase* regressor_train,
-                                vector<int> &this_bag,
+                                std::vector<int> &this_bag,
                                 const int pos_candidate_upper_bound, 
                                 const int neg_candidate_upper_bound) {
 
-    vector<int> this_bag_permuted(this_bag);
+    std::vector<int> this_bag_permuted(this_bag);
     std::shuffle(this_bag_permuted.begin(), this_bag_permuted.end(), engine_);
 
     // Actually perform fine tuning, note that do not do data augmentation for GOTURN part here
@@ -211,9 +211,9 @@ void TrackerGMD::FineTuneWorker(ExampleGenerator* example_generator,
     std::vector<std::vector<double> >  labels;
     
     for (int i = 0; i< this_bag_permuted.size(); i ++) {
-        vector<pair<double, BoundingBox> > label_to_candidate;
-        vector<double> this_frame_labels;
-        vector<BoundingBox> this_frame_candidates;
+        std::vector<pair<double, BoundingBox> > label_to_candidate;
+        std::vector<double> this_frame_labels;
+        std::vector<BoundingBox> this_frame_candidates;
         
         int this_update_idx = this_bag_permuted[i];
         for (int j = 0; j < std::min((int)(candidates_finetune_pos_[this_update_idx].size()), pos_candidate_upper_bound);j++) {
@@ -436,9 +436,9 @@ void TrackerGMD::Init(const cv::Mat& image_curr, const BoundingBox& bbox_gt,
     BoundingBox bbox_gt_scaled_regress;
     example_generator_->MakeTrueExampleTight(&image_regress, &target_regress, &bbox_gt_scaled_regress);
     // Get the bbox conv features for training
-    vector<BoundingBox> regress_bboxes;
+    std::vector<BoundingBox> regress_bboxes;
     example_generator_->MakeCandidatesPos(&regress_bboxes, 1000, "uniform", POS_TRANS_RANGE, POS_SCALE_RANGE);
-    vector<vector<float> > features;
+    std::vector<std::vector<float> > features;
     regressor->GetBBoxConvFeatures(image_curr, image_regress, target_regress, regress_bboxes, features);
     bbox_finetuner_.trainModelUsingInitialFrameBboxes(features, regress_bboxes, bbox_gt);
 
@@ -589,8 +589,8 @@ void TrackerGMD::UpdateState(const cv::Mat& image_curr, BoundingBox &bbox_estima
 
     if (is_this_frame_success) {
         // wrap in a vector to use get features API
-        vector<vector<float> > bbox_features;
-        vector<BoundingBox> wrap_this_bbox_estimate;
+        std::vector<std::vector<float> > bbox_features;
+        std::vector<BoundingBox> wrap_this_bbox_estimate;
         wrap_this_bbox_estimate.push_back(bbox_estimate);
         
         // TODO: the following is actually not needed, here to just comply with the API for GetBBoxConvFeatures
