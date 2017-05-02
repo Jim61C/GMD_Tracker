@@ -61,7 +61,7 @@ class Regressor : public RegressorBase {
                        std::vector<int> *return_sorted_indexes);
 
   virtual void GetBBoxConvFeatures(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, 
-                       const std::vector<BoundingBox> &candidate_bboxes, std::vector <std::vector<float> > features);
+                       const std::vector<BoundingBox> &candidate_bboxes, std::vector <std::vector<float> > &features);
 
   virtual void PredictFast(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, 
                        const std::vector<BoundingBox> &candidate_bboxes, const BoundingBox & bbox_prev, 

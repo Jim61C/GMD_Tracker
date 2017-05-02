@@ -2,6 +2,18 @@
 #include <assert.h>
 #include <math.h>
 
+#define DEBUG_ASSERT_DIFF_FEATURES
+
+void printSamples(std::vector<sample_type> & samples) {
+    // DEBUG samples
+    for (int i = 0; i < samples.size(); i++) {
+        cout << "samples["<< i << "]" << endl;
+        for (int j = 0; j < samples[i].nr(); j ++) {
+            cout << samples[i](j) << " ";
+        }
+        cout << endl;
+    }
+}
 
 void BoundingBoxRegressor::refineBoundingBox (BoundingBox &bbox, std::vector<float> &feature) {
 
@@ -17,26 +29,39 @@ void BoundingBoxRegressor::refineBoundingBox (BoundingBox &bbox, std::vector<flo
      float dw = test_dw_(m);
      float dh = test_dh_(m);
 
-     double ctr_x = (bbox.x1_ + bbox.x2_)/2;
-     double ctr_y = (bbox.y1_ + bbox.y2_)/2;
-     double w = bbox.x2_ - bbox.x1_;
-     double h = bbox.y2_ - bbox.y1_;
+     double ctr_x = bbox.get_center_x();
+     double ctr_y = bbox.get_center_y();
+     double w = bbox.get_width();
+     double h = bbox.get_height();
 
      double refined_ctr_x = dx * w + ctr_x;
      double refined_ctr_y = dy * h + ctr_y;
      double refined_w = exp(dw) * w;
      double refined_h = exp(dh) * h;
 
-     bbox.x1_ = refined_ctr_x - refined_w/2;
-     bbox.x2_ = refined_ctr_x + refined_w/2;
-     bbox.y1_ = refined_ctr_y - refined_h/2;
-     bbox.y2_ = refined_ctr_y + refined_h/2;
+     bbox.x1_ = refined_ctr_x - refined_w/2.0;
+     bbox.x2_ = refined_ctr_x + refined_w/2.0;
+     bbox.y1_ = refined_ctr_y - refined_h/2.0;
+     bbox.y2_ = refined_ctr_y + refined_h/2.0;
 }
 
 void BoundingBoxRegressor::trainModelUsingInitialFrameBboxes(std::vector<std::vector<float> > &features, const std::vector<BoundingBox> & bboxes, 
                                        const BoundingBox &gt) {
     
     assert (features.size() == bboxes.size());
+
+#ifdef DEBUG_ASSERT_DIFF_FEATURES
+    for (int i = 0; i < features.size(); i ++) {
+        for (int j = i + 1; j < features.size(); j++) {
+            // assert(!equalVector(features[i], features[j]));
+            if (equalVector(features[i], features[j])) {
+                cout << "candidate bbox " << i << " and " << j << " have the exact same conv5 feature" << endl;
+                cout << "IOU between these two boxes:" << bboxes[i].compute_IOU(bboxes[j]) << endl;
+            }
+        }
+    }
+#endif
+
 
     // construct the 4 labels
     std::vector<float> dx_labels;
@@ -98,6 +123,7 @@ void BoundingBoxRegressor::trainModels(std::vector<std::vector<float> > &feature
     
     trainer_ = krr_trainer<kernel_type>();
     trainer_.set_kernel(kernel_type());
+    trainer_.set_lambda(LAMBDA);
     test_dx_ = trainer_.train(samples, dx_labels);
     test_dy_ = trainer_.train(samples, dy_labels);
     test_dw_ = trainer_.train(samples, dw_labels);

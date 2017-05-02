@@ -87,10 +87,10 @@ public:
   double compute_intersection(const BoundingBox& bbox) const;
 
   // Area of Union between two bounding boxes
-  double compute_union(const BoundingBox& bbox);
+  double compute_union(const BoundingBox& bbox) const;
 
   // Get Intersection over union between two boxes
-  double compute_IOU(const BoundingBox & bbox);
+  double compute_IOU(const BoundingBox & bbox) const;
 
   // Get center distance against another bbox 
   double compute_center_distance(const BoundingBox & bbox) const;

@@ -19,7 +19,7 @@ using namespace std;
 // #define DEBUG_FREEZE_LAYER
 // #define DEBUG_GETPROBOUTPUT
 // #define LOG_TIME
-// #define DEBUG_PRE_FORWARDFAST
+#define DEBUG_PRE_FORWARDFAST
 // #define DEBUG_PRE_FORWARDFAST_IMAGE_SCALE
 // #define DEBUG_PREPROCESS_SAMPLE
 
@@ -284,13 +284,17 @@ void Regressor::PreForwardFast(const cv::Mat image_curr,
   std::vector<std::vector<cv::Mat> > roi_pool5_c_features;
   WrapOutputBlob("roi_pool5_c", &roi_pool5_c_features);
 
-  for (int j = 0; j < 256; j++) {
-    // check if the 256 maps are all the same across candidates
-    for (int m = 0; m < candidate_bboxes.size(); m ++) {
-      for (int n = m + 1; n < candidate_bboxes.size(); n++) {
+  // check if the 256 maps are all the same across candidates
+  for (int m = 0; m < candidate_bboxes.size(); m ++) {
+    for (int n = m + 1; n < candidate_bboxes.size(); n++) {
+      bool is_different = false;
+      for (int j = 0; j < 256; j++) {
         if(!equalMat(roi_pool5_c_features[m][j], roi_pool5_c_features[n][j])) {
-          cout << "candidate " << m << " and " << n << "have different pool5_c map at channel" << j << endl;
+          is_different = true;
         }
+      }
+      if (!is_different) {
+        cout << "candidate " << m << " and " << n << "have the same pool5_c feature"<< endl;
       }
     }
   }
@@ -321,8 +325,8 @@ void Regressor::PreForwardFast(const cv::Mat image_curr,
 
 // Get the BBox Conv Features used for BoundingBox Regression
 void Regressor::GetBBoxConvFeatures(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, 
-                       const std::vector<BoundingBox> &candidate_bboxes, std::vector <std::vector<float> > features) {
-    int batch_size = 250;
+                       const std::vector<BoundingBox> &candidate_bboxes, std::vector <std::vector<float> > &features) {
+    int batch_size = 1000;
     int num_batches = (int)(ceil(candidate_bboxes.size()/float(batch_size)));
     for (int i = 0; i < num_batches; i++) {
       vector<BoundingBox> this_candidates(candidate_bboxes.begin() + i * batch_size, 
@@ -869,7 +873,8 @@ void Regressor::WrapOutputBlob(const std::string & blob_name, std::vector<std::v
   float* out_data = layer->mutable_cpu_data();
   for (int n = 0; n < layer->shape(0); ++n) {
       int this_count = out_width * out_height * layer->channels();
-      output_features->push_back(vector<float>(out_data, out_data + this_count));
+      vector<float> this_tensor_feature(out_data, out_data + this_count);
+      output_features->push_back(vector<float>(this_tensor_feature));
       out_data += this_count;
     }
 }

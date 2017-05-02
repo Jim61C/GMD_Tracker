@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 project(GOTURN)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
@@ -48,6 +48,16 @@ message("Caffe_DIR is ${Caffe_DIR}")	#specify Caffe_DIR in /cmake/Modules/FindCa
 
 set(GLOG_LIB glog)
 
+include(../dlib/dlib/cmake)
+
+find_package(Eigen3 REQUIRED)
+if (Eigen3_FOUND)
+    message("-- Found Eigne3: ${EIGEN3_INCLUDE_DIR}")
+    include_directories(${EIGEN3_INCLUDE_DIR})
+else ()
+    message("--- could not find Eigen3")
+endif ()
+
 file (GLOB_RECURSE SOURCE_FILES
 "src/helper/*.cpp"
 "src/train/example_generator.cpp"
@@ -92,11 +102,11 @@ include_directories(src/native)
 # target_link_libraries(${PROJECT_NAME} /home/jimxing/proj/trax/build/libtrax.so)
 # target_link_libraries (test_tracker_vot ${PROJECT_NAME})
 
-add_executable (test_tracker_no_middle_batch_single src/test/test_tracker_vot_gmd_finetune.cpp)
-target_link_libraries(${PROJECT_NAME}  ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
-# Note: If can't find trax, please download trax and build it, then uncomment the below line and set the path manually
-target_link_libraries(${PROJECT_NAME} /home/jimxing/proj/trax/build/libtrax.so)
-target_link_libraries (test_tracker_no_middle_batch_single ${PROJECT_NAME})
+# add_executable (test_tracker_no_middle_batch_single src/test/test_tracker_vot_gmd_finetune.cpp)
+# target_link_libraries(${PROJECT_NAME}  ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
+# # Note: If can't find trax, please download trax and build it, then uncomment the below line and set the path manually
+# target_link_libraries(${PROJECT_NAME} /home/jimxing/proj/trax/build/libtrax.so)
+# target_link_libraries (test_tracker_no_middle_batch_single ${PROJECT_NAME})
 
 # add_executable (test_tracker_alov src/test/test_tracker_alov.cpp)
 # target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
@@ -110,9 +120,9 @@ target_link_libraries (test_tracker_no_middle_batch_single ${PROJECT_NAME})
 # target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${Caffe_LIBRARIES} ${TinyXML_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
 # target_link_libraries (train ${PROJECT_NAME})
 
-add_executable (train_single_domain_no_middle_batch src/train/train_multi_domain.cpp)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${Caffe_LIBRARIES} ${TinyXML_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
-target_link_libraries (train_single_domain_no_middle_batch ${PROJECT_NAME})
+# add_executable (train_single_domain_no_middle_batch src/train/train_multi_domain.cpp)
+# target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${Caffe_LIBRARIES} ${TinyXML_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
+# target_link_libraries (train_single_domain_no_middle_batch ${PROJECT_NAME})
 
 # add_executable (show_tracker_vot src/visualizer/show_tracker_vot.cpp)
 # target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
@@ -123,12 +133,12 @@ target_link_libraries (train_single_domain_no_middle_batch ${PROJECT_NAME})
 # target_link_libraries (show_tracker_vot_gmd ${PROJECT_NAME})
 
 add_executable (show_tracker_vot_gmd_finetune_no_middle_batch_single src/visualizer/show_tracker_vot_gmd_finetune.cpp)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB} ${EIGEN3_LIBS} dlib::dlib)
 target_link_libraries (show_tracker_vot_gmd_finetune_no_middle_batch_single ${PROJECT_NAME})
 
-add_executable (UnitTest src/UnitTest/unit_test.cpp)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${Caffe_LIBRARIES} ${TinyXML_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
-target_link_libraries (UnitTest ${PROJECT_NAME})
+# add_executable (UnitTest src/UnitTest/unit_test.cpp)
+# target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${Caffe_LIBRARIES} ${TinyXML_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
+# target_link_libraries (UnitTest ${PROJECT_NAME})
 
 
 # add_executable (show_tracker_otb src/visualizer/show_tracker_otb.cpp)
