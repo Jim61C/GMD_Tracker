@@ -92,4 +92,7 @@ const cv::Scalar mean_scalar(104, 117, 123);
 // distance penalty padding
 #define DISTANCE_PENALTY_PAD 0
 
+// for BoundingBox Regression
+const int BBOX_REGRESSION_FEATURE_LENGTH = 6 * 6 * 256;
+
 #endif

@@ -40,7 +40,7 @@ public:
   virtual void EnqueueOnlineTraningSamples(ExampleGenerator* example_generator, const cv::Mat &image_curr, const BoundingBox &estimate,  bool success_frame) { }
 
   // check if the current estimate is success, needed as flag to pass to EnqueueOnlineTraningSamples
-  virtual bool IsSuccessEstimate() { }
+  virtual bool IsSuccessEstimate() { return true; }
 
   // clear all the storage associated with this video for next video
   virtual void Reset(RegressorBase *regressor) { }

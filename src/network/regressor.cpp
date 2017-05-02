@@ -319,6 +319,22 @@ void Regressor::PreForwardFast(const cv::Mat image_curr,
 
 }
 
+// Get the BBox Conv Features used for BoundingBox Regression
+void Regressor::GetBBoxConvFeatures(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, 
+                       const std::vector<BoundingBox> &candidate_bboxes, std::vector <std::vector<float> > features) {
+    int batch_size = 250;
+    int num_batches = (int)(ceil(candidate_bboxes.size()/float(batch_size)));
+    for (int i = 0; i < num_batches; i++) {
+      vector<BoundingBox> this_candidates(candidate_bboxes.begin() + i * batch_size, 
+                                          candidate_bboxes.begin() + std::min((i+1) * batch_size, (int)(candidate_bboxes.size())));
+      PreForwardFast(image_curr, this_candidates, image, target);
+      // get the pool5 features
+      vector<vector<float> > output_features;
+      WrapOutputBlob("roi_pool5_c", &output_features);
+      features.insert(features.end(), output_features.begin(), output_features.begin() + output_features.size());
+    }
+}
+
 void Regressor::PredictFast(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, 
                        const std::vector<BoundingBox> &candidate_bboxes, const BoundingBox & bbox_prev, 
                        BoundingBox* bbox,
@@ -836,6 +852,25 @@ void Regressor::WrapOutputBlob(const std::string & blob_name, std::vector<std::v
         (*output_channels)[n].push_back(channel.clone());
         out_data += out_width * out_height;
       }
+    }
+}
+
+void Regressor::WrapOutputBlob(const std::string & blob_name, std::vector<std::vector<float> > *output_features) {
+  const boost::shared_ptr<Blob<float> > layer = net_->blob_by_name(blob_name.c_str());
+
+  if (blob_name.compare("pool5") == 0 || blob_name.compare("pool5_p") == 0 || blob_name.compare("pool5_c") == 0) {
+    assert (layer->channels() % 256 == 0); 
+  }
+
+  output_features->reserve(layer->shape(0));
+
+  int out_width = layer->width();
+  int out_height = layer->height();
+  float* out_data = layer->mutable_cpu_data();
+  for (int n = 0; n < layer->shape(0); ++n) {
+      int this_count = out_width * out_height * layer->channels();
+      output_features->push_back(vector<float>(out_data, out_data + this_count));
+      out_data += this_count;
     }
 }
 

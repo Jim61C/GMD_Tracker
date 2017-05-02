@@ -60,6 +60,9 @@ class Regressor : public RegressorBase {
                        std::vector<float> * return_probabilities,
                        std::vector<int> *return_sorted_indexes);
 
+  virtual void GetBBoxConvFeatures(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, 
+                       const std::vector<BoundingBox> &candidate_bboxes, std::vector <std::vector<float> > features);
+
   virtual void PredictFast(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, 
                        const std::vector<BoundingBox> &candidate_bboxes, const BoundingBox & bbox_prev, 
                        BoundingBox* bbox,
@@ -100,6 +103,8 @@ protected:
   void WrapOutputBlob(const std::string & blob_name, std::vector<cv::Mat>* output_channels);
   
   void WrapOutputBlob(const std::string & blob_name, std::vector<std::vector<cv::Mat> > *output_channels);
+
+  void WrapOutputBlob(const std::string & blob_name, std::vector<std::vector<float> > *output_features);
 
   // Get the features in the network with the given name, and copy their values to the output.
   void GetFeatures(const std::string& feature_name, std::vector<float>* output) const;

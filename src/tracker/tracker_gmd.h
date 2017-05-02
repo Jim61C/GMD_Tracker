@@ -10,6 +10,7 @@
 #include "helper/Constants.h"
 #include <limits.h>
 #include "helper/high_res_timer.h"
+#include "helper/bounding_box_regressor.h"
 
 class TrackerGMD : public Tracker {
 
@@ -98,6 +99,9 @@ private:
 
   // timer
   HighResTimer hrt_;
+
+  // Bbox regressor
+  BoundingBoxRegressor bbox_finetuner_;
 
 };
 
