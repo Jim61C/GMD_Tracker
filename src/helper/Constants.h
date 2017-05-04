@@ -62,13 +62,13 @@ const double SHORT_TERM_FINE_TUNE_TH = 0.5; // if want less frequent short term 
 #define SEED_ENGINE 800
 
 // Online Learning
-// #define FIRST_FRAME_FINETUNE_ITERATION 10
-// #define FIRST_FRAME_POS_SAMPLES 50
-// #define FIRST_FRAME_NEG_SAMPLES 500
+#define FIRST_FRAME_FINETUNE_ITERATION 10
+#define FIRST_FRAME_POS_SAMPLES 50
+#define FIRST_FRAME_NEG_SAMPLES 500
 
-#define FIRST_FRAME_FINETUNE_ITERATION 30
-#define FIRST_FRAME_POS_SAMPLES 32
-#define FIRST_FRAME_NEG_SAMPLES 1000
+// #define FIRST_FRAME_FINETUNE_ITERATION 30
+// #define FIRST_FRAME_POS_SAMPLES 32
+// #define FIRST_FRAME_NEG_SAMPLES 1000
 
 #define FIRST_FRAME_NUM_MINI_BATCH 2
 
@@ -95,5 +95,6 @@ const cv::Scalar mean_scalar(104, 117, 123);
 // for BoundingBox Regression
 const int BBOX_REGRESSION_FEATURE_LENGTH = 6 * 6 * 256;
 const float LAMBDA = 1000.0;
+#define BOUNDING_BOX_REGRESSION
 
 #endif

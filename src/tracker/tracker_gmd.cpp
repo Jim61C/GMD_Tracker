@@ -424,6 +424,7 @@ void TrackerGMD::Init(const cv::Mat& image_curr, const BoundingBox& bbox_gt,
     // fine tune at cur_frame_ 0
     cur_frame_ = 0;
 
+#ifdef BOUNDING_BOX_REGRESSION
     // Train a Bbox regressor
     // TODO: the following is not needed, here just to comply with API of GetBBoxConvFeatures
     example_generator_->Reset(bbox_gt,
@@ -437,10 +438,12 @@ void TrackerGMD::Init(const cv::Mat& image_curr, const BoundingBox& bbox_gt,
     example_generator_->MakeTrueExampleTight(&image_regress, &target_regress, &bbox_gt_scaled_regress);
     // Get the bbox conv features for training
     std::vector<BoundingBox> regress_bboxes;
-    example_generator_->MakeCandidatesPos(&regress_bboxes, 1000, "uniform", POS_TRANS_RANGE, POS_SCALE_RANGE);
+    example_generator_->MakeCandidatesPos(&regress_bboxes, 1000, "uniform_ap", POS_TRANS_RANGE, POS_SCALE_RANGE, \
+                                           SD_X, SD_Y, SD_SCALE, 0.6);
     std::vector<std::vector<float> > features;
     regressor->GetBBoxConvFeatures(image_curr, image_regress, target_regress, regress_bboxes, features);
     bbox_finetuner_.trainModelUsingInitialFrameBboxes(features, regress_bboxes, bbox_gt);
+#endif 
 
     printf("About to fine tune the first frame ...\n");
     for (int iter = 0; iter < FIRST_FRAME_FINETUNE_ITERATION; iter ++) {
@@ -521,23 +524,23 @@ void TrackerGMD::Init(const cv::Mat& image_curr, const BoundingBox& bbox_gt,
         }
 
         //Fine Tune!
-        regressor_train_->TrainBatchFast(image_currs,
-                                    images,
-                                    targets,
-                                    bboxes_gt_scaled,
-                                    candidates,
-                                    labels,
-                                    -1,
-                                    (FIRST_FRAME_POS_SAMPLES + FIRST_FRAME_NEG_SAMPLES)/FIRST_FRAME_NUM_MINI_BATCH, // guaranteed that at least one frame candidates
-                                    FIRST_FRAME_ONHEM); // k == -1 indicating fine tuning
-        
         // regressor_train_->TrainBatchFast(image_currs,
         //                             images,
         //                             targets,
         //                             bboxes_gt_scaled,
         //                             candidates,
         //                             labels,
-        //                             -1); // k == -1 indicating fine tuning
+        //                             -1,
+        //                             (FIRST_FRAME_POS_SAMPLES + FIRST_FRAME_NEG_SAMPLES)/FIRST_FRAME_NUM_MINI_BATCH, // guaranteed that at least one frame candidates
+        //                             FIRST_FRAME_ONHEM); // k == -1 indicating fine tuning
+        
+        regressor_train_->TrainBatchFast(image_currs,
+                                    images,
+                                    targets,
+                                    bboxes_gt_scaled,
+                                    candidates,
+                                    labels,
+                                    -1); // k == -1 indicating fine tuning
 
     }
     printf("Fine tune the first frame completed!\n");
@@ -587,6 +590,7 @@ void TrackerGMD::UpdateState(const cv::Mat& image_curr, BoundingBox &bbox_estima
         sd_trans_ = SD_X;
     }
 
+#ifdef BOUNDING_BOX_REGRESSION
     if (is_this_frame_success) {
         // wrap in a vector to use get features API
         std::vector<std::vector<float> > bbox_features;
@@ -608,6 +612,7 @@ void TrackerGMD::UpdateState(const cv::Mat& image_curr, BoundingBox &bbox_estima
         regressor->GetBBoxConvFeatures(image_curr, image_regress, target_regress, wrap_this_bbox_estimate, bbox_features);
         bbox_finetuner_.refineBoundingBox(bbox_estimate, bbox_features[0]);
     }
+#endif
 
     // generate examples, if not success, just dummy values pushed in
     EnqueueOnlineTraningSamples(example_generator_, image_curr, bbox_estimate, is_this_frame_success);

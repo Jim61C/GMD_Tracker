@@ -107,6 +107,23 @@ BoundingBox ExampleGenerator::GenerateOneRandomCandidate(BoundingBox &bbox, gsl_
     moved_bbox.x2_ = moved_centre_x + moved_w/2.0;
     moved_bbox.y2_ = moved_centre_y + moved_h/2.0;
   }
+  else if (method.compare("uniform_ap") == 0) {
+    double dx = (gsl_rng_uniform(rng) * 2.0 - 1.0) * w * trans_range;
+    double dy = (gsl_rng_uniform(rng) * 2.0 - 1.0) * h * trans_range;
+
+    double moved_centre_x = centre_x + dx;
+    double moved_centre_y = centre_y + dy;
+
+    double ds_w = pow(SCALE_FACTOR, (gsl_rng_uniform(rng) * 2.0 - 1.0) * scale_range);
+    double ds_h = pow(SCALE_FACTOR, (gsl_rng_uniform(rng) * 2.0 - 1.0) * scale_range);
+    double moved_w = w * ds_w;
+    double moved_h = h * ds_h;
+
+    moved_bbox.x1_ = moved_centre_x - moved_w /2.0;
+    moved_bbox.y1_ = moved_centre_y - moved_h /2.0;
+    moved_bbox.x2_ = moved_centre_x + moved_w/2.0;
+    moved_bbox.y2_ = moved_centre_y + moved_h/2.0;
+  }
   else if (method.compare("gaussian") == 0) {
 
     double r = round((w+h)/2.0);
@@ -244,7 +261,7 @@ void ExampleGenerator::MakeCandidatesAndLabelsBBox(vector<BoundingBox> *candidat
 
 void ExampleGenerator::MakeCandidatesPos(vector<BoundingBox> *candidates, const int num,
                                 const string method, const double trans_range, const double scale_range,
-                                const double sd_x, const double sd_y, const double sd_scale
+                                const double sd_x, const double sd_y, const double sd_scale, const double pos_iou_th
                                 ) {
 #ifdef VISUALIZE_FINETUNE_SAMPLES
   Mat canvas = image_curr_.clone();
@@ -255,7 +272,7 @@ void ExampleGenerator::MakeCandidatesPos(vector<BoundingBox> *candidates, const 
                                                                         method, trans_range, scale_range, 
                                                                         sd_x, sd_y, sd_scale);
     // no need to crop as the bbox_curr_gt_ is the current estimate, which will never go out of boundary
-    if (this_box.valid_bbox_against_width_height(image_curr_.size().width, image_curr_.size().height) && bbox_curr_gt_.compute_IOU(this_box) >= POS_IOU_TH) {
+    if (this_box.valid_bbox_against_width_height(image_curr_.size().width, image_curr_.size().height) && bbox_curr_gt_.compute_IOU(this_box) >= pos_iou_th) {
       // enqueue
       candidates->push_back(this_box);
       count ++;

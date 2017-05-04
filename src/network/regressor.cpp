@@ -19,7 +19,7 @@ using namespace std;
 // #define DEBUG_FREEZE_LAYER
 // #define DEBUG_GETPROBOUTPUT
 // #define LOG_TIME
-#define DEBUG_PRE_FORWARDFAST
+// #define DEBUG_PRE_FORWARDFAST
 // #define DEBUG_PRE_FORWARDFAST_IMAGE_SCALE
 // #define DEBUG_PREPROCESS_SAMPLE
 
@@ -326,7 +326,7 @@ void Regressor::PreForwardFast(const cv::Mat image_curr,
 // Get the BBox Conv Features used for BoundingBox Regression
 void Regressor::GetBBoxConvFeatures(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, 
                        const std::vector<BoundingBox> &candidate_bboxes, std::vector <std::vector<float> > &features) {
-    int batch_size = 1000;
+    int batch_size = INNER_BATCH_SIZE;
     int num_batches = (int)(ceil(candidate_bboxes.size()/float(batch_size)));
     for (int i = 0; i < num_batches; i++) {
       vector<BoundingBox> this_candidates(candidate_bboxes.begin() + i * batch_size, 

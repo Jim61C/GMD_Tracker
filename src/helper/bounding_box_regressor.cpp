@@ -2,32 +2,63 @@
 #include <assert.h>
 #include <math.h>
 
-#define DEBUG_ASSERT_DIFF_FEATURES
+// #define DEBUG_ASSERT_DIFF_FEATURES
 
-void printSamples(std::vector<sample_type> & samples) {
-    // DEBUG samples
-    for (int i = 0; i < samples.size(); i++) {
-        cout << "samples["<< i << "]" << endl;
-        for (int j = 0; j < samples[i].nr(); j ++) {
-            cout << samples[i](j) << " ";
+void printSamples(MatrixXd X) {
+    // DEBUG X
+    for (int i = 0; i < X.rows(); i++) {
+        cout << "X["<< i << "]" << endl;
+        for (int j = 0; j < X.cols(); j ++) {
+            cout << X(i, j) << " ";
         }
         cout << endl;
+    }
+}
+
+VectorXd Solve(MatrixXd A, VectorXd y, double lambda, string method = "normal") {
+    if (method.compare("cholesky") == 0) {
+        // Use Cholesky Decomposition
+        // (A'A + Lambda*I) x = A'y
+        // LL' = (...), LL' x = A'y
+        // z = L'x = L.inverse() * A'y
+        // x = L'.inverse() * z
+        Eigen::LLT<MatrixXd> llt(A.transpose() * A + lambda * MatrixXd::Identity(A.cols(), A.cols()));
+        cout << "finished LLT for matrix of size:" << A.cols() << ", " << A.cols() << endl;
+        MatrixXd L = llt.matrixL();
+        MatrixXd z = L.inverse() * (A.transpose() * y);
+        VectorXd x = L.transpose().inverse() * z;
+        return x;
+    }
+    else if (method.compare("normal") == 0) {
+        MatrixXd H = lambda * MatrixXd::Identity(A.cols(), A.cols());
+        H.noalias() += A.transpose() * A; 
+        VectorXd x;
+        x.noalias() = H.ldlt().solve(A.transpose() * y);
+        return x;
+    }
+    else {
+        cout << "Unknown solver method" << endl;
+        exit(-1);
     }
 }
 
 void BoundingBoxRegressor::refineBoundingBox (BoundingBox &bbox, std::vector<float> &feature) {
 
      assert (feature.size() == BBOX_REGRESSION_FEATURE_LENGTH);
-     sample_type m;
+     const int S = BBOX_REGRESSION_FEATURE_LENGTH;
 
-     for (int i = 0; i < feature.size(); i ++) {
-         m(i) = feature[i];
+     VectorXd query(S);
+     for (int i = 0;i < S; i ++) {
+         query(i) = feature[i];
      }
 
-     float dx = test_dx_(m);
-     float dy = test_dy_(m);
-     float dw = test_dw_(m);
-     float dh = test_dh_(m);
+     VectorXd result;
+     result.noalias() = query.transpose() * (Beta_.block(0,0,S,4)) + Beta_.row(S);
+     result.noalias() = result.transpose() * T_inv_ + Y_mu_.transpose();
+     float dx = (float)(result(0));
+     float dy = (float)(result(1));
+     float dw = (float)(result(2));
+     float dh = (float)(result(3));
 
      double ctr_x = bbox.get_center_x();
      double ctr_y = bbox.get_center_y();
@@ -110,22 +141,73 @@ void BoundingBoxRegressor::trainModels(std::vector<std::vector<float> > &feature
         assert(features[0].size() == BBOX_REGRESSION_FEATURE_LENGTH);
     }
 
-    // construct sample
-    std::vector<sample_type> samples;
-    sample_type m;
+    // Construct X matrix, shape (D, S + 1), + 1 for bias ; Y matrix, shape (D, 4), dx, dy, dw, dh accordingly
+    int D = features.size();
+    int S = BBOX_REGRESSION_FEATURE_LENGTH;
+    MatrixXd X(D, S + 1);
+    MatrixXd Y(D, 4);
 
-    for (int i = 0; i < features.size(); i++) {
-        for (int j = 0; j < BBOX_REGRESSION_FEATURE_LENGTH; j++) {
-            m(j) = features[i][j];
+    for (int i = 0; i < D; i ++) {
+        // set X
+        for (int j = 0; j < S; j ++) {
+            X(i, j) = (double)(features[i][j]);
         }
-        samples.push_back(m);
+        // set Y
+        Y(i, 0) = (double)(dx_labels[i]);
+        Y(i, 1) = (double)(dy_labels[i]);
+        Y(i, 2) = (double)(dw_labels[i]);
+        Y(i, 3) = (double)(dh_labels[i]);
+    }
+
+    for (int i =0; i < D; i++) {
+        for(int j = 0;j < S; j ++) {
+            assert(X(i,j) == features[i][j]);
+        }
+    }
+
+    // set bias
+    VectorXd bias = VectorXd::Constant(D, 1);
+    X.col(S) = bias;
+
+    for (int i = 0;i < D; i ++) {
+        assert(X(i, S) == 1);
     }
     
-    trainer_ = krr_trainer<kernel_type>();
-    trainer_.set_kernel(kernel_type());
-    trainer_.set_lambda(LAMBDA);
-    test_dx_ = trainer_.train(samples, dx_labels);
-    test_dy_ = trainer_.train(samples, dy_labels);
-    test_dw_ = trainer_.train(samples, dw_labels);
-    test_dh_ = trainer_.train(samples, dh_labels);
+    // Whitening transform
+    Y_mu_ = VectorXd(4);
+    Y_mu_ << Y.col(0).mean(), Y.col(1).mean(), Y.col(2).mean(), Y.col(3).mean();
+
+    for (int j = 0; j < 4; j ++) {
+        Y.col(j) = Y.col(j) - VectorXd::Constant(Y.col(j).size(), Y_mu_(j));
+    }
+    // get data covariance matrix
+    MatrixXd cov = (Y.transpose() * Y) / D;
+    // do eigen value decomposition
+    Eigen::EigenSolver<MatrixXd> es(cov);
+    MatrixXd diagnal = MatrixXd::Constant(cov.rows(), cov.cols(), 0);
+    // take ^1/2, add an epsilon to avoid division by zero later 
+    double epsilon = 0.001;
+    for (int j = 0; j < 4; j ++) {
+        diagnal(j,j) = sqrt(es.eigenvalues()(j).real() + epsilon);
+    }
+    // let Whitening = P * D^1/2 * P^T
+    T_inv_ = es.eigenvectors().real() * diagnal * es.eigenvectors().real().transpose();
+    // take diagnal^-1, just take the reciprocal of the diagnal entries
+    MatrixXd diagnal_reciprocal = MatrixXd::Zero(diagnal.rows(), diagnal.cols());
+    for (int j = 0; j < 4; j++) {
+        diagnal_reciprocal(j,j) = 1.0/diagnal(j,j);
+    }
+    // take Whitening^-1
+    T_ = es.eigenvectors().real() * diagnal_reciprocal * es.eigenvectors().real().transpose();
+    Y = Y * T_;
+
+    // train 4 regressors for dx, dy, dw, dh
+    MatrixXd Beta(S+1, 4); // the regressed parameters
+    for (int j = 0; j < 4; j ++) {
+        cout << "solve for model " << j << endl;
+        Beta.col(j) = Solve(X, Y.col(j), LAMBDA, "normal");
+    }
+
+    // save the models
+    Beta_ = Beta;
 }

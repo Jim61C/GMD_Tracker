@@ -4,7 +4,14 @@
 #include <boost/shared_ptr.hpp>
 #include <helper/bounding_box.h>
 #include <helper/CommonCV.h>
+#include <Eigen/Dense>
 using namespace std;
+
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
+using Eigen::Map;
+using Eigen::MatrixXf;
+using Eigen::Matrix;
 
 class A {
 public:
@@ -30,6 +37,48 @@ public:
 void doSomethingMat(Mat & mat) {
   Mat M = (Mat_<double>(3,3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
   M.copyTo(mat);
+}
+
+void populateTestEigenMap() {
+  // Test Eigen Map
+  vector<vector<float> > src;
+  for (int i = 0; i < 4; i ++) {
+    vector<float> temp;
+    for (int j = 0; j < 5; j ++) {
+      temp.push_back(j);
+    }
+    src.push_back(temp);
+  }
+
+  Map<Matrix<float,1,5,Eigen::RowMajor> > mf(src[0].data());
+  for (int j = 0; j < 5; j ++) {
+    cout << mf(0, j) << " ";
+  }
+  cout << endl;
+}
+
+void populateTestEigenFunctions() {
+  MatrixXd test(3, 3);
+  test <<  4,-1,2, -1,6,0, 2,0,5;
+
+  cout << test << endl;
+  cout << "test.col(1).mean():" << test.col(1).mean() << endl;
+
+  Eigen::LLT<MatrixXd> llt(test); // compute the Cholesky decomposition of A
+  MatrixXd L = llt.matrixL();
+
+  cout << L << endl;
+  cout << L * L.transpose() << endl;
+
+  Eigen::EigenSolver<MatrixXd>eigen_solver(test, true);
+
+  MatrixXd ones = MatrixXd::Ones(3,3);
+  Eigen::EigenSolver<MatrixXd> es(ones);
+  cout << "The first eigenvector of the 3x3 matrix of ones is:"
+      << endl << es.eigenvectors() << endl;
+  cout << es.eigenvalues().cols() << endl;
+
+
 }
 
 int main (int argc, char *argv[]) {
@@ -125,6 +174,9 @@ int main (int argc, char *argv[]) {
 
   doSomethingMat(temp_mat);
   cout << "after doSomethingMat: \n" << temp_mat << endl;
+
+  // populateTestEigenMap();
+  populateTestEigenFunctions();
 
   return 0;
 }

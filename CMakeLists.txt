@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 2.8)
 project(GOTURN)
 
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+SET(GCC_PEFORMANCE_COMPILE_FLAGS " -Ofast -msse2 -march=native -fopenmp -ffast-math")
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ${GCC_PEFORMANCE_COMPILE_FLAGS}")
 
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
@@ -47,8 +49,6 @@ message("Caffe_DIR is ${Caffe_DIR}")	#specify Caffe_DIR in /cmake/Modules/FindCa
 # set(Caffe_INCLUDE_DIRS /home/jimxing/Downloads/install_caffe/caffe/include)
 
 set(GLOG_LIB glog)
-
-include(../dlib/dlib/cmake)
 
 find_package(Eigen3 REQUIRED)
 if (Eigen3_FOUND)
@@ -133,12 +133,12 @@ include_directories(src/native)
 # target_link_libraries (show_tracker_vot_gmd ${PROJECT_NAME})
 
 add_executable (show_tracker_vot_gmd_finetune_no_middle_batch_single src/visualizer/show_tracker_vot_gmd_finetune.cpp)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB} ${EIGEN3_LIBS} dlib::dlib)
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB} ${EIGEN3_LIBS})
 target_link_libraries (show_tracker_vot_gmd_finetune_no_middle_batch_single ${PROJECT_NAME})
 
-# add_executable (UnitTest src/UnitTest/unit_test.cpp)
-# target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${Caffe_LIBRARIES} ${TinyXML_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
-# target_link_libraries (UnitTest ${PROJECT_NAME})
+add_executable (UnitTest src/UnitTest/unit_test.cpp)
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${Caffe_LIBRARIES} ${TinyXML_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB} ${EIGEN3_LIBS})
+target_link_libraries (UnitTest ${PROJECT_NAME})
 
 
 # add_executable (show_tracker_otb src/visualizer/show_tracker_otb.cpp)
