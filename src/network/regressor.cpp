@@ -199,12 +199,12 @@ void Regressor::PreForwardFast(const cv::Mat image_curr,
   Preprocess(target, &target_channels);
 
   int layer_conv1_idx = FindLayerIndexByName(layer_names, "conv1");
-  int layer_pool5_idx = FindLayerIndexByName(layer_names, "pool5");
+  int layer_relu5_idx = FindLayerIndexByName(layer_names, "relu5");
 
   // Perform a forward-pass in the network.
-  net_->ForwardFromTo(layer_conv1_idx, layer_pool5_idx);
-  std::vector<cv::Mat> pool5_image;
-  WrapOutputBlob("pool5", &pool5_image);
+  net_->ForwardFromTo(layer_conv1_idx, layer_relu5_idx);
+  std::vector<cv::Mat> conv5_image;
+  WrapOutputBlob("conv5", &conv5_image);
 
 #ifdef INSPECT_TARGET_IN_PREFORWARD
   vector<cv::Mat> target_splitted;
@@ -301,11 +301,11 @@ void Regressor::PreForwardFast(const cv::Mat image_curr,
 #endif
 
   // ------------------ Duplicate the pool5 features mannualy for candidate_bboxes.size() times -----------------
-  std::vector<std::vector<cv::Mat> > pool5_channels;
+  std::vector<std::vector<cv::Mat> > conv5_channels;
 
-  WrapBlobByNameBatch("pool5", &pool5_channels);
+  WrapBlobByNameBatch("conv5", &conv5_channels);
 
-  PreprocessDuplicateIn(pool5_image, &pool5_channels);
+  PreprocessDuplicateIn(conv5_image, &conv5_channels);
 
 #ifdef INSPECT_TARGET_IN_PREFORWARD
   bool inspect_target_after_reshape = false;

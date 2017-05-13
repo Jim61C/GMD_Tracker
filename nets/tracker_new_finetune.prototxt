@@ -8,14 +8,14 @@ input: "label"
 #target
 input_dim: 1
 input_dim: 3
-input_dim: 227
-input_dim: 227
+input_dim: 107
+input_dim: 107
 
 #candidate, full image, size W, H to be changed on the fly
 input_dim: 1
 input_dim: 3
-input_dim: 227
-input_dim: 227
+input_dim: 107
+input_dim: 107
 
 #rois
 input_dim: 1
@@ -65,20 +65,9 @@ layer {
   top: "conv1"
 }
 layer {
-  name: "pool1"
-  type: "Pooling"
-  bottom: "conv1"
-  top: "pool1"
-  pooling_param {
-    pool: MAX
-    kernel_size: 3
-    stride: 2
-  }
-}
-layer {
   name: "norm1"
   type: "LRN"
-  bottom: "pool1"
+  bottom: "conv1"
   top: "norm1"
   lrn_param {
     local_size: 5
@@ -123,20 +112,9 @@ layer {
   top: "conv2"
 }
 layer {
-  name: "pool2"
-  type: "Pooling"
-  bottom: "conv2"
-  top: "pool2"
-  pooling_param {
-    pool: MAX
-    kernel_size: 3
-    stride: 2
-  }
-}
-layer {
   name: "norm2"
   type: "LRN"
-  bottom: "pool2"
+  bottom: "conv2"
   top: "norm2"
   lrn_param {
     local_size: 5
@@ -251,17 +229,6 @@ layer {
   bottom: "conv5"
   top: "conv5"
 }
-layer {
-  name: "pool5"
-  type: "Pooling"
-  bottom: "conv5"
-  top: "pool5"
-  pooling_param {
-    pool: MAX
-    kernel_size: 3
-    stride: 2
-  }
-}
 
 
 layer {
@@ -299,21 +266,11 @@ layer {
   bottom: "conv1_c"
   top: "conv1_c"
 }
-layer {
-  name: "pool1_c"
-  type: "Pooling"
-  bottom: "conv1_c"
-  top: "pool1_c"
-  pooling_param {
-    pool: MAX
-    kernel_size: 3
-    stride: 2
-  }
-}
+
 layer {
   name: "norm1_c"
   type: "LRN"
-  bottom: "pool1_c"
+  bottom: "conv1_c"
   top: "norm1_c"
   lrn_param {
     local_size: 5
@@ -357,21 +314,11 @@ layer {
   bottom: "conv2_c"
   top: "conv2_c"
 }
-layer {
-  name: "pool2_c"
-  type: "Pooling"
-  bottom: "conv2_c"
-  top: "pool2_c"
-  pooling_param {
-    pool: MAX
-    kernel_size: 3
-    stride: 2
-  }
-}
+
 layer {
   name: "norm2_c"
   type: "LRN"
-  bottom: "pool2_c"
+  bottom: "conv2_c"
   top: "norm2_c"
   lrn_param {
     local_size: 5
@@ -493,16 +440,16 @@ layer {
   bottom: "rois"
   top: "roi_pool5_c"
   roi_pooling_param {
-    pooled_w: 6
-    pooled_h: 6
-    spatial_scale: 0.0625 # 1/16
+    pooled_w: 25
+    pooled_h: 25
+    spatial_scale: 0.25 # 1/4
   }
 }
 
 layer {
   name: "concat"
   type: "Concat"
-  bottom: "pool5"
+  bottom: "conv5"
   bottom: "roi_pool5_c"
   top: "pool5_concat"
   concat_param {
@@ -524,7 +471,7 @@ layer {
     decay_mult: 0
   }
   inner_product_param {
-    num_output: 4096
+    num_output: 512
     weight_filler {
       type: "gaussian"
       std: 0.005
@@ -564,7 +511,7 @@ layer {
     decay_mult: 0
   }
   inner_product_param {
-    num_output: 4096
+    num_output: 512
     weight_filler {
       type: "gaussian"
       std: 0.005
@@ -590,46 +537,6 @@ layer {
     dropout_ratio: 0.5
   }
 }
-layer {
-  name: "fc7-gmd-b"
-  type: "InnerProduct"
-  bottom: "fc7"
-  top: "fc7b"
-  param {
-    lr_mult: 1
-    decay_mult: 1
-  }
-  param {
-    lr_mult: 2
-    decay_mult: 0
-  }
-  inner_product_param {
-    num_output: 4096
-    weight_filler {
-      type: "gaussian"
-      std: 0.005
-    }
-    bias_filler {
-      type: "constant"
-      value: 1
-    }
-  }
-}
-layer {
-  name: "relu7b"
-  type: "ReLU"
-  bottom: "fc7b"
-  top: "fc7b"
-}
-layer {
-  name: "drop7b"
-  type: "Dropout"
-  bottom: "fc7b"
-  top: "fc7b"
-  dropout_param {
-    dropout_ratio: 0.5
-  }
-}
 
 # flatten label
 layer {
@@ -643,10 +550,10 @@ layer {
 layer {
   name: "fc8"  
   type: "InnerProduct"  
-  bottom: "fc7b"  
+  bottom: "fc7"  
   top: "fc8"  
   param {
-    lr_mult: 10 
+    lr_mult: 10
     decay_mult: 1 
   }
   param {
