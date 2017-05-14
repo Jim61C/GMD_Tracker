@@ -54,7 +54,6 @@ const int NEG_CANDIDATES_FINETUNE = 40;
 #define LONG_TERM_POS_CANDIDATE_UPPER_BOUND 10
 #define LONG_TERM_NEG_CANDIDATE_UPPER_BOUND 200 // number of examples for forwarding, backward only does NOHEM_FINETUNE number of negative sampels
 const double SHORT_TERM_FINE_TUNE_TH = 0.5; // if want less frequent short term fine tune when distance window is applied, make if < 0.5
-#define ADD_DISTANCE_PENALTY
 
 // DEBUGGING
 #define SEED_RNG_EXAMPLE_GENERATOR 800
@@ -90,6 +89,7 @@ const double MAX_SIZE = 1000.0; // make sure the image_curr does not exceed this
 const cv::Scalar mean_scalar(104, 117, 123);
 
 // distance penalty padding
+#define ADD_DISTANCE_PENALTY
 #define DISTANCE_PENALTY_PAD 0
 
 // for BoundingBox Regression
