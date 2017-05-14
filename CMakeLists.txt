@@ -102,11 +102,11 @@ include_directories(src/native)
 # target_link_libraries(${PROJECT_NAME} /home/jimxing/proj/trax/build/libtrax.so)
 # target_link_libraries (test_tracker_vot ${PROJECT_NAME})
 
-# add_executable (test_tracker_no_middle_batch_single src/test/test_tracker_vot_gmd_finetune.cpp)
-# target_link_libraries(${PROJECT_NAME}  ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
+add_executable (test_tracker_no_middle_batch_single_no_pool src/test/test_tracker_vot_gmd_finetune.cpp)
+target_link_libraries(${PROJECT_NAME}  ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
 # # Note: If can't find trax, please download trax and build it, then uncomment the below line and set the path manually
-# target_link_libraries(${PROJECT_NAME} /home/jimxing/proj/trax/build/libtrax.so)
-# target_link_libraries (test_tracker_no_middle_batch_single ${PROJECT_NAME})
+target_link_libraries(${PROJECT_NAME} /home/jimxing/proj/trax/build/libtrax.so)
+target_link_libraries (test_tracker_no_middle_batch_single_no_pool ${PROJECT_NAME})
 
 # add_executable (test_tracker_alov src/test/test_tracker_alov.cpp)
 # target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
