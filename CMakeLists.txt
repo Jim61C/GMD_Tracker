@@ -1,9 +1,10 @@
 cmake_minimum_required(VERSION 2.8)
 project(GOTURN)
 
-SET(GCC_PEFORMANCE_COMPILE_FLAGS " -Ofast -msse2 -march=native -fopenmp -ffast-math")
+# SET(GCC_PEFORMANCE_COMPILE_FLAGS " -Ofast -msse2 -march=native -fopenmp -ffast-math")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ${GCC_PEFORMANCE_COMPILE_FLAGS}")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ${GCC_PEFORMANCE_COMPILE_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
@@ -103,8 +104,8 @@ include_directories(src/native)
 # target_link_libraries (test_tracker_vot ${PROJECT_NAME})
 
 add_executable (test_tracker_no_middle_batch_single_no_pool src/test/test_tracker_vot_gmd_finetune.cpp)
-target_link_libraries(${PROJECT_NAME}  ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
-# # Note: If can't find trax, please download trax and build it, then uncomment the below line and set the path manually
+target_link_libraries(${PROJECT_NAME}  ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB} ${EIGEN3_LIBS})
+# Note: If can't find trax, please download trax and build it, then uncomment the below line and set the path manually
 target_link_libraries(${PROJECT_NAME} /home/jimxing/proj/trax/build/libtrax.so)
 target_link_libraries (test_tracker_no_middle_batch_single_no_pool ${PROJECT_NAME})
 
