@@ -199,12 +199,12 @@ void Regressor::PreForwardFast(const cv::Mat image_curr,
   Preprocess(target, &target_channels);
 
   int layer_conv1_idx = FindLayerIndexByName(layer_names, "conv1");
-  int layer_relu5_idx = FindLayerIndexByName(layer_names, "relu5");
+  int layer_pool6_idx = FindLayerIndexByName(layer_names, "pool6");
 
   // Perform a forward-pass in the network.
-  net_->ForwardFromTo(layer_conv1_idx, layer_relu5_idx);
-  std::vector<cv::Mat> conv5_image;
-  WrapOutputBlob("conv5", &conv5_image);
+  net_->ForwardFromTo(layer_conv1_idx, layer_pool6_idx);
+  std::vector<cv::Mat> pool6_image;
+  WrapOutputBlob("pool6", &pool6_image);
 
 #ifdef INSPECT_TARGET_IN_PREFORWARD
   vector<cv::Mat> target_splitted;
@@ -277,19 +277,19 @@ void Regressor::PreForwardFast(const cv::Mat image_curr,
 
   // ROI poolings
   int layer_conv1_c_idx = FindLayerIndexByName(layer_names, "conv1_c");
-  int layer_roi_pool5_c_idx = FindLayerIndexByName(layer_names, "roi_pool5_c");
-  net_->ForwardFromTo(layer_conv1_c_idx, layer_roi_pool5_c_idx);
+  int layer_pool6_c_idx = FindLayerIndexByName(layer_names, "pool6_c");
+  net_->ForwardFromTo(layer_conv1_c_idx, layer_pool6_c_idx);
 
 #ifdef DEBUG_PRE_FORWARDFAST
-  std::vector<std::vector<cv::Mat> > roi_pool5_c_features;
-  WrapOutputBlob("roi_pool5_c", &roi_pool5_c_features);
+  std::vector<std::vector<cv::Mat> > pool6_c_features;
+  WrapOutputBlob("pool6_c", &pool6_c_features);
 
   // check if the 256 maps are all the same across candidates
   for (int m = 0; m < candidate_bboxes.size(); m ++) {
     for (int n = m + 1; n < candidate_bboxes.size(); n++) {
       bool is_different = false;
       for (int j = 0; j < 256; j++) {
-        if(!equalMat(roi_pool5_c_features[m][j], roi_pool5_c_features[n][j])) {
+        if(!equalMat(pool6_c_features[m][j], pool6_c_features[n][j])) {
           is_different = true;
         }
       }
@@ -301,11 +301,11 @@ void Regressor::PreForwardFast(const cv::Mat image_curr,
 #endif
 
   // ------------------ Duplicate the pool5 features mannualy for candidate_bboxes.size() times -----------------
-  std::vector<std::vector<cv::Mat> > conv5_channels;
+  std::vector<std::vector<cv::Mat> > pool6_channels;
 
-  WrapBlobByNameBatch("conv5", &conv5_channels);
+  WrapBlobByNameBatch("pool6", &pool6_channels);
 
-  PreprocessDuplicateIn(conv5_image, &conv5_channels);
+  PreprocessDuplicateIn(pool6_image, &pool6_channels);
 
 #ifdef INSPECT_TARGET_IN_PREFORWARD
   bool inspect_target_after_reshape = false;
@@ -334,7 +334,7 @@ void Regressor::GetBBoxConvFeatures(const cv::Mat& image_curr, const cv::Mat& im
       PreForwardFast(image_curr, this_candidates, image, target);
       // get the pool5 features
       vector<vector<float> > output_features;
-      WrapOutputBlob("roi_pool5_c", &output_features);
+      WrapOutputBlob("pool6_c", &output_features);
       features.insert(features.end(), output_features.begin(), output_features.begin() + output_features.size());
     }
 }
