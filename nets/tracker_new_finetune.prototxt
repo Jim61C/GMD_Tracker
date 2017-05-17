@@ -230,6 +230,18 @@ layer {
   top: "conv5"
 }
 
+layer {
+  name: "pool6"
+  type: "Pooling"
+  bottom: "conv5"
+  top: "pool6"
+  pooling_param {
+    pool: AVE
+    kernel_size: 5
+    stride: 4 # result in 6 x 6 feature map, TODO, try 3x3
+  }
+}
+
 
 layer {
   name: "conv1_c"
@@ -447,10 +459,22 @@ layer {
 }
 
 layer {
+  name: "pool6_c"
+  type: "Pooling"
+  bottom: "roi_pool5_c"
+  top: "pool6_c"
+  pooling_param {
+    pool: AVE
+    kernel_size: 5
+    stride: 4 # result in 6 x 6 feature map, TODO, try 3x3
+  }
+}
+
+layer {
   name: "concat"
   type: "Concat"
-  bottom: "conv5"
-  bottom: "roi_pool5_c"
+  bottom: "pool6"
+  bottom: "pool6_c"
   top: "pool5_concat"
   concat_param {
     axis: 1
@@ -471,7 +495,7 @@ layer {
     decay_mult: 0
   }
   inner_product_param {
-    num_output: 512
+    num_output: 256
     weight_filler {
       type: "gaussian"
       std: 0.005
@@ -511,7 +535,7 @@ layer {
     decay_mult: 0
   }
   inner_product_param {
-    num_output: 512
+    num_output: 256
     weight_filler {
       type: "gaussian"
       std: 0.005
@@ -553,7 +577,7 @@ layer {
   bottom: "fc7"  
   top: "fc8"  
   param {
-    lr_mult: 10
+    lr_mult: 10 
     decay_mult: 1 
   }
   param {

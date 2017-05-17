@@ -81,7 +81,8 @@ public:
   TrackerFineTune(const std::vector<Video>& videos,
                     RegressorBase* regressor, Tracker* tracker, 
                     bool save_videos = true,
-                    const std::string output_folder = "nets/tracker_output/GOTURN_MDNet");
+                    const std::string output_folder = "nets/tracker_output/GOTURN_MDNet",
+                    bool show_result = true);
 
   // Print which video is being visualized.
   virtual void VideoInit(const Video& video, const size_t video_num);
@@ -124,6 +125,9 @@ private:
 
   // Whether to save tracking videos.  Videos take up a lot of space, so use this only when needed.
   bool save_videos_;
+
+  // Whether to show the tracking result on screen
+  bool show_result_;
 
 };
 

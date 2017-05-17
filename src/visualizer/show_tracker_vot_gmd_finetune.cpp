@@ -66,6 +66,11 @@ int main (int argc, char *argv[]) {
     output_folder = argv[12];
   }
 
+  bool show_result = true;
+  if (argc >=14) {
+    istringstream(argv[13]) >> show_result;
+  }
+
   // Set up the neural network.
   const bool do_train = true;
   RegressorTrain regressor_train(model_file,
@@ -85,7 +90,7 @@ int main (int argc, char *argv[]) {
   std::vector<Video> videos = loader.get_videos();
 
   // Visualize the tracker performance.
-  TrackerFineTune tracker_fine_tune(videos, &regressor_train, &tracker_gmd, true, output_folder);
+  TrackerFineTune tracker_fine_tune(videos, &regressor_train, &tracker_gmd, true, output_folder, show_result);
   tracker_fine_tune.TrackAll(start_video_num, pause_val);
 
   return 0;
