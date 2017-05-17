@@ -8,8 +8,6 @@
 
 using std::string;
 
-#define FINE_TUNE_VISUALISE
-
 TrackerManager::TrackerManager(const std::vector<Video>& videos,
                                RegressorBase* regressor, Tracker* tracker) :
   videos_(videos),
@@ -115,14 +113,16 @@ void TrackerVisualizer::VideoInit(const Video& video, const size_t video_num) {
 TrackerFineTune::TrackerFineTune(const std::vector<Video>& videos,
                                 RegressorBase* regressor, Tracker* tracker,
                                 bool save_videos,
-                                const std::string output_folder) :
+                                const std::string output_folder,
+                                bool show_result) :
   TrackerManager(videos, regressor, tracker),
   save_videos_(save_videos),
   output_folder_(output_folder),
   hrt_("TrackerFineTune"),
   total_ms_(0),
   num_frames_(0),
-  fps_(20)
+  fps_(20),
+  show_result_(show_result)
 
 {
   if (output_folder_.back() != '/') {
@@ -193,14 +193,14 @@ void TrackerFineTune::ProcessTrackOutput(
   // Draw estimated bounding box of the target location (red).
   bbox_estimate_uncentered.Draw(255, 0, 0, &full_output);
 
-#ifdef FINE_TUNE_VISUALISE
-  // Show the image with the estimated and ground-truth bounding boxes.
-  cv::namedWindow("Full output", cv::WINDOW_AUTOSIZE ); // Create a window for display.
-  cv::imshow("Full output", full_output );                   // Show our image inside it.
+  if (show_result_) {
+    // Show the image with the estimated and ground-truth bounding boxes.
+    cv::namedWindow("Full output", cv::WINDOW_AUTOSIZE ); // Create a window for display.
+    cv::imshow("Full output", full_output );                   // Show our image inside it.
 
-  // Pause for pause_val milliseconds, or until user input (if pause_val == 0).
-  cv::waitKey(pause_val);
-#endif
+    // Pause for pause_val milliseconds, or until user input (if pause_val == 0).
+    cv::waitKey(pause_val);
+  }
 
   // write to video
   if (save_videos_) {
