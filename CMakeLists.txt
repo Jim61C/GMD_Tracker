@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 2.8)
 project(GOTURN)
 
-# SET(GCC_PEFORMANCE_COMPILE_FLAGS " -Ofast -msse2 -march=native -fopenmp -ffast-math")
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ${GCC_PEFORMANCE_COMPILE_FLAGS}")
+SET(GCC_PEFORMANCE_COMPILE_FLAGS " -Ofast -msse2 -march=native -fopenmp -ffast-math")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ${GCC_PEFORMANCE_COMPILE_FLAGS}")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")

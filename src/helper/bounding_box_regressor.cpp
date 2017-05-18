@@ -1,6 +1,7 @@
 #include "bounding_box_regressor.h"
 #include <assert.h>
 #include <math.h>
+#include <map>
 
 #define DEBUG_ASSERT_DIFF_FEATURES
 
@@ -32,6 +33,7 @@ VectorXd Solve(MatrixXd A, VectorXd y, double lambda, string method = "normal") 
     else if (method.compare("normal") == 0) {
         MatrixXd H = lambda * MatrixXd::Identity(A.cols(), A.cols());
         H.noalias() += A.transpose() * A; 
+        cout << "finish A^T*A" << endl;
         VectorXd x;
         x.noalias() = H.ldlt().solve(A.transpose() * y);
         return x;
@@ -86,19 +88,59 @@ void BoundingBoxRegressor::trainModelUsingInitialFrameBboxes(std::vector<std::ve
     
     assert (features.size() == bboxes.size());
 
+    // Duplicate removal here, if several bboxes have the same feature, use their average/ just one
+    std::vector<std::vector<float> > features_unique;
+    std::vector<BoundingBox> bboxes_unique;
+
+    std::map<std::vector<float>, std::vector<int> > feature_to_bbox_idxes;
+    for (int i = 0; i < features.size(); i++) {
+        vector<float> this_feature = features[i];
+        if (feature_to_bbox_idxes.find(this_feature) == feature_to_bbox_idxes.end()) {
+            vector<int> this_idxes;
+            this_idxes.push_back(i);
+            feature_to_bbox_idxes[this_feature] = this_idxes;
+        }
+        else {
+            feature_to_bbox_idxes[this_feature].push_back(i);
+        }
+    }
+
+    for (auto item : feature_to_bbox_idxes) {
+        features_unique.push_back(item.first);
+
+        // here use average, TODO: try just use the first one 
+        int count = 0;
+        double x1_sum = 0;
+        double y1_sum = 0;
+        double x2_sum = 0;
+        double y2_sum = 0;
+
+        for (auto idx : item.second) {
+            x1_sum += bboxes[idx].x1_;
+            y1_sum += bboxes[idx].y1_;
+            x2_sum += bboxes[idx].x2_;
+            y2_sum += bboxes[idx].y2_;
+            count ++;
+        }
+        
+        BoundingBox averaged_bbox(x1_sum/count, y1_sum/count, x2_sum/count, y2_sum/count);
+        bboxes_unique.push_back(averaged_bbox);
+    }
+
+    assert (features_unique.size() == bboxes_unique.size());
+
 #ifdef DEBUG_ASSERT_DIFF_FEATURES
-    for (int i = 0; i < features.size(); i ++) {
-        for (int j = i + 1; j < features.size(); j++) {
-            // assert(!equalVector(features[i], features[j]));
-            if (equalVector(features[i], features[j])) {
-                cout << "candidate bbox " << i << " and " << j << " have the exact same conv5 feature" << endl;
-                cout << "IOU between these two boxes:" << bboxes[i].compute_IOU(bboxes[j]) << endl;
-            }
+    for (int i = 0; i < features_unique.size(); i ++) {
+        for (int j = i + 1; j < features_unique.size(); j++) {
+            assert(!equalVector(features_unique[i], features_unique[j]));
+            assert (features_unique[i].size() == features_unique[j].size());
+            // if (equalVector(features_unique[i], features_unique[j])) {
+            //     cout << "candidate bbox " << i << " and " << j << " have the exact same conv5 feature" << endl;
+            //     cout << "IOU between these two boxes:" << bboxes_unique[i].compute_IOU(bboxes_unique[j]) << endl;
+            // }
         }
     }
 #endif
-
-    // TODO: Do a duplicate removal here, if several bboxes have the same feature, use their average
 
     // construct the 4 labels
     std::vector<float> dx_labels;
@@ -111,11 +153,11 @@ void BoundingBoxRegressor::trainModelUsingInitialFrameBboxes(std::vector<std::ve
     double gt_w = gt.get_width();
     double gt_h = gt.get_height();
 
-    for (int i = 0; i < bboxes.size(); i ++) {
-        double this_bbox_x = bboxes[i].get_center_x();
-        double this_bbox_y = bboxes[i].get_center_y();
-        double this_bbox_w = bboxes[i].get_width();
-        double this_bbox_h = bboxes[i].get_height();
+    for (int i = 0; i < bboxes_unique.size(); i ++) {
+        double this_bbox_x = bboxes_unique[i].get_center_x();
+        double this_bbox_y = bboxes_unique[i].get_center_y();
+        double this_bbox_w = bboxes_unique[i].get_width();
+        double this_bbox_h = bboxes_unique[i].get_height();
 
 
         float this_dx_label = (float)((gt_x -this_bbox_x)/this_bbox_w);
@@ -129,7 +171,7 @@ void BoundingBoxRegressor::trainModelUsingInitialFrameBboxes(std::vector<std::ve
         dh_labels.push_back(this_dh_label);
     }
 
-    trainModels(features, dx_labels, dy_labels, dw_labels, dh_labels);
+    trainModels(features_unique, dx_labels, dy_labels, dw_labels, dh_labels);
 
 }
 

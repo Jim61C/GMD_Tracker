@@ -74,7 +74,9 @@ BoundingBox::BoundingBox(const std::vector<float>& bounding_box)
   }
 }
 
-BoundingBox::BoundingBox(double x1, double y1, double x2, double y2) {
+BoundingBox::BoundingBox(double x1, double y1, double x2, double y2)
+  : scale_factor_(kScaleFactor) 
+{
   x1_ = x1;
   y1_ = y1;
   x2_ = x2;
