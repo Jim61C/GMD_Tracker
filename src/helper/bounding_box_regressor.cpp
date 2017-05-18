@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <math.h>
 
-// #define DEBUG_ASSERT_DIFF_FEATURES
+#define DEBUG_ASSERT_DIFF_FEATURES
 
 void printSamples(MatrixXd X) {
     // DEBUG X
@@ -35,6 +35,11 @@ VectorXd Solve(MatrixXd A, VectorXd y, double lambda, string method = "normal") 
         VectorXd x;
         x.noalias() = H.ldlt().solve(A.transpose() * y);
         return x;
+    }
+    else if (method.compare("svd") == 0) {
+        MatrixXd H = lambda * MatrixXd::Identity(A.cols(), A.cols());
+        H.noalias() += A.transpose() * A;
+        return H.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(A.transpose() * y);
     }
     else {
         cout << "Unknown solver method" << endl;
@@ -93,6 +98,7 @@ void BoundingBoxRegressor::trainModelUsingInitialFrameBboxes(std::vector<std::ve
     }
 #endif
 
+    // TODO: Do a duplicate removal here, if several bboxes have the same feature, use their average
 
     // construct the 4 labels
     std::vector<float> dx_labels;
