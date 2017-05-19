@@ -59,6 +59,18 @@ else ()
     message("--- could not find Eigen3")
 endif ()
 
+FIND_PACKAGE(trax REQUIRED COMPONENTS core opencv)
+if (TRAX_FOUND)
+    message ("-- Found trax:")
+    message ("-- TRAX_LIBRARIES: ${TRAX_LIBRARIES}")
+    message ("-- TRAX_INCLUDE_DIRS: ${TRAX_INCLUDE_DIRS}")
+    message ("-- TRAX_LIBRARY_DIRS: ${TRAX_LIBRARY_DIRS}")
+else ()
+    message ("-- could not find trax")
+endif()
+INCLUDE_DIRECTORIES(AFTER ${TRAX_INCLUDE_DIRS})
+LINK_DIRECTORIES(AFTER ${TRAX_LIBRARY_DIRS})
+
 file (GLOB_RECURSE SOURCE_FILES
 "src/helper/*.cpp"
 "src/train/example_generator.cpp"
@@ -67,7 +79,6 @@ file (GLOB_RECURSE SOURCE_FILES
 "src/loader/*.cpp"
 "src/network/*.cpp"
 "src/tracker/*.cpp"
-"src/native/vot.cpp"
 
 "src/helper/*.h"
 "src/train/example_generator.h"
@@ -76,14 +87,12 @@ file (GLOB_RECURSE SOURCE_FILES
 "src/loader/*.h"
 "src/network/*.h"
 "src/tracker/*.h"
-"src/native/vot.h"
 )
 
 add_library (${PROJECT_NAME} ${SOURCE_FILES})
 
 # Add src to include directories.
 include_directories(src)
-include_directories(src/native)
 
 # Add all files.
 #file(GLOB_RECURSE hdrs src/*.h*)
@@ -103,11 +112,15 @@ include_directories(src/native)
 # target_link_libraries(${PROJECT_NAME} /home/jimxing/proj/trax/build/libtrax.so)
 # target_link_libraries (test_tracker_vot ${PROJECT_NAME})
 
-add_executable (test_tracker_no_middle_batch_single_no_pool_avg src/test/test_tracker_vot_gmd_finetune.cpp)
-target_link_libraries(${PROJECT_NAME}  ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB} ${EIGEN3_LIBS})
-# Note: If can't find trax, please download trax and build it, then uncomment the below line and set the path manually
-target_link_libraries(${PROJECT_NAME} /home/jimxing/proj/trax/build/libtrax.so)
-target_link_libraries (test_tracker_no_middle_batch_single_no_pool_avg ${PROJECT_NAME})
+# add_executable (test_tracker_no_middle_batch_single_no_pool_avg src/test/test_tracker_vot_gmd_finetune.cpp)
+# target_link_libraries(${PROJECT_NAME}  ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB} ${EIGEN3_LIBS})
+# # Note: If can't find trax, please download trax and build it, then uncomment the below line and set the path manually
+# target_link_libraries(${PROJECT_NAME} /home/jimxing/proj/trax/build/libtrax.so)
+# target_link_libraries (test_tracker_no_middle_batch_single_no_pool_avg ${PROJECT_NAME})
+
+add_executable (trax_tracker_no_middle_batch_single_no_pool_avg src/test/test_tracker_vot_gmd_finetune_trax.cpp)
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB} ${EIGEN3_LIBS} ${TRAX_LIBRARIES})
+target_link_libraries (trax_tracker_no_middle_batch_single_no_pool_avg ${PROJECT_NAME})
 
 # add_executable (test_tracker_alov src/test/test_tracker_alov.cpp)
 # target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})

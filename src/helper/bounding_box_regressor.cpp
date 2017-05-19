@@ -16,6 +16,7 @@ void printSamples(MatrixXd X) {
     }
 }
 
+// TODO: try different solver and debug
 VectorXd Solve(MatrixXd A, VectorXd y, double lambda, string method = "normal") {
     if (method.compare("cholesky") == 0) {
         // Use Cholesky Decomposition

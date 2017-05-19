@@ -1,0 +1,101 @@
+#include <string>
+
+#include <opencv/cv.h>
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+
+#include "network/regressor.h"
+#include "loader/loader_vot.h"
+#include "tracker/tracker.h"
+#include "tracker/tracker_gmd.h"
+#include "tracker/tracker_manager.h"
+
+// for fine tuning
+#include "network/regressor_train.h"
+#include "train/example_generator.h"
+#include "train/tracker_trainer_multi_domain.h"
+
+// trax protocol
+#include <trax.h>
+#include <trax/opencv.hpp>
+
+const bool show_intermediate_output = false;
+
+int main (int argc, char *argv[]) {
+   if (argc < 8) {
+    std::cerr << "Usage: " << argv[0]
+              << " deploy.prototxt network.caffemodel solver_file LAMBDA_SHIFT LAMBDA_SCALE MIN_SCALE MAX_SCALE"
+              << " [gpu_id]" << std::endl;
+    return 1;
+  }
+
+  // FLAGS_alsologtostderr = 1;
+
+  ::google::InitGoogleLogging(argv[0]);
+
+  const string& model_file   = argv[1];
+  const string& trained_file = argv[2];
+  const string& solver_file = argv[3];
+  const double lambda_shift   = atof(argv[4]);
+  const double lambda_scale   = atof(argv[5]);
+  const double min_scale      = atof(argv[6]);
+  const double max_scale      = atof(argv[7]);
+
+  int gpu_id = 0;
+  if (argc >= 9) {
+    gpu_id = atoi(argv[8]);
+  }
+
+  // Set up the neural network.
+  const bool do_train = true;
+  RegressorTrain regressor_train(model_file,
+                               trained_file,
+                               gpu_id,
+                               solver_file,
+                               4,
+                               do_train);
+
+  // Get example_generator
+  ExampleGenerator example_generator(lambda_shift, lambda_scale,
+                                    min_scale, max_scale);
+  
+  // Create a tracker object.
+  TrackerGMD tracker_gmd(show_intermediate_output, &example_generator, &regressor_train);
+
+  // Ensuring randomness for fairness.
+  srandom(time(NULL));
+  
+  trax::Server handle(trax::Metadata(TRAX_REGION_RECTANGLE, TRAX_IMAGE_PATH |
+  TRAX_IMAGE_MEMORY | TRAX_IMAGE_BUFFER), trax_no_log);
+  
+  while (true) {
+      trax::Image image;
+      trax::Region region;
+      trax::Properties properties;
+      int tr = handle.wait(image, region, properties);
+      if (tr == TRAX_INITIALIZE) {
+          // init tracker_gmd
+          cv::Mat image_curr = trax::image_to_mat(image);
+          cv::Rect bbox_rect = trax::region_to_rect(region);
+          BoundingBox bbox_gt = BoundingBox(bbox_rect.x, bbox_rect.y, bbox_rect.x + bbox_rect.width, bbox_rect.y+ bbox_rect.height);
+          tracker_gmd.Init(image_curr, bbox_gt,  &regressor_train);
+
+          handle.reply(region, trax::Properties());
+      } else if (tr == TRAX_FRAME) {
+          cv::Mat image_curr = trax::image_to_mat(image);
+          // Track and estimate the bounding box location.
+          BoundingBox bbox_estimate;
+          tracker_gmd.Track(image_curr, &regressor_train, &bbox_estimate);
+
+          // After estimation, update state; Here assume no last frame, TODO: try read in next_tr and parse, see if trax protocol still works
+          tracker_gmd.UpdateState(image_curr, bbox_estimate, &regressor_train, false);
+            
+          // report result
+          cv::Rect result(bbox_estimate.x1_, bbox_estimate.y1_, bbox_estimate.get_width(), bbox_estimate.get_height());
+          handle.reply(trax::rect_to_region(result), trax::Properties());
+      }
+      else break;
+  }
+
+  return 0;
+}
