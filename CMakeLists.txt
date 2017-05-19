@@ -77,6 +77,8 @@ file (GLOB_RECURSE SOURCE_FILES
 "src/network/*.h"
 "src/tracker/*.h"
 "src/native/vot.h"
+
+"src/rapidxml/*.hpp"
 )
 
 add_library (${PROJECT_NAME} ${SOURCE_FILES})
@@ -121,7 +123,7 @@ target_link_libraries (test_tracker_no_middle_batch_single_no_pool_avg ${PROJECT
 # target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${Caffe_LIBRARIES} ${TinyXML_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
 # target_link_libraries (train ${PROJECT_NAME})
 
-add_executable (train_single_domain_no_middle_batch_no_pool_avg src/train/train_multi_domain.cpp)
+add_executable (train_single_domain_no_middle_batch_no_pool_avg src/train/train_multi_domain_imagenet.cpp)
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${Caffe_LIBRARIES} ${TinyXML_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
 target_link_libraries (train_single_domain_no_middle_batch_no_pool_avg ${PROJECT_NAME})
 
