@@ -1,4 +1,5 @@
 #include <string>
+#include <caffe/caffe.hpp>
 
 #include <opencv/cv.h>
 #include <opencv2/core/core.hpp>
@@ -32,6 +33,7 @@ int main (int argc, char *argv[]) {
   // FLAGS_alsologtostderr = 1;
 
   ::google::InitGoogleLogging(argv[0]);
+  caffe::Caffe::set_random_seed(800); 
 
   const string& model_file   = argv[1];
   const string& trained_file = argv[2];
@@ -63,12 +65,16 @@ int main (int argc, char *argv[]) {
   TrackerGMD tracker_gmd(show_intermediate_output, &example_generator, &regressor_train);
 
   // Ensuring randomness for fairness.
-  srandom(time(NULL));
+//   srandom(time(NULL));
   
-  trax::Server handle(trax::Metadata(TRAX_REGION_RECTANGLE, TRAX_IMAGE_PATH |
-  TRAX_IMAGE_MEMORY | TRAX_IMAGE_BUFFER), trax_no_log);
-  
-  while (true) {
+  int run = 1;
+
+  trax::Server handle(trax::Metadata(TRAX_REGION_RECTANGLE,
+                                TRAX_IMAGE_PATH), trax_no_log);
+
+  BoundingBox bbox_gt;
+
+  while (run) {
       trax::Image image;
       trax::Region region;
       trax::Properties properties;
@@ -76,25 +82,31 @@ int main (int argc, char *argv[]) {
       if (tr == TRAX_INITIALIZE) {
           // init tracker_gmd
           cv::Mat image_curr = trax::image_to_mat(image);
+          cv::Mat image_track = image_curr.clone();
           cv::Rect bbox_rect = trax::region_to_rect(region);
-          BoundingBox bbox_gt = BoundingBox(bbox_rect.x, bbox_rect.y, bbox_rect.x + bbox_rect.width, bbox_rect.y+ bbox_rect.height);
-          tracker_gmd.Init(image_curr, bbox_gt,  &regressor_train);
+          bbox_gt = BoundingBox(bbox_rect.x, bbox_rect.y, bbox_rect.x + bbox_rect.width, bbox_rect.y+ bbox_rect.height);
+          tracker_gmd.Init(image_track, bbox_gt,  &regressor_train);
 
-          handle.reply(region, trax::Properties());
+          cv::Rect result(bbox_gt.x1_, bbox_gt.y1_, bbox_gt.get_width(), bbox_gt.get_height());
+          handle.reply(trax::rect_to_region(result), trax::Properties());
+
       } else if (tr == TRAX_FRAME) {
           cv::Mat image_curr = trax::image_to_mat(image);
+          cv::Mat image_track = image_curr.clone();
           // Track and estimate the bounding box location.
           BoundingBox bbox_estimate;
-          tracker_gmd.Track(image_curr, &regressor_train, &bbox_estimate);
+          tracker_gmd.Track(image_track, &regressor_train, &bbox_estimate);
 
           // After estimation, update state; Here assume no last frame, TODO: try read in next_tr and parse, see if trax protocol still works
-          tracker_gmd.UpdateState(image_curr, bbox_estimate, &regressor_train, false);
+          tracker_gmd.UpdateState(image_track, bbox_estimate, &regressor_train, false);
             
           // report result
           cv::Rect result(bbox_estimate.x1_, bbox_estimate.y1_, bbox_estimate.get_width(), bbox_estimate.get_height());
           handle.reply(trax::rect_to_region(result), trax::Properties());
       }
-      else break;
+      else {
+          run = 0;
+      };
   }
 
   return 0;
