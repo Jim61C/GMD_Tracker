@@ -33,7 +33,7 @@ int main (int argc, char *argv[]) {
   // FLAGS_alsologtostderr = 1;
 
   ::google::InitGoogleLogging(argv[0]);
-  caffe::Caffe::set_random_seed(800); 
+//   caffe::Caffe::set_random_seed(800); 
 
   const string& model_file   = argv[1];
   const string& trained_file = argv[2];
@@ -65,7 +65,7 @@ int main (int argc, char *argv[]) {
   TrackerGMD tracker_gmd(show_intermediate_output, &example_generator, &regressor_train);
 
   // Ensuring randomness for fairness.
-//   srandom(time(NULL));
+  srandom(time(NULL));
   
   int run = 1;
 

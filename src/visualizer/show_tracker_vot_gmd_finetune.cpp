@@ -35,7 +35,8 @@ int main (int argc, char *argv[]) {
 
   ::google::InitGoogleLogging(argv[0]);
 
-  caffe::Caffe::set_random_seed(800); 
+  // caffe::Caffe::set_random_seed(800); 
+  srandom(time(NULL));
 
   const string& model_file   = argv[1];
   const string& trained_file = argv[2];

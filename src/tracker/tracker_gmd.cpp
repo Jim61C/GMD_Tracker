@@ -23,10 +23,10 @@ TrackerGMD::TrackerGMD(const bool show_tracking, ExampleGenerator* example_gener
 {
     gsl_rng_env_setup();
     rng_ = gsl_rng_alloc(gsl_rng_mt19937);
-    // gsl_rng_set(rng_, time(NULL));
-    gsl_rng_set(rng_, SEED_RNG_TRACKER); // to reproduce
-    // engine_.seed(time(NULL));
-    engine_.seed(SEED_ENGINE);
+    gsl_rng_set(rng_, time(NULL));
+    // gsl_rng_set(rng_, SEED_RNG_TRACKER); // to reproduce
+    engine_.seed(time(NULL));
+    // engine_.seed(SEED_ENGINE);
 
     sd_trans_ = SD_X;
     sd_scale_ = SD_SCALE;
