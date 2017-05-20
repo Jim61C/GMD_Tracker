@@ -13,7 +13,7 @@ using caffe::Blob;
 using caffe::Layer;
 using caffe::LayerParameter;
 
-#define DEBUG_ROI_POOL_INPUT
+// #define DEBUG_ROI_POOL_INPUT
 
 RegressorTrain::RegressorTrain(const std::string& deploy_proto,
                                const std::string& caffe_model,

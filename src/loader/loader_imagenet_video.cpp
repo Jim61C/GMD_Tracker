@@ -17,8 +17,10 @@ LoaderImageNetVideo::LoaderImageNetVideo(const string & data_folder, const strin
             string this_video_annotation_folder_path = annotation_folder + "/" + this_sub_folder + "/" + video_folders[j];
             LoadInfoOneVideo(this_video_data_folder_path, this_video_annotation_folder_path, video);
             videos_.push_back(video);
-            cout << "finish load video: " << video.path << ", n_frames: " << video.all_frames.size() << endl;
+            // cout << "finish load video: " << video.path << ", n_frames: " << video.all_frames.size() << endl;
         }
+
+        cout << "finish load video from set: " << data_folder + "/" + this_sub_folder << endl;
     }
 }
 
