@@ -39,3 +39,7 @@ loss_history/
 
 # logs
 *.log
+
+# images
+*.png
+*.jpg
