@@ -17,12 +17,17 @@ def main():
 	plt.ylabel('loss')
 	plt.xlabel('iterations')
 	plt.title(loss_history_file[:loss_history_file.find('.')])
-	plt.show()
+	if (len(sys.argv) > 2):
+		# save to file
+		out_file = sys.argv[2]
+		plt.savefig(out_file)	
+	else:
+		plt.show()
 
 	return
 
 if __name__ == "__main__":
-	if len(sys.argv) != 2:
-		print "Usage: python {0} loss_history_file".format(sys.argv[0])
+	if len(sys.argv) < 2:
+		print "Usage: python {0} loss_history_file [out_file]".format(sys.argv[0])
 		exit()
 	main()
