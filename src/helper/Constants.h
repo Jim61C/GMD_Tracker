@@ -21,7 +21,7 @@
 #define SD_AP 1.0
 #define MOTION_AP_FACTOR 1.05
 
-// for random sampling
+// for uniform sampling
 #define SCALE_FACTOR 1.05
 #define POS_SCALE_RANGE 5.0 // for positive sample 
 #define POS_TRANS_RANGE 0.1 // for positive sample

@@ -5,6 +5,10 @@
 #include <helper/bounding_box.h>
 #include <helper/CommonCV.h>
 #include <Eigen/Dense>
+#include "../rapidxml/rapidxml.hpp"
+#include "../rapidxml/rapidxml_utils.hpp"
+#include <assert.h>
+#include <string.h>
 using namespace std;
 
 using Eigen::MatrixXd;
@@ -12,6 +16,8 @@ using Eigen::VectorXd;
 using Eigen::Map;
 using Eigen::MatrixXf;
 using Eigen::Matrix;
+
+using namespace rapidxml;
 
 class A {
 public:
@@ -79,6 +85,49 @@ void populateTestEigenFunctions() {
   cout << es.eigenvalues().cols() << endl;
 
 
+}
+
+
+void populateTestRapidXml () {
+    rapidxml::file<> xmlFile("/home/jimxing/Downloads/Tracking_Sequences/ILSVRC2015/Annotations/VID/train/ILSVRC2015_VID_train_0004/ILSVRC2015_val_00069001/000000.xml"); // Default template is char
+    rapidxml::xml_document<> doc;
+    doc.parse<0>(xmlFile.data());
+
+    cout << "first node name:" << doc.first_node()->name() << endl;
+
+    assert(strcmp(doc.first_node()->name(), "annotation") == 0);
+    xml_node<> *annotation_node = doc.first_node();
+    for (xml_node<> *child = annotation_node->first_node(); child; child = child->next_sibling()) {
+      // do stuff with child
+      cout << child->name() << endl;
+      if (strcmp(child->name(), "object") == 0) {
+        for (xml_node<> *track_obj_node = child->first_node(); track_obj_node; track_obj_node = track_obj_node->next_sibling()) {
+          if (strcmp(track_obj_node->name(), "trackid") == 0) {
+            cout << "\t" << "trackid: " << track_obj_node->value() << endl;
+          }
+          else if (strcmp(track_obj_node->name(), "name") == 0) {
+            cout << "\t" << "name: " << track_obj_node->value() << endl;
+          }
+          else if (strcmp(track_obj_node->name(), "occluded") == 0) {
+            cout << "\t" << "occluded: " << track_obj_node->value() << endl;
+          }
+          else if (strcmp(track_obj_node->name(), "generated") == 0) {
+            cout << "\t" << "generated: " << track_obj_node->value() << endl;
+          }
+          else if (strcmp(track_obj_node->name(), "bndbox") == 0) {
+            xml_node<> *xmax_node = track_obj_node->first_node();
+            xml_node<> *xmin_node = xmax_node->next_sibling();
+            xml_node<> *ymax_node = xmin_node->next_sibling();
+            xml_node<> *ymin_node = ymax_node->next_sibling();
+
+            cout << "\t\tx1: " << xmin_node->value() << endl
+            << "\t\ty1: " << ymin_node->value() << endl 
+            << "\t\tx2: " << xmax_node->value() << endl
+            << "\t\ty2: " << ymax_node->value() << endl;
+          }
+        }
+      }
+    }
 }
 
 int main (int argc, char *argv[]) {
@@ -176,7 +225,9 @@ int main (int argc, char *argv[]) {
   cout << "after doSomethingMat: \n" << temp_mat << endl;
 
   // populateTestEigenMap();
-  populateTestEigenFunctions();
+  // populateTestEigenFunctions();
+  populateTestRapidXml();
+  
 
   return 0;
 }
