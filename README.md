@@ -28,7 +28,7 @@ Instructions for Compilation
 Note that the binaries 'trax_tracker_no_middle_batch_single_no_pool_avg' and 'libGOTURN.a' are given for the sake of direct use without compilation but after install the dependencies and compilation, the same binaries will be built.
 
 Running ./install.sh should install the necessary dependencies, please make sure you have sudo access to the machine as some of the dependencies will be built in /usr/local/include, /usr/include and /usr/lib/x86_64-linux-gnu.
-For troubleshooting, please refer to the comments in install.h
+For troubleshooting, please refer to the comments in install.sh
 
 Questions
 ======================
