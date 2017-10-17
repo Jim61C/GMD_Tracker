@@ -12,8 +12,8 @@
 // // #define DEBUG_FINETUNE_WORKER
 // #define FISRT_FRAME_PAUSE
 // // #define VISUALIZE_FIRST_FRAME_SAMPLES
-#define DEBUG_LOG
-#define LOG_TIME
+// #define DEBUG_LOG
+// #define LOG_TIME
 
 TrackerGMD::TrackerGMD(const bool show_tracking, ExampleGenerator* example_generator,  RegressorTrainBase* regressor_train) :
     Tracker(show_tracking),

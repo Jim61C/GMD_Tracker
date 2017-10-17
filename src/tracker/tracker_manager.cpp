@@ -190,8 +190,8 @@ void TrackerFineTune::ProcessTrackOutput(
     bbox_gt.DrawBoundingBox(&full_output);
   }
 
-  // Draw estimated bounding box of the target location (red).
-  bbox_estimate_uncentered.Draw(255, 0, 0, &full_output);
+  // Draw estimated bounding box of the target location (green).
+  bbox_estimate_uncentered.Draw(0, 255, 0, &full_output);
 
   if (show_result_) {
     // Show the image with the estimated and ground-truth bounding boxes.
