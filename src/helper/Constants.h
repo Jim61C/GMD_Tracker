@@ -6,7 +6,7 @@
 #define EPSILON (1e-03)
 #define PI 3.1415926
 
-#define TOP_ESTIMATES 5 // number of top candidates to do the estimates, heuristic
+#define TOP_ESTIMATES 15 // number of top candidates to do the estimates, heuristic, increase this number or stricter rule on enqueue online training examples
 
 // for tracker motion model sample candidates
 #define SAMPLE_CANDIDATES 250
@@ -54,7 +54,7 @@ const int INNER_BATCH_SIZE = 50;
 // long/short term update
 #define LONG_TERM_BAG_SIZE 50
 #define SHORT_TERM_BAG_SIZE 20
-#define LONG_TERM_UPDATE_INTERVAL 20
+#define LONG_TERM_UPDATE_INTERVAL 50
 #define LONG_TERM_POS_CANDIDATE_UPPER_BOUND 10
 #define LONG_TERM_NEG_CANDIDATE_UPPER_BOUND 200 // number of examples for forwarding, backward only does NOHEM_FINETUNE number of negative sampels
 const double SHORT_TERM_FINE_TUNE_TH = 0.5; // if want less frequent short term fine tune when distance window is applied, make it < 0.5
@@ -69,7 +69,7 @@ const double SHORT_TERM_FINE_TUNE_TH = 0.5; // if want less frequent short term 
 // #define FIRST_FRAME_POS_SAMPLES 50
 // #define FIRST_FRAME_NEG_SAMPLES 500
 
-#define FIRST_FRAME_FINETUNE_ITERATION 30
+#define FIRST_FRAME_FINETUNE_ITERATION 10
 #define FIRST_FRAME_POS_SAMPLES 32
 #define FIRST_FRAME_NEG_SAMPLES 1000
 
