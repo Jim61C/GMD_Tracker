@@ -363,6 +363,7 @@ double BoundingBox::compute_intersection(const BoundingBox& bbox) const {
   return area;
 }
 
+// TODO: DEBUG compute_union to be sum of area - compute_intersection
 double BoundingBox::compute_union(const BoundingBox& bbox) const {
   return compute_area() + bbox.compute_area() - compute_intersection(bbox); // sum of two bboxes - intersection
 }

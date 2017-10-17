@@ -14,6 +14,7 @@ using caffe::Layer;
 using caffe::LayerParameter;
 
 // #define DEBUG_ROI_POOL_INPUT
+// #define DEBUG_MINIBATCH_OHEM
 
 RegressorTrain::RegressorTrain(const std::string& deploy_proto,
                                const std::string& caffe_model,
@@ -326,6 +327,61 @@ void RegressorTrain::TrainForwardBackwardWorker(const cv::Mat & image_curr,
     for (int i = 0; i < num_nohem; i ++) {
       backprop_idxes.insert(neg_bag[idx[i]]);
     }
+  
+#ifdef DEBUG_MINIBATCH_OHEM
+    cout << "check neg probs are sorted: " << neg_probs[idx[0]] << ", " << neg_probs[idx[1]] << ", " << neg_probs[idx[2]] << endl;
+    // visualise the hard examples in this minibatch
+    std::vector<cv::Mat> image_curr_scaled_splitted;
+    WrapOutputBlob("candidate", &image_curr_scaled_splitted);
+    cv::Mat image_curr_scale;
+    cv::merge(image_curr_scaled_splitted, image_curr_scale);
+   
+    cv::Mat image_curr_scale_origin;
+    cv::add(image_curr_scale, cv::Mat(image_curr_scale.size(), CV_32FC3, mean_scalar), image_curr_scale_origin);
+    image_curr_scale_origin.convertTo(image_curr_scale_origin, CV_8UC3);
+  
+    std::vector<float> labels_in;
+    GetFeatures("label", &labels_in);
+  
+    std::vector<float> rois_in;
+    GetFeatures("rois", &rois_in);
+  
+    std::vector <BoundingBox> bboxes_in;
+    for (int i = 0; i < rois_in.size(); i+= 5) {
+      // each rois in the rois_in memory is [batch_id, x1, y1, x2, y2]
+      BoundingBox this_bbox(rois_in[i + 1],
+                            rois_in[i + 2],
+                            rois_in[i + 3],
+                            rois_in[i + 4]);
+      bboxes_in.push_back(this_bbox);
+    }
+  
+    assert (labels_in.size() == bboxes_in.size());
+    assert (bboxes_in.size() == candidates_bboxes.size());
+    for (int i = 0; i < labels_in.size(); i++) {
+      int j;
+      for (j = 0; j < neg_bag.size(); j++) {
+        if (neg_bag[j] == i) {
+          break;
+        }
+      }
+
+      if(j != neg_bag.size() && backprop_idxes.find(i) != backprop_idxes.end()) {
+        if (labels_in[i] == 1) {
+          cout << "not possible to have negative example with label 1!" << endl;
+          exit(1);
+        }
+        bboxes_in[i].Draw(0, 0, 255, &image_curr_scale_origin);
+      }
+      else if (labels_in[i] == 1) {
+        bboxes_in[i].Draw(255, 0, 0, &image_curr_scale_origin);
+      }
+    }
+  
+    cv::imshow("OHEM rois on scaled image:", image_curr_scale_origin);
+    cv::waitKey(0);
+
+#endif
     
     // set the mutable diff blob data
     for (int i = 0; i < candidates_bboxes.size(); i ++) {
