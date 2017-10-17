@@ -38,10 +38,14 @@ const double NEG_IOU_TH = 0.5;
 // for inner mini batch in training
 const int INNER_BATCH_SIZE = 50;
 
-// for fine tune sample generation
-const int POS_CANDIDATES_FINETUNE = 10;
-const int NEG_CANDIDATES_FINETUNE = 40;
-// const int NOHEM_FINETUNE = 40;
+// // for fine tune sample generation
+// const int POS_CANDIDATES_FINETUNE = 10;
+// const int NEG_CANDIDATES_FINETUNE = 40;
+
+// for fine tune sample generation with OHEM, each minibatch size = 210, 10+ && 200-, out of which, pick 10+ && 40- to back prop
+#define POS_CANDIDATES_FINETUNE 10
+#define NEG_CANDIDATES_FINETUNE 200
+#define NOHEM_FINETUNE 40
 
 // for training labels
 #define POS_LABEL 1.0
@@ -53,7 +57,7 @@ const int NEG_CANDIDATES_FINETUNE = 40;
 #define LONG_TERM_UPDATE_INTERVAL 20
 #define LONG_TERM_POS_CANDIDATE_UPPER_BOUND 10
 #define LONG_TERM_NEG_CANDIDATE_UPPER_BOUND 200 // number of examples for forwarding, backward only does NOHEM_FINETUNE number of negative sampels
-const double SHORT_TERM_FINE_TUNE_TH = 0.5; // if want less frequent short term fine tune when distance window is applied, make if < 0.5
+const double SHORT_TERM_FINE_TUNE_TH = 0.5; // if want less frequent short term fine tune when distance window is applied, make it < 0.5
 
 // DEBUGGING
 #define SEED_RNG_EXAMPLE_GENERATOR 800
@@ -61,13 +65,13 @@ const double SHORT_TERM_FINE_TUNE_TH = 0.5; // if want less frequent short term 
 #define SEED_ENGINE 800
 
 // Online Learning
-#define FIRST_FRAME_FINETUNE_ITERATION 10
-#define FIRST_FRAME_POS_SAMPLES 50
-#define FIRST_FRAME_NEG_SAMPLES 500
+// #define FIRST_FRAME_FINETUNE_ITERATION 10
+// #define FIRST_FRAME_POS_SAMPLES 50
+// #define FIRST_FRAME_NEG_SAMPLES 500
 
-// #define FIRST_FRAME_FINETUNE_ITERATION 30
-// #define FIRST_FRAME_POS_SAMPLES 32
-// #define FIRST_FRAME_NEG_SAMPLES 1000
+#define FIRST_FRAME_FINETUNE_ITERATION 30
+#define FIRST_FRAME_POS_SAMPLES 32
+#define FIRST_FRAME_NEG_SAMPLES 1000
 
 #define FIRST_FRAME_NUM_MINI_BATCH 2
 

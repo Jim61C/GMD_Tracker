@@ -363,6 +363,7 @@ double BoundingBox::compute_intersection(const BoundingBox& bbox) const {
   return area;
 }
 
+// TODO: DEBUG compute_union to be sum of area - compute_intersection
 double BoundingBox::compute_union(const BoundingBox& bbox) const {
   double area = std::max(0.0, std::max(x2_, bbox.x2_) - std::min(x1_, bbox.x1_)) * std::max(0.0, std::max(y2_, bbox.y2_) - std::min(y1_, bbox.y1_));
   return area;
