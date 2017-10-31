@@ -542,13 +542,13 @@ void TrackerGMD::Init(const cv::Mat& image_curr, const BoundingBox& bbox_gt,
                                     (FIRST_FRAME_POS_SAMPLES + FIRST_FRAME_NEG_SAMPLES)/FIRST_FRAME_NUM_MINI_BATCH, // guaranteed that at least one frame candidates
                                     FIRST_FRAME_ONHEM); // k == -1 indicating fine tuning
         
-        regressor_train_->TrainBatchFast(image_currs,
-                                    images,
-                                    targets,
-                                    bboxes_gt_scaled,
-                                    candidates,
-                                    labels,
-                                    -1); // k == -1 indicating fine tuning
+        // regressor_train_->TrainBatchFast(image_currs,
+        //                             images,
+        //                             targets,
+        //                             bboxes_gt_scaled,
+        //                             candidates,
+        //                             labels,
+        //                             -1); // k == -1 indicating fine tuning
 
     }
     printf("Fine tune the first frame completed!\n");
