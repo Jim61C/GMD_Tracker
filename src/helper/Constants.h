@@ -9,7 +9,7 @@
 #define TOP_ESTIMATES 15 // number of top candidates to do the estimates, heuristic, increase this number or stricter rule on enqueue online training examples
 
 // for tracker motion model sample candidates
-#define SAMPLE_CANDIDATES 250
+#define SAMPLE_CANDIDATES 256
 
 // for gaussian sampling
 #define SD_X 0.3 // translation std: mean(width,height)*SD_X
@@ -38,14 +38,14 @@ const double NEG_IOU_TH = 0.5;
 // for inner mini batch in training
 const int INNER_BATCH_SIZE = 50;
 
-// // for fine tune sample generation
-// const int POS_CANDIDATES_FINETUNE = 10;
-// const int NEG_CANDIDATES_FINETUNE = 40;
+// for fine tune sample generation
+const int POS_CANDIDATES_FINETUNE = 50;
+const int NEG_CANDIDATES_FINETUNE = 200;
 
-// for fine tune sample generation with OHEM, each minibatch size = 210, 10+ && 200-, out of which, pick 10+ && 40- to back prop
-#define POS_CANDIDATES_FINETUNE 10
-#define NEG_CANDIDATES_FINETUNE 200
-#define NOHEM_FINETUNE 40
+// // for fine tune sample generation with OHEM, each minibatch size = 210, 10+ && 200-, out of which, pick 10+ && 40- to back prop
+// #define POS_CANDIDATES_FINETUNE 10
+// #define NEG_CANDIDATES_FINETUNE 200
+// #define NOHEM_FINETUNE 40
 
 // for training labels
 #define POS_LABEL 1.0
@@ -84,13 +84,15 @@ const double TARGET_SIZE = 600.0; // compare to min (W, H)
 const double MAX_SIZE = 1000.0; // make sure the image_curr does not exceed this size
 
 // network input index
-#define TARGET_NETWORK_INPUT_IDX 0
-#define CANDIDATE_NETWORK_INPUT_IDX 1
-#define ROIS_NETWORK_INPUT_IDX 2
-#define LABEL_NETWORK_INPUT_IDX 3
+#define CANDIDATE_NETWORK_INPUT_IDX 0
+#define LABEL_NETWORK_INPUT_IDX 1
+#define TARGET_NETWORK_INPUT_IDX -1 // dummy values
+#define ROIS_NETWORK_INPUT_IDX -1 // dummy values
 
-// training image mean 
-const cv::Scalar mean_scalar(104, 117, 123);
+// // training image mean, CaffeNet
+// const cv::Scalar mean_scalar(104, 117, 123);
+// VGG-M
+const cv::Scalar mean_scalar(102.7170, 115.7726, 123.5094);
 
 // distance penalty padding
 #define ADD_DISTANCE_PENALTY

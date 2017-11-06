@@ -250,27 +250,27 @@ void TrackerGMD::FineTuneWorker(ExampleGenerator* example_generator,
     cout << "Total number of candidates for fine tune: " << count << endl;
 #endif
 
-    // OHEM 5 iterations
-    for (int i = 0; i < 5; i ++) {
-        // feed to network to train
-        regressor_train->TrainBatchFast(image_currs,
-            images,
-            targets,
-            bboxes_gt_scaled,
-            candidates,
-            labels,
-            -1,
-            pos_candidate_upper_bound + neg_candidate_upper_bound, 
-            NOHEM_FINETUNE); // k == -1 indicating fine tuning
-    }
+    // // OHEM 5 iterations
+    // for (int i = 0; i < 5; i ++) {
+    //     // feed to network to train
+    //     regressor_train->TrainBatchFast(image_currs,
+    //         images,
+    //         targets,
+    //         bboxes_gt_scaled,
+    //         candidates,
+    //         labels,
+    //         -1,
+    //         pos_candidate_upper_bound + neg_candidate_upper_bound, 
+    //         NOHEM_FINETUNE); // k == -1 indicating fine tuning
+    // }
     
-    // regressor_train->TrainBatchFast(image_currs,
-    //                         images,
-    //                         targets,
-    //                         bboxes_gt_scaled,
-    //                         candidates,
-    //                         labels,
-    //                         -1); // k == -1 indicating fine tuning
+    regressor_train->TrainBatchFast(image_currs,
+                            images,
+                            targets,
+                            bboxes_gt_scaled,
+                            candidates,
+                            labels,
+                            -1); // k == -1 indicating fine tuning
 
 }
 
@@ -532,15 +532,15 @@ void TrackerGMD::Init(const cv::Mat& image_curr, const BoundingBox& bbox_gt,
         }
 
         //Fine Tune!
-        regressor_train_->TrainBatchFast(image_currs,
-                                    images,
-                                    targets,
-                                    bboxes_gt_scaled,
-                                    candidates,
-                                    labels,
-                                    -1,
-                                    (FIRST_FRAME_POS_SAMPLES + FIRST_FRAME_NEG_SAMPLES)/FIRST_FRAME_NUM_MINI_BATCH, // guaranteed that at least one frame candidates
-                                    FIRST_FRAME_ONHEM); // k == -1 indicating fine tuning
+        // regressor_train_->TrainBatchFast(image_currs,
+        //                             images,
+        //                             targets,
+        //                             bboxes_gt_scaled,
+        //                             candidates,
+        //                             labels,
+        //                             -1,
+        //                             (FIRST_FRAME_POS_SAMPLES + FIRST_FRAME_NEG_SAMPLES)/FIRST_FRAME_NUM_MINI_BATCH, // guaranteed that at least one frame candidates
+        //                             FIRST_FRAME_ONHEM); // k == -1 indicating fine tuning
         
         regressor_train_->TrainBatchFast(image_currs,
                                     images,

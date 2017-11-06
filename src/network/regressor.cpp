@@ -107,7 +107,7 @@ void Regressor::SetupNetwork(const string& deploy_proto,
   //CHECK_EQ(net_->num_inputs(), num_inputs_) << "Network should have exactly " << num_inputs_ << " inputs.";
   // CHECK_EQ(net_->num_outputs(), 1) << "Network should have exactly one output.";
 
-  Blob<float>* input_layer = net_->input_blobs()[0];
+  Blob<float>* input_layer = net_->input_blobs()[0]; // assume 0th input is for image input
 
   printf("Network image size: %d, %d\n", input_layer->width(), input_layer->height());
 
@@ -813,7 +813,7 @@ void Regressor::ReshapeImageInputs(const size_t num_images) {
 }
 
 void Regressor::ReshapeCandidateInputs(const size_t num_candidates) {
-    Blob<float>* input_candidates = net_->input_blobs()[2];
+    Blob<float>* input_candidates = net_->input_blobs()[CANDIDATE_NETWORK_INPUT_IDX];
     input_candidates->Reshape(num_candidates, num_channels_,
                        input_geometry_.height, input_geometry_.width);
 }
@@ -964,7 +964,7 @@ void Regressor::SetCandidates(const std::vector<cv::Mat>& candidates) {
 
   // Wrap the network inputs with opencv objects.
   std::vector<std::vector<cv::Mat> > candidate_channels;
-  WrapInputLayer(num_candidates, &candidate_channels);
+  WrapInputLayer(num_candidates, &candidate_channels, CANDIDATE_NETWORK_INPUT_IDX);
 
   // Set the network inputs appropriately.
   Preprocess(candidates, &candidate_channels);
@@ -1001,6 +1001,21 @@ void Regressor::set_rois(const std::vector<BoundingBox>& candidate_bboxes, const
       input_rois_data_counter++;
     }
   }
+}
+
+/* For MDNet, set_candidate_images
+*/
+void Regressor::set_candidate_images(const cv::Mat & image_curr, const std::vector<BoundingBox> & candidates_bboxes) {
+  // crop out the B candidate images
+  vector<cv::Mat> candidate_images;
+  for (auto bbox: candidates_bboxes) {
+    cv::Mat this_candidate_image;
+    bbox.CropBoundingBoxOutImage(image_curr, &this_candidate_image);
+    candidate_images.push_back(this_candidate_image);
+  }
+ 
+  // call the worker function
+  SetCandidates(candidate_images);
 }
 
 void Regressor::Estimate(const std::vector<cv::Mat>& images,
@@ -1159,8 +1174,10 @@ void Regressor::WrapInputLayer(const size_t num_images,
   }
 }
 
-void Regressor::WrapInputLayer(const size_t num_candidates, std::vector<std::vector<cv::Mat> >* candidate_channels) {
-    Blob<float>* input_layer_candidate = net_->input_blobs()[2];
+void Regressor::WrapInputLayer(const size_t num_candidates, 
+                               std::vector<std::vector<cv::Mat> >* candidate_channels, 
+                               int input_idx) {
+    Blob<float>* input_layer_candidate = net_->input_blobs()[input_idx];
 
     candidate_channels->resize(num_candidates);
 

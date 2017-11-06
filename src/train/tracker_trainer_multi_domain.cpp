@@ -4,8 +4,8 @@
 
 #include "network/regressor.h"
 
-// Number of images in each batch, just do 1 first to compare with original training with three streams, TODO: use 8 as in MDNet
-const int kBatchSize = 50;
+// Number of images in each batch, use 8 as in MDNet
+const int kBatchSize = 8;
 
 // Number of examples that we generate (by applying synthetic transformations)
 // to each image.

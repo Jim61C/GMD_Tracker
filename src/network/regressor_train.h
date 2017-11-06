@@ -39,11 +39,10 @@ public:
                              const std::vector<cv::Mat>& targets,
                              const std::vector<BoundingBox>& bboxes_gt);
   // Actuall setup on batch
-  void Train(std::vector<cv::Mat> &images_flattened,
-                           std::vector<cv::Mat> &targets_flattened,
-                           std::vector<cv::Mat> &candidates_flattened,
-                           std::vector<double> &labels_flattened,
-                           int k);
+  void Train(const cv::Mat &image_curr,
+             const std::vector<BoundingBox> candidates_bboxes,
+             const std::vector<double> &labels_flattened,
+             int k);
   
   void TrainForwardBackwardWorker(const cv::Mat & image_curr,
                           const std::vector<BoundingBox> &candidates_bboxes, 
@@ -71,14 +70,6 @@ public:
                            int k,
                            int inner_batch_size = INNER_BATCH_SIZE,
                            int num_nohem = -1);
-
-  // Implementing the TrainBatch Interface
-  void TrainBatch(const std::vector<cv::Mat>& images,
-                           const std::vector<cv::Mat>& targets,
-                           const std::vector<BoundingBox>& bboxes_gt,
-                           const std::vector<std::vector<cv::Mat> > &candidates,
-                           const std::vector<std::vector<double> > &labels,
-                           int k);
   
   // Implementing the loss saving Interface                  
   void SaveLossHistoryToFile(const std::string &save_path);
@@ -103,7 +94,7 @@ private:
 
   boost::shared_ptr<caffe::Net<float> > test_net_;
 
-  std::vector<double> loss_history_;
+  std::vector<std::vector<double> > loss_history_;
 
   const std::string loss_save_path_;
 };

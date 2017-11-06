@@ -17,12 +17,8 @@
 
 using std::string;
 
-// Desired number of training batches.
-const int kNumBatches = 500000;
-
 // Desired number of iterations, within each iteration, each of K domains is passed 1 batch
-// const int NUM_CYCLES = 800;
-const int NUM_CYCLES = 3200;
+const int NUM_CYCLES = 300;
 
 namespace {
 
@@ -209,7 +205,7 @@ int main (int argc, char *argv[]) {
   std::vector<Video> train_videos = otb_video_loader.get_videos();
   printf("Total training videos: %zu\n", train_videos.size());
 
-  int K = -1; // single domain training
+  int K = train_videos.size(); // multi domain training
 
   // Create an ExampleGenerator to generate training examples.
   ExampleGenerator example_generator(lambda_shift, lambda_scale,
@@ -217,7 +213,7 @@ int main (int argc, char *argv[]) {
 
   // save the loss_history when done, TODO: save loss along training instead end of training
   string save_dir = "loss_history/";
-  string save_path = save_dir + "train_single_domain_loss_no_middle_batch_no_pool_avg_history_cycle" + std::to_string(NUM_CYCLES) + ".txt";
+  string save_path = save_dir + "train_mdnet_" + std::to_string(NUM_CYCLES) + ".txt";
   if (!boost::filesystem::exists(save_dir)) {
     boost::filesystem::create_directories(save_dir);
   }
@@ -233,8 +229,12 @@ int main (int argc, char *argv[]) {
   // Set up trainer.
   TrackerTrainerMultiDomain tracker_trainer_multi_domain(&example_generator, &regressor_train);
 
-  for (int i = 0;i < kNumBatches; i ++) {
-    train_video(train_videos, &tracker_trainer_multi_domain);
+  for (int i = 0; i < NUM_CYCLES; i++) {
+    cout << "CYCLE " << i << endl;
+    for (int k = 0; k < K; k ++) {
+      cout << "Domain " << k << endl;
+      train_video_k_one_batch(train_videos, &tracker_trainer_multi_domain, k);
+    }
   }
 
   return 0;

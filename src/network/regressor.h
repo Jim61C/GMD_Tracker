@@ -19,7 +19,7 @@
 
 using namespace std;
 
-const string FREEZE_LAYER_PREFIX = "fc8_k";
+const string FREEZE_LAYER_PREFIX = "fc6_k";
 const string LOSS_LAYER_PREFIX = "loss_k";
 
 class Regressor : public RegressorBase {
@@ -82,6 +82,11 @@ protected:
   // Set the rois
   void set_rois(const std::vector<BoundingBox>& candidate_bboxes, const double scale, const int batch_id = 0);
 
+  /*
+  MDNet, Set the candidate image
+  */
+  void set_candidate_images(const cv::Mat & image_curr, const std::vector<BoundingBox> & candidates_bboxes);
+
   // Get the features corresponding to the output of the network.
   virtual void GetOutput(std::vector<float>* output);
 
@@ -143,7 +148,7 @@ protected:
                       std::vector<std::vector<cv::Mat> >* image_channels);
   
   // Wrap the input of network (candidate) in separate cv::Mat objects
-  void WrapInputLayer(const size_t num_candidates, std::vector<std::vector<cv::Mat> >* candidate_channels);
+  void WrapInputLayer(const size_t num_candidates, std::vector<std::vector<cv::Mat> >* candidate_channels, int input_idx);
 
   // Wrap a specific blob in cv::Mat objects
   void WrapBlobByNameBatch(const string & blob_name, std::vector<std::vector<cv::Mat> >* blob_channels);
