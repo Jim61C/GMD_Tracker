@@ -112,13 +112,13 @@ include_directories(src)
 # add_executable (test_tracker_vot src/test/test_tracker_vot.cpp)
 # target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
 # # Note: If can't find trax, please download trax and build it, then uncomment the below line and set the path manually
-# target_link_libraries(${PROJECT_NAME} /home/yxing1/proj/trax/build/libtrax.so)
+# target_link_libraries(${PROJECT_NAME} /home/jimxing/proj/trax/build/libtrax.so)
 # target_link_libraries (test_tracker_vot ${PROJECT_NAME})
 
 # add_executable (test_tracker_no_middle_batch_single_no_pool_avg src/test/test_tracker_vot_gmd_finetune.cpp)
 # target_link_libraries(${PROJECT_NAME}  ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB} ${EIGEN3_LIBS})
 # # Note: If can't find trax, please download trax and build it, then uncomment the below line and set the path manually
-# target_link_libraries(${PROJECT_NAME} /home/yxing1/proj/trax/build/libtrax.so)
+# target_link_libraries(${PROJECT_NAME} /home/jimxing/proj/trax/build/libtrax.so)
 # target_link_libraries (test_tracker_no_middle_batch_single_no_pool_avg ${PROJECT_NAME})
 
 # add_executable (trax_tracker_no_middle_batch_single_no_pool_avg src/test/test_tracker_vot_gmd_finetune_trax.cpp)
@@ -149,9 +149,9 @@ target_link_libraries (train_mdnet ${PROJECT_NAME})
 # target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})
 # target_link_libraries (show_tracker_vot_gmd ${PROJECT_NAME})
 
-# add_executable (show_tracker_vot_gmd_finetune_no_middle_batch_single_no_pool_avg src/visualizer/show_tracker_vot_gmd_finetune.cpp)
-# target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB} ${EIGEN3_LIBS})
-# target_link_libraries (show_tracker_vot_gmd_finetune_no_middle_batch_single_no_pool_avg ${PROJECT_NAME})
+add_executable (show_mdnet src/visualizer/show_tracker_vot_gmd_finetune.cpp)
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB} ${EIGEN3_LIBS})
+target_link_libraries (show_mdnet ${PROJECT_NAME})
 
 add_executable (UnitTest src/UnitTest/unit_test.cpp)
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${Caffe_LIBRARIES} ${TinyXML_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB} ${EIGEN3_LIBS})

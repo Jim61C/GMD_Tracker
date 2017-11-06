@@ -35,9 +35,6 @@ TrackerGMD::TrackerGMD(const bool show_tracking, ExampleGenerator* example_gener
 
 // Estimate the location of the target object in the current image.
 void TrackerGMD::Track(const cv::Mat& image_curr, RegressorBase* regressor, BoundingBox* bbox_estimate_uncentered) {
-    // Get target from previous image.
-    cv::Mat target_pad;
-    CropPadImage(bbox_prev_tight_, image_prev_, &target_pad);
 
     // Crop the current image based on predicted prior location of target.
     cv::Mat curr_search_region;
@@ -67,7 +64,8 @@ void TrackerGMD::Track(const cv::Mat& image_curr, RegressorBase* regressor, Boun
     candidate_probabilities_.clear();
     sorted_idxes_.clear(); // sorted indexes of candidates from highest positive prob to lowest
     // Estimate the bounding box location as the ML estimate of the candidate_bboxes
-    regressor->PredictFast(image_curr, curr_search_region, target_tight, candidates_bboxes_, bbox_prev_tight_, bbox_estimate_uncentered, &candidate_probabilities_, &sorted_idxes_, sd_trans_, cur_frame_);
+    regressor->PredictFast(image_curr, curr_search_region, target_tight, candidates_bboxes_, bbox_prev_tight_, 
+        bbox_estimate_uncentered, &candidate_probabilities_, &sorted_idxes_, sd_trans_, cur_frame_);
 
 #ifdef DEBUG_SHOW_CANDIDATES
 

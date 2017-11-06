@@ -16,6 +16,8 @@ using caffe::ParamSpec;
 using std::string;
 using namespace std;
 
+#define DEBUG_MDNET_INPUT
+#define DEBUG_CONV3_FEATURE
 // #define DEBUG_FREEZE_LAYER
 // #define DEBUG_GETPROBOUTPUT
 // #define LOG_TIME
@@ -359,12 +361,13 @@ void Regressor::PredictFast(const cv::Mat& image_curr, const cv::Mat& image, con
   waitKey(0);
 #endif
 
-  PreForwardFast(image_curr, candidate_bboxes, image, target);
 
+  // feed in the input bbox cropped image regions
+  set_candidate_images(image_curr, candidate_bboxes);
   const vector<string> & layer_names = net_->layer_names();
-  int layer_pool5_concat_idx = FindLayerIndexByName(layer_names, "concat");
-  int layer_fc8_idx = net_->layers().size() - 2;
-  net_->ForwardFromTo(layer_pool5_concat_idx, layer_fc8_idx);
+  // forward to the flatten_fc6 layer, shape (B, 2)
+  int layer_flatten_fc6_idx = FindLayerIndexByName(layer_names, "flatten_fc6");
+  net_->ForwardTo(layer_flatten_fc6_idx);
 
   vector<float> probabilities;
   GetProbOutput(&probabilities);
@@ -441,7 +444,7 @@ void Regressor::PredictFast(const cv::Mat& image_curr, const cv::Mat& image, con
   double min_color = 0;
   double max_color = 255;
 
-  if (cur_frame >= 5) {
+  if (cur_frame >= 0) {
     for (int i = 0; i < bboxes_in.size(); i++) {
       if (positive_probabilities[i] > 0.2) {
         Mat this_im_show = image_curr_scale_origin;
@@ -470,6 +473,26 @@ void Regressor::PredictFast(const cv::Mat& image_curr, const cv::Mat& image, con
   for (int i = 0; i < positive_probabilities.size(); i++) {
     positive_probabilities[i] *= distance_scores[i];
   }
+#endif
+
+#ifdef DEBUG_MDNET_INPUT
+  vector<vector<cv::Mat> > input_candidate_images_splitted;
+  WrapOutputBlob("candidate", &input_candidate_images_splitted);
+  
+  vector<cv::Mat> input_candidate_images;
+  for (int b = 0; b < input_candidate_images_splitted.size(); b++) {
+    cv::Mat candidate_image;
+    cv::merge(input_candidate_images_splitted[b], candidate_image); 
+    cv::add(candidate_image, cv::Mat(candidate_image.size(), CV_32FC3, mean_scalar), candidate_image);
+    candidate_image.convertTo(candidate_image, CV_8UC3);
+    input_candidate_images.push_back(candidate_image);
+  }
+
+  for (int b = 0; b < input_candidate_images.size(); b++) {
+    cv::imshow("input candidate" + std::to_string(1), input_candidate_images[b]);
+    cv::waitKey(1);
+  }
+
 #endif
 
   // initialize original index locations
@@ -1048,38 +1071,39 @@ void Regressor::GetOutput(std::vector<float>* output) {
 }
 
 void Regressor::GetProbOutput(std::vector<float> *output) {
+#ifdef DEBUG_CONV3_FEATURE
+  std::vector<std::vector<cv::Mat> > conv3_features;
+  WrapOutputBlob("conv3", &conv3_features);
 
-#ifdef DEBUG_GETPROBOUTPUT
-  std::vector<float> feature_fc7b;
-  GetFeatures("fc7b", &feature_fc7b);
-  std::cout << "fc7b features:" << endl;
-  for (int i = 0;i< feature_fc7b.size();i++) {
-    std::cout << feature_fc7b[i] << endl;
-  }
-
-  std::vector<float> feature_fc8;
-  GetFeatures("fc8", &feature_fc8);
-  std::cout << "fc8 features:" << endl;
-  for (int i = 0;i< feature_fc8.size();i++) {
-    std::cout << feature_fc8[i] << endl;
+  // check if the 256 maps are all the same across candidates
+  for (int m = 0; m < conv3_features.size(); m ++) {
+    for (int n = m + 1; n < conv3_features.size(); n++) {
+      bool is_different = false;
+      for (int j = 0; j < conv3_features[0].size(); j++) {
+        if(!equalMat(conv3_features[m][j], conv3_features[n][j])) {
+          is_different = true;
+        }
+      }
+      if (!is_different) {
+        cout << "candidate " << m << " and " << n << "have the same conv3 feature"<< endl;
+      }
+    }
   }
 #endif
 
-  // GetFeatures("prob", output);
-
   // get fc8 layer and manually compute softmax since SoftMaxWithLoss is used for finetuning
-  std::vector<float> feature_fc8;
-  GetFeatures("fc8", &feature_fc8);
-  // batch size is feature_fc8.size()/2
-  for (int i = 0;i< feature_fc8.size()/2;i++) {
+  std::vector<float> feature_fc6;
+  GetFeatures("flatten_fc6", &feature_fc6);
+  // batch size is feature_fc6.size()/2
+  for (int i = 0;i< feature_fc6.size()/2;i++) {
     // change to softmax prob 
-    double exp_0 = exp(feature_fc8[2*i]);
-    double exp_1 = exp(feature_fc8[2*i + 1]);
-    feature_fc8[2*i] = exp_0/(exp_0 + exp_1);
-    feature_fc8[2*i + 1] = exp_1/(exp_0 + exp_1);
+    double exp_0 = exp(feature_fc6[2*i]);
+    double exp_1 = exp(feature_fc6[2*i + 1]);
+    feature_fc6[2*i] = exp_0/(exp_0 + exp_1);
+    feature_fc6[2*i + 1] = exp_1/(exp_0 + exp_1);
   }
   
-  *output = feature_fc8;
+  *output = feature_fc6;
 }
 
 // Wrap the input layer of the network in separate cv::Mat objects

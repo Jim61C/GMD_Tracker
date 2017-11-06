@@ -6,7 +6,7 @@
 #define EPSILON (1e-03)
 #define PI 3.1415926
 
-#define TOP_ESTIMATES 15 // number of top candidates to do the estimates, heuristic, increase this number or stricter rule on enqueue online training examples
+#define TOP_ESTIMATES 5 // number of top candidates to do the estimates, heuristic, increase this number or stricter rule on enqueue online training examples
 
 // for tracker motion model sample candidates
 #define SAMPLE_CANDIDATES 256
@@ -40,7 +40,7 @@ const int INNER_BATCH_SIZE = 50;
 
 // for fine tune sample generation
 const int POS_CANDIDATES_FINETUNE = 50;
-const int NEG_CANDIDATES_FINETUNE = 200;
+const int NEG_CANDIDATES_FINETUNE = 150;
 
 // // for fine tune sample generation with OHEM, each minibatch size = 210, 10+ && 200-, out of which, pick 10+ && 40- to back prop
 // #define POS_CANDIDATES_FINETUNE 10
@@ -54,9 +54,9 @@ const int NEG_CANDIDATES_FINETUNE = 200;
 // long/short term update
 #define LONG_TERM_BAG_SIZE 50
 #define SHORT_TERM_BAG_SIZE 20
-#define LONG_TERM_UPDATE_INTERVAL 50
-#define LONG_TERM_POS_CANDIDATE_UPPER_BOUND 10
-#define LONG_TERM_NEG_CANDIDATE_UPPER_BOUND 200 // number of examples for forwarding, backward only does NOHEM_FINETUNE number of negative sampels
+#define LONG_TERM_UPDATE_INTERVAL 10
+#define LONG_TERM_POS_CANDIDATE_UPPER_BOUND 50
+#define LONG_TERM_NEG_CANDIDATE_UPPER_BOUND 150 // number of examples for forwarding, backward only does NOHEM_FINETUNE number of negative sampels
 const double SHORT_TERM_FINE_TUNE_TH = 0.5; // if want less frequent short term fine tune when distance window is applied, make it < 0.5
 
 // DEBUGGING
@@ -65,18 +65,18 @@ const double SHORT_TERM_FINE_TUNE_TH = 0.5; // if want less frequent short term 
 #define SEED_ENGINE 800
 
 // Online Learning
+#define FIRST_FRAME_FINETUNE_ITERATION 30
+#define FIRST_FRAME_POS_SAMPLES 50
+#define FIRST_FRAME_NEG_SAMPLES 150
+
 // #define FIRST_FRAME_FINETUNE_ITERATION 10
-// #define FIRST_FRAME_POS_SAMPLES 50
-// #define FIRST_FRAME_NEG_SAMPLES 500
+// #define FIRST_FRAME_POS_SAMPLES 32
+// #define FIRST_FRAME_NEG_SAMPLES 1000
 
-#define FIRST_FRAME_FINETUNE_ITERATION 10
-#define FIRST_FRAME_POS_SAMPLES 32
-#define FIRST_FRAME_NEG_SAMPLES 1000
+// #define FIRST_FRAME_NUM_MINI_BATCH 2
 
-#define FIRST_FRAME_NUM_MINI_BATCH 2
-
-#define ONHEM_BASE 96
-#define FIRST_FRAME_ONHEM ONHEM_BASE/FIRST_FRAME_NUM_MINI_BATCH // online hard examples used
+// #define ONHEM_BASE 96
+// #define FIRST_FRAME_ONHEM ONHEM_BASE/FIRST_FRAME_NUM_MINI_BATCH // online hard examples used
 
 
 // ROI Pooling
@@ -94,9 +94,9 @@ const double MAX_SIZE = 1000.0; // make sure the image_curr does not exceed this
 // VGG-M
 const cv::Scalar mean_scalar(102.7170, 115.7726, 123.5094);
 
-// distance penalty padding
-#define ADD_DISTANCE_PENALTY
-#define DISTANCE_PENALTY_PAD 0
+// // distance penalty padding
+// #define ADD_DISTANCE_PENALTY
+// #define DISTANCE_PENALTY_PAD 0
 
 // for BoundingBox Regression
 const int BBOX_REGRESSION_FEATURE_LENGTH = 6 * 6 * 256;

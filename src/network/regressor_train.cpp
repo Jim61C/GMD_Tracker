@@ -15,6 +15,8 @@ using caffe::LayerParameter;
 
 // #define DEBUG_ROI_POOL_INPUT
 // #define DEBUG_MINIBATCH_OHEM
+#define DEBUG_MDNET_FINETUNE
+#define DEBUG_OBSERVE_PREDICTION
 
 RegressorTrain::RegressorTrain(const std::string& deploy_proto,
                                const std::string& caffe_model,
@@ -455,13 +457,11 @@ void RegressorTrain::TrainForwardBackward( const cv::Mat & image_curr,
         std::vector<float> this_loss_output;
         GetFeatures("loss", &this_loss_output);
         loss_history_[0].push_back(this_loss_output[0]);
+        InvokeSaveLossIfNeeded();
       }
-
-      InvokeSaveLossIfNeeded();
     }
 }
 
-// TODO: change this API to be pointer based with a number parameter, so that we can avoid the copying performed above!!!
 void RegressorTrain::Train(const cv::Mat &image_curr,
                            const std::vector<BoundingBox> candidates_bboxes,
                            const std::vector<double> &labels_flattened,
@@ -505,9 +505,8 @@ void RegressorTrain::Train(const cv::Mat &image_curr,
         std::vector<float> this_loss_output;
         GetFeatures(LOSS_LAYER_PREFIX + std::to_string(k), &this_loss_output);
         loss_history_[k].push_back(this_loss_output[0]);
+        InvokeSaveLossIfNeeded();
       }
-  
-      InvokeSaveLossIfNeeded();
 
     }
     else {
@@ -519,16 +518,59 @@ void RegressorTrain::Train(const cv::Mat &image_curr,
       // Set the labels
       set_labels(labels_flattened);
 
+#ifdef DEBUG_MDNET_FINETUNE 
+  vector<vector<cv::Mat> > input_candidate_images_splitted;
+  WrapOutputBlob("candidate", &input_candidate_images_splitted);
+
+  vector<cv::Mat> input_candidate_images;
+  for (int b = 0; b < input_candidate_images_splitted.size(); b++) {
+    cv::Mat candidate_image;
+    cv::merge(input_candidate_images_splitted[b], candidate_image); 
+    cv::add(candidate_image, cv::Mat(candidate_image.size(), CV_32FC3, mean_scalar), candidate_image);
+    candidate_image.convertTo(candidate_image, CV_8UC3);
+    input_candidate_images.push_back(candidate_image);
+  }
+
+  std::vector<float> labels_in;
+  GetFeatures("label", &labels_in);
+
+  assert (labels_in.size() == input_candidate_images.size());
+
+  for (int b = 0; b < input_candidate_images.size(); b++) {
+    if (labels_in[b] == 1) {
+      cv::imshow("pos candidate" + std::to_string(1), input_candidate_images[b]);
+    }
+    else {
+      cv::imshow("neg candidate" + std::to_string(1), input_candidate_images[b]);
+    }
+    cv::waitKey(1);
+  }
+#endif
+
       // Train the network.
       Step();
 
-      if (loss_save_path_.length() != 0) {
+#ifdef DEBUG_OBSERVE_PREDICTION
+  vector<float> predictions;
+  GetFeatures("flatten_fc6", &predictions);
+
+  vector<float> positive_probs;
+  for (int i = 0; i < predictions.size() / 2; i ++) {
+    float this_positive_prob = exp(predictions[2*i + 1]) / (exp(predictions[2*i]) + exp(predictions[2*i + 1]));
+    positive_probs.push_back(this_positive_prob);
+  }
+
+  std::vector<float> this_loss_output;
+  GetFeatures("loss", &this_loss_output);
+
+#endif
+
+          if (loss_save_path_.length() != 0) {
         std::vector<float> this_loss_output;
         GetFeatures("loss", &this_loss_output);
         loss_history_[0].push_back(this_loss_output[0]);
+        InvokeSaveLossIfNeeded();
       }
-  
-      InvokeSaveLossIfNeeded();
 
     }
     

@@ -62,7 +62,7 @@ int main (int argc, char *argv[]) {
     pause_val = atoi(argv[11]);
   }
 
-  string output_folder = "nets/tracker_output/GOTURN_MDNet";
+  string output_folder = "nets/tracker_output/mdnet_C++";
   if (argc >= 13) {
     output_folder = argv[12];
   }
