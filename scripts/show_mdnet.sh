@@ -20,7 +20,7 @@ SHOW_RESULT=1
 
 VIDEOS_FOLDER=$1
 DEPLOY=nets/mdnet_finetune.prototxt
-CAFFE_MODEL=nets/solverstate/mdnet/caffenet_train_iter_400000.caffemodel.h5
+CAFFE_MODEL=/home/jimxing/proj/MDNet_C++/nets/models/mdnet_OTB-VOT2014_from_matlab.caffemodel
 SOLVER_FILE=nets/solver_temp/solver_temp_mdnet_finetune.prototxt
 LAMBDA_SHIFT=5
 LAMBDA_SCALE=15

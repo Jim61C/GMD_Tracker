@@ -16,8 +16,8 @@ using caffe::ParamSpec;
 using std::string;
 using namespace std;
 
-#define DEBUG_MDNET_INPUT
-#define DEBUG_CONV3_FEATURE
+// #define DEBUG_MDNET_INPUT
+// #define DEBUG_CONV3_FEATURE
 // #define DEBUG_FREEZE_LAYER
 // #define DEBUG_GETPROBOUTPUT
 // #define LOG_TIME

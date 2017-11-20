@@ -121,9 +121,9 @@ include_directories(src)
 # target_link_libraries(${PROJECT_NAME} /home/jimxing/proj/trax/build/libtrax.so)
 # target_link_libraries (test_tracker_no_middle_batch_single_no_pool_avg ${PROJECT_NAME})
 
-# add_executable (trax_tracker_no_middle_batch_single_no_pool_avg src/test/test_tracker_vot_gmd_finetune_trax.cpp)
-# target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB} ${EIGEN3_LIBS} ${TRAX_LIBRARIES})
-# target_link_libraries (trax_tracker_no_middle_batch_single_no_pool_avg ${PROJECT_NAME})
+add_executable (trax_tracker_mdnet src/test/test_tracker_vot_gmd_finetune_trax.cpp)
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${Boost_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB} ${EIGEN3_LIBS} ${TRAX_LIBRARIES})
+target_link_libraries (trax_tracker_mdnet ${PROJECT_NAME})
 
 # add_executable (test_tracker_alov src/test/test_tracker_alov.cpp)
 # target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${Caffe_LIBRARIES} ${GLOG_LIB} ${PROTOBUF_LIBRARIES} ${GSLLIB})

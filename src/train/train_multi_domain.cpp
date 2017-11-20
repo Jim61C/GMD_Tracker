@@ -18,7 +18,7 @@
 using std::string;
 
 // Desired number of iterations, within each iteration, each of K domains is passed 1 batch
-const int NUM_CYCLES = 300;
+const int NUM_CYCLES = 200;
 
 namespace {
 

@@ -15,8 +15,10 @@ using caffe::LayerParameter;
 
 // #define DEBUG_ROI_POOL_INPUT
 // #define DEBUG_MINIBATCH_OHEM
-#define DEBUG_MDNET_FINETUNE
-#define DEBUG_OBSERVE_PREDICTION
+
+// #define DEBUG_MDNET_FINETUNE
+// #define DEBUG_OBSERVE_PREDICTION
+// #define DEBUG_MDNET_TRAIN
 
 RegressorTrain::RegressorTrain(const std::string& deploy_proto,
                                const std::string& caffe_model,
@@ -488,6 +490,35 @@ void RegressorTrain::Train(const cv::Mat &image_curr,
       // Set the labels
       set_labels(labels_flattened);
 
+#ifdef DEBUG_MDNET_TRAIN
+      vector<vector<cv::Mat> > input_candidate_images_splitted;
+      WrapOutputBlob("candidate", &input_candidate_images_splitted);
+    
+      vector<cv::Mat> input_candidate_images;
+      for (int b = 0; b < input_candidate_images_splitted.size(); b++) {
+        cv::Mat candidate_image;
+        cv::merge(input_candidate_images_splitted[b], candidate_image); 
+        cv::add(candidate_image, cv::Mat(candidate_image.size(), CV_32FC3, mean_scalar), candidate_image);
+        candidate_image.convertTo(candidate_image, CV_8UC3);
+        input_candidate_images.push_back(candidate_image);
+      }
+    
+      std::vector<float> labels_in;
+      GetFeatures("label", &labels_in);
+    
+      assert (labels_in.size() == input_candidate_images.size());
+    
+      for (int b = 0; b < input_candidate_images.size(); b++) {
+        if (labels_in[b] == 1) {
+          cv::imshow("pos candidate" + std::to_string(1), input_candidate_images[b]);
+        }
+        else {
+          cv::imshow("neg candidate" + std::to_string(1), input_candidate_images[b]);
+        }
+        cv::waitKey(500);
+      }
+#endif
+
       // Train the network.
       Step();
         
@@ -565,7 +596,7 @@ void RegressorTrain::Train(const cv::Mat &image_curr,
 
 #endif
 
-          if (loss_save_path_.length() != 0) {
+      if (loss_save_path_.length() != 0) {
         std::vector<float> this_loss_output;
         GetFeatures("loss", &this_loss_output);
         loss_history_[0].push_back(this_loss_output[0]);

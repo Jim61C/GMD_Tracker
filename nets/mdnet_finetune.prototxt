@@ -252,7 +252,7 @@ layer {
 
 # One domain for online finetuning
 layer {
-  name: "fc6" 
+  name: "fc6-new" 
   type: "Convolution" 
   bottom: "fc5" 
   top: "fc6" 
