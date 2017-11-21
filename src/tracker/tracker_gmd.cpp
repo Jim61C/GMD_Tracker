@@ -207,6 +207,11 @@ void TrackerGMD::FineTuneWorker(ExampleGenerator* example_generator,
     std::vector<BoundingBox> bboxes_gt_scaled;
     std::vector<std::vector<BoundingBox> > candidates; 
     std::vector<std::vector<double> >  labels;
+
+    std::vector<BoundingBox> candidates_pos;
+    std::vector<BoundingBox> candidates_neg;
+    vector<int> pos_corres_frame_ids;
+    vector<int> neg_corres_frame_ids;
     
     for (int i = 0; i< this_bag_permuted.size(); i ++) {
         std::vector<pair<double, BoundingBox> > label_to_candidate;
@@ -229,15 +234,25 @@ void TrackerGMD::FineTuneWorker(ExampleGenerator* example_generator,
             this_frame_labels.push_back(label_to_candidate[i].first);
         }
 
-        // only add to finetuning data is not empty
-        if (label_to_candidate.size() > 0) {
-            image_currs.push_back(image_currs_[this_update_idx]);
-            images.push_back(images_finetune_[this_update_idx]);
-            targets.push_back(targets_finetune_[this_update_idx]);
-            bboxes_gt_scaled.push_back(gts_[this_update_idx]);
-            candidates.push_back(this_frame_candidates);
-            labels.push_back(this_frame_labels);
-        }
+        assert (label_to_candidate.size() > 0); // to be in side the bag, it must be success frame
+
+        image_currs.push_back(image_currs_[this_update_idx]); // index into image_currs is i
+        images.push_back(images_finetune_[this_update_idx]);
+        targets.push_back(targets_finetune_[this_update_idx]);
+        bboxes_gt_scaled.push_back(gts_[this_update_idx]);
+        candidates.push_back(this_frame_candidates);
+        labels.push_back(this_frame_labels);
+
+        // record the sample and their corresponding index into image_currs
+        candidates_pos.insert(candidates_pos.end(), candidates_finetune_pos_[this_update_idx].begin(), 
+        candidates_finetune_pos_[this_update_idx].end());
+        vector<int> this_pos_corres_frames_ids(candidates_finetune_pos_[this_update_idx].size(), i);
+        pos_corres_frame_ids.insert(pos_corres_frame_ids.end(), this_pos_corres_frames_ids.begin(), this_pos_corres_frames_ids.end());
+
+        candidates_neg.insert(candidates_neg.end(), candidates_finetune_neg_[this_update_idx].begin(), 
+        candidates_finetune_neg_[this_update_idx].end());
+        vector<int> this_neg_corres_frames_ids(candidates_finetune_neg_[this_update_idx].size(), i);
+        neg_corres_frame_ids.insert(neg_corres_frame_ids.end(), this_neg_corres_frames_ids.begin(), this_neg_corres_frames_ids.end());
     }
 
 #ifdef DEBUG_FINETUNE_WORKER
@@ -248,27 +263,22 @@ void TrackerGMD::FineTuneWorker(ExampleGenerator* example_generator,
     cout << "Total number of candidates for fine tune: " << count << endl;
 #endif
 
-    // // OHEM 5 iterations
-    // for (int i = 0; i < 5; i ++) {
-    //     // feed to network to train
-    //     regressor_train->TrainBatchFast(image_currs,
-    //         images,
-    //         targets,
-    //         bboxes_gt_scaled,
-    //         candidates,
-    //         labels,
-    //         -1,
-    //         pos_candidate_upper_bound + neg_candidate_upper_bound, 
-    //         NOHEM_FINETUNE); // k == -1 indicating fine tuning
-    // }
     
-    regressor_train->TrainBatchFast(image_currs,
-                            images,
-                            targets,
-                            bboxes_gt_scaled,
-                            candidates,
-                            labels,
-                            -1); // k == -1 indicating fine tuning
+    regressor_train_->FineTuneOHEM(image_currs,
+        candidates_pos,
+        pos_corres_frame_ids,
+        candidates_neg,
+        neg_corres_frame_ids,
+        10,
+        NOHEM_FINETUNE);
+    
+    // regressor_train->TrainBatchFast(image_currs,
+    //                         images,
+    //                         targets,
+    //                         bboxes_gt_scaled,
+    //                         candidates,
+    //                         labels,
+    //                         -1); // k == -1 indicating fine tuning
 
 }
 
@@ -452,7 +462,7 @@ void TrackerGMD::Init(const cv::Mat& image_curr, const BoundingBox& bbox_gt,
 #endif 
 
     printf("About to fine tune the first frame ...\n");
-    for (int iter = 0; iter < FIRST_FRAME_FINETUNE_ITERATION; iter ++) {
+    for (int iter = 0; iter < 1; iter ++) {
         printf("first frame fine tune iter %d\n", iter);
         // Set up example generator.
         example_generator_->Reset(bbox_gt,
@@ -525,28 +535,28 @@ void TrackerGMD::Init(const cv::Mat& image_curr, const BoundingBox& bbox_gt,
 
         // TODO: avoid the copying and just pass a vector of one frame's +/- candidates to train
         for(int i = 0; i< images.size(); i ++ ) {
-        candidates.push_back(std::vector<BoundingBox>(this_frame_candidates)); // copy
-        labels.push_back(std::vector<double>(this_frame_labels)); // copy
+            candidates.push_back(std::vector<BoundingBox>(this_frame_candidates)); // copy
+            labels.push_back(std::vector<double>(this_frame_labels)); // copy
         }
 
-        //Fine Tune!
+        // Finetune
+        vector<int> pos_corres_frame_ids(this_frame_candidates_pos.size(), 0);
+        vector<int> neg_corres_frame_ids(this_frame_candidates_neg.size(), 0);
+        regressor_train_->FineTuneOHEM(image_currs,
+            this_frame_candidates_pos,
+            pos_corres_frame_ids,
+            this_frame_candidates_neg,
+            neg_corres_frame_ids,  
+            30,
+            NOHEM_FINETUNE);
+        
         // regressor_train_->TrainBatchFast(image_currs,
         //                             images,
         //                             targets,
         //                             bboxes_gt_scaled,
         //                             candidates,
         //                             labels,
-        //                             -1,
-        //                             (FIRST_FRAME_POS_SAMPLES + FIRST_FRAME_NEG_SAMPLES)/FIRST_FRAME_NUM_MINI_BATCH, // guaranteed that at least one frame candidates
-        //                             FIRST_FRAME_ONHEM); // k == -1 indicating fine tuning
-        
-        regressor_train_->TrainBatchFast(image_currs,
-                                    images,
-                                    targets,
-                                    bboxes_gt_scaled,
-                                    candidates,
-                                    labels,
-                                    -1); // k == -1 indicating fine tuning
+        //                             -1); // k == -1 indicating fine tuning
 
     }
     printf("Fine tune the first frame completed!\n");

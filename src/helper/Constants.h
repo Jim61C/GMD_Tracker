@@ -37,15 +37,17 @@ const double NEG_IOU_TH = 0.5;
 
 // for inner mini batch in training
 const int INNER_BATCH_SIZE = 50;
+// minibatch size for online finetuning
+const int MINI_BATCH_SIZE = 128;
+const int MINI_BATCH_SIZE_OHEM = 256;
 
 // for fine tune sample generation
-const int POS_CANDIDATES_FINETUNE = 50;
-const int NEG_CANDIDATES_FINETUNE = 200;
+#define POS_CANDIDATES_FINETUNE 50
+#define NEG_CANDIDATES_FINETUNE 200
+#define POS_SAMPLE_FINETUNE 32
+#define NEG_SAMPLE_FINETUNE 256*4
+#define NOHEM_FINETUNE 96
 
-// // for fine tune sample generation with OHEM, each minibatch size = 210, 10+ && 200-, out of which, pick 10+ && 40- to back prop
-// #define POS_CANDIDATES_FINETUNE 10
-// #define NEG_CANDIDATES_FINETUNE 200
-// #define NOHEM_FINETUNE 40
 
 // for training labels
 #define POS_LABEL 1.0
@@ -65,19 +67,9 @@ const double SHORT_TERM_FINE_TUNE_TH = 0.5; // if want less frequent short term 
 #define SEED_ENGINE 800
 
 // Online Learning
-#define FIRST_FRAME_FINETUNE_ITERATION 10
-#define FIRST_FRAME_POS_SAMPLES 50
-#define FIRST_FRAME_NEG_SAMPLES 500
-
-// #define FIRST_FRAME_FINETUNE_ITERATION 10
-// #define FIRST_FRAME_POS_SAMPLES 32
-// #define FIRST_FRAME_NEG_SAMPLES 1000
-
-// #define FIRST_FRAME_NUM_MINI_BATCH 2
-
-// #define ONHEM_BASE 96
-// #define FIRST_FRAME_ONHEM ONHEM_BASE/FIRST_FRAME_NUM_MINI_BATCH // online hard examples used
-
+#define FIRST_FRAME_FINETUNE_ITERATION 30
+#define FIRST_FRAME_POS_SAMPLES 500
+#define FIRST_FRAME_NEG_SAMPLES 5000
 
 // ROI Pooling
 const double TARGET_SIZE = 600.0; // compare to min (W, H)
