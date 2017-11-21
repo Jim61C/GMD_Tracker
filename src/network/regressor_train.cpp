@@ -18,7 +18,9 @@ using caffe::LayerParameter;
 
 // #define DEBUG_MDNET_FINETUNE
 // #define DEBUG_OBSERVE_PREDICTION
+// #define DEBUG_CROSS_FRAME_OHEM
 // #define DEBUG_MDNET_TRAIN
+#define DEBUG_TIME
 
 RegressorTrain::RegressorTrain(const std::string& deploy_proto,
                                const std::string& caffe_model,
@@ -159,6 +161,237 @@ void RegressorTrain::Train(const std::vector<cv::Mat>& images,
 
   // Train the network.
   Step();
+}
+
+void RegressorTrain::FinetuneOHEMTrain(const std::vector<cv::Mat> & candidate_images, 
+                                       const std::vector<double> & labels) {
+  // Set the candidates
+  SetCandidates(candidate_images);
+  
+  // Set the labels
+  set_labels(labels);
+
+#ifdef DEBUG_MDNET_FINETUNE 
+  vector<vector<cv::Mat> > input_candidate_images_splitted;
+  WrapOutputBlob("candidate", &input_candidate_images_splitted);
+
+  vector<cv::Mat> input_candidate_images;
+  for (int b = 0; b < input_candidate_images_splitted.size(); b++) {
+    cv::Mat candidate_image;
+    cv::merge(input_candidate_images_splitted[b], candidate_image); 
+    cv::add(candidate_image, cv::Mat(candidate_image.size(), CV_32FC3, mean_scalar), candidate_image);
+    candidate_image.convertTo(candidate_image, CV_8UC3);
+    input_candidate_images.push_back(candidate_image);
+  }
+
+  std::vector<float> labels_in;
+  GetFeatures("label", &labels_in);
+
+  assert (labels_in.size() == input_candidate_images.size());
+
+  for (int b = 0; b < input_candidate_images.size(); b++) {
+    if (labels_in[b] == 1) {
+      cv::imshow("pos candidate" + std::to_string(1), input_candidate_images[b]);
+    }
+    else {
+      cv::imshow("neg candidate" + std::to_string(1), input_candidate_images[b]);
+    }
+    cv::waitKey(1);
+  }
+#endif
+
+  // Train the network.
+  Step();
+
+#ifdef DEBUG_OBSERVE_PREDICTION
+  vector<float> predictions;
+  GetFeatures("flatten_fc6", &predictions);
+
+  vector<float> positive_probs;
+  for (int i = 0; i < predictions.size() / 2; i ++) {
+    float this_positive_prob = exp(predictions[2*i + 1]) / (exp(predictions[2*i]) + exp(predictions[2*i + 1]));
+    positive_probs.push_back(this_positive_prob);
+  }
+
+  std::vector<float> this_loss_output;
+  GetFeatures("loss", &this_loss_output);
+
+#endif
+
+}
+
+vector<int> RegressorTrain::GetOHEMIndices(const std::vector<cv::Mat>& image_currs,
+  const vector<BoundingBox> & neg_bboxes,
+  const vector<int> & corres_frame_ids,
+  const int & num) {
+
+    // collect the scores in a mini batch manner using MINI_BATCH_SIZE_OHEM
+    const vector<string> & layer_names = net_->layer_names();
+    int layer_flatten_fc6_idx = FindLayerIndexByName(layer_names, "flatten_fc6");
+    vector<double> neg_bboxes_probs;
+
+    int total_size = neg_bboxes.size();
+    int num_inner_batches =  total_size / MINI_BATCH_SIZE_OHEM;      
+    for (int j = 0; j < num_inner_batches; j ++) {
+      std::vector<BoundingBox> this_neg_bboxes(neg_bboxes.begin() + j*MINI_BATCH_SIZE_OHEM, 
+      neg_bboxes.begin() + std::min((j+1)*MINI_BATCH_SIZE_OHEM, total_size));
+      std::vector<int> this_corres_frame_ids(corres_frame_ids.begin() + j*MINI_BATCH_SIZE_OHEM, 
+      corres_frame_ids.begin() + std::min((j+1)*MINI_BATCH_SIZE_OHEM, total_size));
+      
+      // gather the actual roi images of these negative bboxes
+      vector<cv::Mat> neg_candidate_images;
+      for (int i = 0; i < this_neg_bboxes.size(); i ++) {
+        cv::Mat out;
+        this_neg_bboxes[i].CropBoundingBoxOutImage(image_currs[this_corres_frame_ids[i]], &out);
+        neg_candidate_images.push_back(out);
+      }
+      SetCandidates(neg_candidate_images);
+      
+      net_->ForwardTo(layer_flatten_fc6_idx);
+  
+      vector<float> probabilities;
+      GetProbOutput(&probabilities);
+    
+      vector<float> positive_probabilities;
+      for(int i = 0; i < this_neg_bboxes.size(); i++) {
+        positive_probabilities.push_back(probabilities[2*i+1]);
+      }
+
+      neg_bboxes_probs.insert(neg_bboxes_probs.end(), positive_probabilities.begin(), positive_probabilities.end());
+    }
+
+    assert (neg_bboxes_probs.size() == neg_bboxes.size());
+
+    
+    // take the bboxes with highest num pos scores
+    vector<int> sorted_indices(neg_bboxes.size());
+    iota(sorted_indices.begin(), sorted_indices.end(), 0); // 0, 1, ... neg_bboxes.size() - 1
+    
+    // sort indices
+    sort(sorted_indices.begin(), sorted_indices.end(),
+        [&neg_bboxes_probs](int i, int j){
+          return neg_bboxes_probs[i] > neg_bboxes_probs[j];
+        });
+
+
+    return vector<int>(sorted_indices.begin(), sorted_indices.begin() + num);
+}
+
+void RegressorTrain::FineTuneOHEM(const std::vector<cv::Mat>& image_currs,
+  const std::vector<BoundingBox>& pos_candidate_bboxes,
+  const std::vector<int>& pos_corres_frame_ids,
+  const std::vector<BoundingBox>& neg_candidate_bboxes,
+  const std::vector<int>& neg_corres_frame_ids,  
+  int max_iter,
+  int num_nohem) {
+    assert(pos_candidate_bboxes.size() == pos_corres_frame_ids.size());
+    assert(neg_candidate_bboxes.size() == neg_corres_frame_ids.size());
+
+#ifdef DEBUG_TIME
+    hrt_.reset();
+    hrt_.start();
+#endif
+
+    // first, sample max_iter * 32 positive samples, max_iter * 4 * 256 negative samples
+    std::mt19937 engine;
+    engine.seed(time(NULL));
+
+    vector<BoundingBox> pos_samples;
+    vector<int> pos_sample_frame_ids;
+    while (pos_samples.size() < max_iter * POS_SAMPLE_FINETUNE) {
+      int this_sample_num = min(max_iter * POS_SAMPLE_FINETUNE - pos_samples.size(), pos_candidate_bboxes.size());
+      std::vector<int> shuffle_indices(pos_candidate_bboxes.size());
+      iota(shuffle_indices.begin(), shuffle_indices.end(), 0);
+      std::shuffle(shuffle_indices.begin(), shuffle_indices.end(), engine);
+      for(int i = 0; i < this_sample_num; i++) {
+        pos_samples.push_back(pos_candidate_bboxes[shuffle_indices[i]]);
+        pos_sample_frame_ids.push_back(pos_corres_frame_ids[shuffle_indices[i]]);
+      }
+    }
+
+    vector<BoundingBox> neg_samples;
+    vector<int> neg_sample_frame_ids;
+    while (neg_samples.size() < max_iter * NEG_SAMPLE_FINETUNE) {
+      int this_sample_num = min(max_iter * NEG_SAMPLE_FINETUNE - neg_samples.size(), neg_candidate_bboxes.size());
+      std::vector<int> shuffle_indices(neg_candidate_bboxes.size());
+      iota(shuffle_indices.begin(), shuffle_indices.end(), 0);
+      std::shuffle(shuffle_indices.begin(), shuffle_indices.end(), engine);
+      for(int i = 0; i < this_sample_num; i++) {
+        neg_samples.push_back(neg_candidate_bboxes[shuffle_indices[i]]);
+        neg_sample_frame_ids.push_back(neg_corres_frame_ids[shuffle_indices[i]]);
+      }
+    }
+#ifdef DEBUG_TIME
+    hrt_.stop();
+    cout << "time spent for sample candidates in FineTuneOHEM: " << hrt_.getMilliseconds() << " ms" << endl;   
+    cout << "number of positive samples: " << pos_samples.size() << ", number of negative samples:" << neg_samples.size() << endl; 
+#endif
+
+#ifdef DEBUG_CROSS_FRAME_OHEM
+    vector<vector<BoundingBox> > hard_examples;
+    hard_examples.resize(image_currs.size());
+#endif
+
+    // for each iter, get Choose(4*256, 96) nohem, then backprop
+    for (int i = 0; i < max_iter; i++) {
+      vector<BoundingBox> this_neg_samples(neg_samples.begin() + i*NEG_SAMPLE_FINETUNE, 
+      neg_samples.begin() + (i+1)*NEG_SAMPLE_FINETUNE);
+      vector<int> this_neg_samples_frame_ids(neg_sample_frame_ids.begin() + i*NEG_SAMPLE_FINETUNE,
+      neg_sample_frame_ids.begin() + (i+1)*NEG_SAMPLE_FINETUNE);
+      vector<int> ohem_indices = GetOHEMIndices(image_currs, this_neg_samples, this_neg_samples_frame_ids, num_nohem); // ohem_indices are into this_neg_samples
+
+#ifdef DEBUG_CROSS_FRAME_OHEM
+      hard_examples.clear();
+      hard_examples.resize(image_currs.size());
+      for (auto idx : ohem_indices) {
+        hard_examples[this_neg_samples_frame_ids[idx]].push_back(this_neg_samples[idx]);
+      }
+      // visualise
+      for (int j = 0; j < image_currs.size(); j ++) {
+        cv::Mat this_image = image_currs[j].clone();
+        for (auto bbox: hard_examples[j]) {
+          bbox.Draw(0, 0, 255, &this_image);
+        }
+        cv::imshow("image_curr " + std::to_string(j), this_image);
+        cv::waitKey(0);
+      }
+#endif
+
+      // prepare 96 + 32 finetuning crops, shuffle, then backprop
+      vector<cv::Mat> candidate_images;
+      vector<double> candidate_labels;
+
+      for (auto idx: ohem_indices) {
+        cv::Mat out;
+        this_neg_samples[idx].CropBoundingBoxOutImage(image_currs[this_neg_samples_frame_ids[idx]], &out);
+        candidate_images.push_back(out);
+        candidate_labels.push_back(NEG_LABEL);
+      }
+
+      for (int idx = i*POS_SAMPLE_FINETUNE; idx < (i+1)*POS_SAMPLE_FINETUNE; idx++) {
+        cv::Mat out;
+        pos_samples[idx].CropBoundingBoxOutImage(image_currs[pos_sample_frame_ids[idx]], &out);
+        candidate_images.push_back(out);
+        candidate_labels.push_back(POS_LABEL);
+      }
+
+      // shuffle
+      assert(candidate_images.size() == candidate_labels.size());
+      std::vector<int> shuffle_indices(candidate_images.size());
+      iota(shuffle_indices.begin(), shuffle_indices.end(), 0);
+      std::shuffle(shuffle_indices.begin(), shuffle_indices.end(), engine);
+
+      vector<cv::Mat> candidate_images_backprop;
+      vector<double> candidate_labels_backprop;
+      for (auto idx : shuffle_indices) {
+        candidate_images_backprop.push_back(candidate_images[idx]);
+        candidate_labels_backprop.push_back(candidate_labels[idx]);
+      }
+
+      //backprop
+      FinetuneOHEMTrain(candidate_images_backprop, candidate_labels_backprop);
+
+    }
 }
 
 

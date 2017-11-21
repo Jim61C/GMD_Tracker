@@ -71,6 +71,23 @@ public:
                            int inner_batch_size = INNER_BATCH_SIZE,
                            int num_nohem = -1);
   
+  void FinetuneOHEMTrain(const std::vector<cv::Mat> & candidate_images, 
+                            const std::vector<double> & labels);
+
+  // return the top num score hard negative examples into neg_bboxes
+  vector<int> GetOHEMIndices(const std::vector<cv::Mat>& image_currs,
+                            const vector<BoundingBox> & neg_bboxes,
+                            const vector<int> & corres_frame_ids,
+                            const int & num);
+
+  void FineTuneOHEM(const std::vector<cv::Mat>& image_currs,
+                            const std::vector<BoundingBox>& pos_candidate_bboxes,
+                            const std::vector<int>& pos_corres_frame_ids,
+                            const std::vector<BoundingBox>& neg_candidate_bboxes,
+                            const std::vector<int>& neg_corres_frame_ids,  
+                            int max_iter,
+                            int num_nohem);
+  
   // Implementing the loss saving Interface                  
   void SaveLossHistoryToFile(const std::string &save_path);
 

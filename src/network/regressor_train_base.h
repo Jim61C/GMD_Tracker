@@ -80,6 +80,16 @@ public:
                            int k,
                            int inner_batch_size = INNER_BATCH_SIZE,
                            int num_nohem = -1) = 0;
+  
+
+  // backprop with OHEM
+  virtual void FineTuneOHEM(const std::vector<cv::Mat>& image_currs,
+                            const std::vector<BoundingBox>& pos_candidate_bboxes,
+                            const std::vector<int>& pos_corres_frame_ids,
+                            const std::vector<BoundingBox>& neg_candidate_bboxes,
+                            const std::vector<int>& neg_corres_frame_ids, 
+                            int max_iter, 
+                            int num_nohem) = 0;
 
   // TODO: add an interface for fine-tuning, just one domain and no bboxes_gt (or dummy bboxes_gt);
   

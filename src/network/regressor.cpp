@@ -364,6 +364,7 @@ void Regressor::PredictFast(const cv::Mat& image_curr, const cv::Mat& image, con
 
   // feed in the input bbox cropped image regions
   set_candidate_images(image_curr, candidate_bboxes);
+  // TODO: use minibatch size in forwarding the 256 samples here.
   const vector<string> & layer_names = net_->layer_names();
   // forward to the flatten_fc6 layer, shape (B, 2)
   int layer_flatten_fc6_idx = FindLayerIndexByName(layer_names, "flatten_fc6");

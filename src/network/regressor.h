@@ -171,6 +171,9 @@ protected:
   // lock the domain layers
   virtual void LockDomainLayers();
 
+  // Timer.
+  HighResTimer hrt_;
+
  private:
   // Set up a network with the architecture specified in deploy_proto,
   // with the model weights saved in caffe_model.
@@ -206,9 +209,6 @@ protected:
 
   // Number of Domains
   int K_;
-
-  // Timer.
-  HighResTimer hrt_;
 };
 
 #endif // REGRESSOR_H
