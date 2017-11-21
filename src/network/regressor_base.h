@@ -31,7 +31,7 @@ public:
                        std::vector<float> *return_probabilities, 
                        std::vector<int> *return_sorted_indexes) = 0;
 
-  virtual void GetBBoxConvFeatures(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, 
+  virtual void GetBBoxConvFeatures(const cv::Mat& image_curr,
                        const std::vector<BoundingBox> &candidate_bboxes, std::vector <std::vector<float> > &features) = 0;
   
   // Predict faster, with ROI pooling
