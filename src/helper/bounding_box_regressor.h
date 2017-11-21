@@ -26,9 +26,9 @@ public:
                                            const std::vector<BoundingBox> & bboxes, const BoundingBox &gt);
 
     // the actual train model function
-    void trainModels(std::vector<std::vector<float> > &features, 
-                     std::vector<float> &dx_labels, std::vector<float> &dy_labels, 
-                     std::vector<float> &dw_labels, std::vector<float> &dh_labels);
+    void trainModels(const std::vector<std::vector<float> > &features, 
+                     const std::vector<float> &dx_labels, const std::vector<float> &dy_labels, 
+                     const std::vector<float> &dw_labels, const std::vector<float> &dh_labels);
 
 private:
     MatrixXd T_;

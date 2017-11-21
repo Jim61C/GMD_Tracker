@@ -3,7 +3,9 @@
 #include <math.h>
 #include <map>
 
-#define DEBUG_ASSERT_DIFF_FEATURES
+// #define DEBUG_ASSERT_DIFF_FEATURES
+// #define DEBUG_CHECK
+// #ifdef REMOVE_DUPLICATE
 
 void printSamples(MatrixXd X) {
     // DEBUG X
@@ -24,11 +26,15 @@ VectorXd Solve(MatrixXd A, VectorXd y, double lambda, string method = "normal") 
         // LL' = (...), LL' x = A'y
         // z = L'x = L.inverse() * A'y
         // x = L'.inverse() * z
-        Eigen::LLT<MatrixXd> llt(A.transpose() * A + lambda * MatrixXd::Identity(A.cols(), A.cols()));
-        cout << "finished LLT for matrix of size:" << A.cols() << ", " << A.cols() << endl;
-        MatrixXd L = llt.matrixL();
-        MatrixXd z = L.inverse() * (A.transpose() * y);
-        VectorXd x = L.transpose().inverse() * z;
+
+        // Eigen::LLT<MatrixXd> llt(A.transpose() * A + lambda * MatrixXd::Identity(A.cols(), A.cols()));
+        // cout << "finished LLT for matrix of size:" << A.cols() << ", " << A.cols() << endl;
+        // MatrixXd L = llt.matrixL();
+        // MatrixXd z = L.inverse() * (A.transpose() * y);
+        // VectorXd x = L.transpose().inverse() * z;
+
+        VectorXd x = (A.adjoint() * A + lambda * MatrixXd::Identity(A.cols(), A.cols())).llt().solve((A.adjoint()*y));
+        cout << "x solved:\n" << x << endl;
         return x;
     }
     else if (method.compare("normal") == 0) {
@@ -60,9 +66,11 @@ void BoundingBoxRegressor::refineBoundingBox (BoundingBox &bbox, std::vector<flo
          query(i) = feature[i];
      }
 
-     VectorXd result;
-     result.noalias() = query.transpose() * (Beta_.block(0,0,S,4)) + Beta_.row(S);
-     result.noalias() = result.transpose() * T_inv_ + Y_mu_.transpose();
+     Eigen::RowVector4d result;
+     result.noalias() = query.transpose() * (Beta_.block(0,0,S,4)) + Beta_.row(S); // 1 x 4
+    //  cout << "result, should be row vector: \n " << result << endl;
+     result.noalias() = result * T_inv_ + Y_mu_.transpose();
+    //  cout << "result after whitening inverse and plus mean, should be row vector: \n" << result << endl;
      float dx = (float)(result(0));
      float dy = (float)(result(1));
      float dw = (float)(result(2));
@@ -89,6 +97,7 @@ void BoundingBoxRegressor::trainModelUsingInitialFrameBboxes(std::vector<std::ve
     
     assert (features.size() == bboxes.size());
 
+#ifdef REMOVE_DUPLICATE
     // Duplicate removal here, if several bboxes have the same feature, use their average/ just one
     std::vector<std::vector<float> > features_unique;
     std::vector<BoundingBox> bboxes_unique;
@@ -143,6 +152,11 @@ void BoundingBoxRegressor::trainModelUsingInitialFrameBboxes(std::vector<std::ve
     }
 #endif
 
+#else 
+    const std::vector<std::vector<float> > &features_unique = features;
+    const std::vector<BoundingBox> &bboxes_unique = bboxes;
+#endif
+
     // construct the 4 labels
     std::vector<float> dx_labels;
     std::vector<float> dy_labels;
@@ -176,9 +190,9 @@ void BoundingBoxRegressor::trainModelUsingInitialFrameBboxes(std::vector<std::ve
 
 }
 
-void BoundingBoxRegressor::trainModels(std::vector<std::vector<float> > &features, 
-                    std::vector<float> &dx_labels, std::vector<float> &dy_labels, 
-                    std::vector<float> &dw_labels, std::vector<float> &dh_labels) {
+void BoundingBoxRegressor::trainModels(const std::vector<std::vector<float> > &features, 
+                    const std::vector<float> &dx_labels, const std::vector<float> &dy_labels, 
+                    const std::vector<float> &dw_labels, const std::vector<float> &dh_labels) {
     
     // assert make sure data dim match
     assert(features.size() == dx_labels.size());
@@ -239,7 +253,7 @@ void BoundingBoxRegressor::trainModels(std::vector<std::vector<float> > &feature
     for (int j = 0; j < 4; j ++) {
         diagnal(j,j) = sqrt(es.eigenvalues()(j).real() + epsilon);
     }
-    // let Whitening = P * D^1/2 * P^T
+    // let Whitening inverse = P * D^1/2 * P^T
     T_inv_ = es.eigenvectors().real() * diagnal * es.eigenvectors().real().transpose();
     // take diagnal^-1, just take the reciprocal of the diagnal entries
     MatrixXd diagnal_reciprocal = MatrixXd::Zero(diagnal.rows(), diagnal.cols());
@@ -247,14 +261,42 @@ void BoundingBoxRegressor::trainModels(std::vector<std::vector<float> > &feature
         diagnal_reciprocal(j,j) = 1.0/diagnal(j,j);
     }
     // take Whitening^-1
-    T_ = es.eigenvectors().real() * diagnal_reciprocal * es.eigenvectors().real().transpose();
+    T_ = es.eigenvectors().real() * diagnal_reciprocal * es.eigenvectors().real().transpose(); // check make sure cov = VDV', TT' = I
     Y = Y * T_;
+
+#ifdef DEBUG_CHECK
+    MatrixXd diagonal_eigen = MatrixXd::Zero(4, 4);
+    for (int j = 0; j < 4; j++) {
+        diagonal_eigen(j,j) = es.eigenvalues()(j).real();
+    }
+    MatrixXd check_cov = es.eigenvectors().real() * diagonal_eigen * es.eigenvectors().real().transpose();
+    double sum_square_error = 0;
+    for (int i = 0; i < 4; i ++) {
+        for (int j = 0; j < 4; j ++) {
+            sum_square_error += pow(check_cov(i,j) - cov(i,j), 2);
+        }
+    }
+    // cout << "sse :" << sum_square_error << endl;
+    assert (sum_square_error < 1e-10);
+
+    MatrixXd T_T_inv = T_ * T_inv_; 
+    MatrixXd I4 = MatrixXd::Identity(4, 4);
+    sum_square_error = 0;
+    for (int i = 0; i < 4; i ++) {
+        for (int j = 0; j < 4; j ++) {
+            sum_square_error += pow(I4(i,j) - T_T_inv(i,j), 2);
+        }
+    }
+    // cout << "sse :" << sum_square_error << endl;
+    assert (sum_square_error < 1e-10);
+    
+#endif
 
     // train 4 regressors for dx, dy, dw, dh
     MatrixXd Beta(S+1, 4); // the regressed parameters
     for (int j = 0; j < 4; j ++) {
-        cout << "solve for model " << j << endl;
-        Beta.col(j) = Solve(X, Y.col(j), LAMBDA, "normal");
+        cout << "solve for model " << j << " using cholesky" << endl;
+        Beta.col(j) = Solve(X, Y.col(j), LAMBDA, "cholesky");
     }
 
     // save the models

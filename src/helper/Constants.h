@@ -91,8 +91,8 @@ const cv::Scalar mean_scalar(102.7170, 115.7726, 123.5094);
 // #define DISTANCE_PENALTY_PAD 0
 
 // for BoundingBox Regression
-const int BBOX_REGRESSION_FEATURE_LENGTH = 6 * 6 * 256;
+const int BBOX_REGRESSION_FEATURE_LENGTH = 3 * 3 * 512;
 const float LAMBDA = 1000.0;
-// #define BOUNDING_BOX_REGRESSION
+#define BOUNDING_BOX_REGRESSION
 
 #endif

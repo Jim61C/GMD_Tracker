@@ -326,17 +326,31 @@ void Regressor::PreForwardFast(const cv::Mat image_curr,
 }
 
 // Get the BBox Conv Features used for BoundingBox Regression
-void Regressor::GetBBoxConvFeatures(const cv::Mat& image_curr, const cv::Mat& image, const cv::Mat& target, 
+void Regressor::GetBBoxConvFeatures(const cv::Mat& image_curr,
                        const std::vector<BoundingBox> &candidate_bboxes, std::vector <std::vector<float> > &features) {
-    int batch_size = INNER_BATCH_SIZE;
+    int batch_size = MINI_BATCH_SIZE;
     int num_batches = (int)(ceil(candidate_bboxes.size()/float(batch_size)));
     for (int i = 0; i < num_batches; i++) {
       vector<BoundingBox> this_candidates(candidate_bboxes.begin() + i * batch_size, 
                                           candidate_bboxes.begin() + std::min((i+1) * batch_size, (int)(candidate_bboxes.size())));
-      PreForwardFast(image_curr, this_candidates, image, target);
-      // get the pool5 features
+      
+      cout << "In GetBBoxConvFeatures, this_candidates.size():" << this_candidates.size() << endl;
+      // set input
+      vector<cv::Mat> this_candidate_images;
+      for (auto bbox: this_candidates) {
+        cv::Mat out;
+        bbox.CropBoundingBoxOutImage(image_curr, &out);
+        this_candidate_images.push_back(out);
+      }
+
+      SetCandidates(this_candidate_images);
+      const vector<string> & layer_names = net_->layer_names();
+      int layer_relu3_idx = FindLayerIndexByName(layer_names, "relu3");
+      net_->ForwardTo(layer_relu3_idx);
+
+      // get the conv3 data blob features
       vector<vector<float> > output_features;
-      WrapOutputBlob("pool6_c", &output_features);
+      WrapOutputBlob("conv3", &output_features);
       features.insert(features.end(), output_features.begin(), output_features.begin() + output_features.size());
     }
 }

@@ -442,22 +442,16 @@ void TrackerGMD::Init(const cv::Mat& image_curr, const BoundingBox& bbox_gt,
 
 #ifdef BOUNDING_BOX_REGRESSION
     // Train a Bbox regressor
-    // TODO: the following is not needed, here just to comply with API of GetBBoxConvFeatures
     example_generator_->Reset(bbox_gt,
-                        bbox_gt,
-                        image_curr,
-                        image_curr); // use the same image as initial step fine-tuning
-    // Generate true example.
-    cv::Mat image_regress;
-    cv::Mat target_regress;
-    BoundingBox bbox_gt_scaled_regress;
-    example_generator_->MakeTrueExampleTight(&image_regress, &target_regress, &bbox_gt_scaled_regress);
+                              bbox_gt,
+                              image_curr,
+                              image_curr);
     // Get the bbox conv features for training
     std::vector<BoundingBox> regress_bboxes;
     example_generator_->MakeCandidatesPos(&regress_bboxes, 1000, "uniform_ap", POS_TRANS_RANGE, POS_SCALE_RANGE, \
                                            SD_X, SD_Y, SD_SCALE, 0.6);
     std::vector<std::vector<float> > features;
-    regressor->GetBBoxConvFeatures(image_curr, image_regress, target_regress, regress_bboxes, features);
+    regressor->GetBBoxConvFeatures(image_curr, regress_bboxes, features);
     bbox_finetuner_.trainModelUsingInitialFrameBboxes(features, regress_bboxes, bbox_gt);
 #endif 
 
@@ -608,24 +602,14 @@ void TrackerGMD::UpdateState(const cv::Mat& image_curr, BoundingBox &bbox_estima
 
 #ifdef BOUNDING_BOX_REGRESSION
     if (is_this_frame_success) {
+        // TODO: refine the top 5 bboxes and then take average
+
         // wrap in a vector to use get features API
         std::vector<std::vector<float> > bbox_features;
         std::vector<BoundingBox> wrap_this_bbox_estimate;
         wrap_this_bbox_estimate.push_back(bbox_estimate);
         
-        // TODO: the following is actually not needed, here to just comply with the API for GetBBoxConvFeatures
-        example_generator_->Reset(bbox_prev_tight_,
-                                  bbox_estimate,
-                                  image_prev_,
-                                  image_curr);
-        
-        // Generate true example.
-        cv::Mat image_regress;
-        cv::Mat target_regress;
-        BoundingBox bbox_gt_scaled_regress;
-        example_generator_->MakeTrueExampleTight(&image_regress, &target_regress, &bbox_gt_scaled_regress);
-        
-        regressor->GetBBoxConvFeatures(image_curr, image_regress, target_regress, wrap_this_bbox_estimate, bbox_features);
+        regressor->GetBBoxConvFeatures(image_curr, wrap_this_bbox_estimate, bbox_features);
         bbox_finetuner_.refineBoundingBox(bbox_estimate, bbox_features[0]);
     }
 #endif
