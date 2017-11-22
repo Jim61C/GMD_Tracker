@@ -328,7 +328,7 @@ void Regressor::PreForwardFast(const cv::Mat image_curr,
 // Get the BBox Conv Features used for BoundingBox Regression
 void Regressor::GetBBoxConvFeatures(const cv::Mat& image_curr,
                        const std::vector<BoundingBox> &candidate_bboxes, std::vector <std::vector<float> > &features) {
-    int batch_size = MINI_BATCH_SIZE;
+    int batch_size = INNER_BATCH_SIZE;
     int num_batches = (int)(ceil(candidate_bboxes.size()/float(batch_size)));
     for (int i = 0; i < num_batches; i++) {
       vector<BoundingBox> this_candidates(candidate_bboxes.begin() + i * batch_size, 

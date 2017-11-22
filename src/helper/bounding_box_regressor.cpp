@@ -19,7 +19,7 @@ void printSamples(MatrixXd X) {
 }
 
 // TODO: try different solver and debug
-VectorXd Solve(MatrixXd A, VectorXd y, double lambda, string method = "normal") {
+VectorXd BoundingBoxRegressor::Solve(MatrixXd A, VectorXd y, double lambda, string method) {
     if (method.compare("cholesky") == 0) {
         // Use Cholesky Decomposition
         // (A'A + Lambda*I) x = A'y
@@ -56,40 +56,52 @@ VectorXd Solve(MatrixXd A, VectorXd y, double lambda, string method = "normal") 
     }
 }
 
-void BoundingBoxRegressor::refineBoundingBox (BoundingBox &bbox, std::vector<float> &feature) {
+void BoundingBoxRegressor::refineBoundingBox (std::vector<BoundingBox> &bboxes, std::vector<vector<float> > &features) {
 
-     assert (feature.size() == BBOX_REGRESSION_FEATURE_LENGTH);
+     if (features.size() > 0) {
+        assert (features[0].size() == BBOX_REGRESSION_FEATURE_LENGTH);
+     }
      const int S = BBOX_REGRESSION_FEATURE_LENGTH;
+     const int D = features.size();
 
-     VectorXd query(S);
-     for (int i = 0;i < S; i ++) {
-         query(i) = feature[i];
+     MatrixXd query = MatrixXd::Constant(D, S + 1, 1.0);
+     for (int i = 0;i < D; i ++) {
+         for (int j = 0; j < S; j ++) {
+            query(i, j) = features[i][j];
+         }
      }
 
-     Eigen::RowVector4d result;
-     result.noalias() = query.transpose() * (Beta_.block(0,0,S,4)) + Beta_.row(S); // 1 x 4
-    //  cout << "result, should be row vector: \n " << result << endl;
-     result.noalias() = result * T_inv_ + Y_mu_.transpose();
-    //  cout << "result after whitening inverse and plus mean, should be row vector: \n" << result << endl;
-     float dx = (float)(result(0));
-     float dy = (float)(result(1));
-     float dw = (float)(result(2));
-     float dh = (float)(result(3));
+     MatrixXd result;
+     result.noalias() = query * Beta_; // D x 4
+     MatrixXd Y_mu_repeat(D, 4);
+     for (int i = 0; i < D; i ++) {
+         Y_mu_repeat.row(i) = Y_mu_.transpose();
+     }
+     result.noalias() = result * T_inv_ + Y_mu_repeat;
 
-     double ctr_x = bbox.get_center_x();
-     double ctr_y = bbox.get_center_y();
-     double w = bbox.get_width();
-     double h = bbox.get_height();
+     // update bboxes
+     for (int i = 0; i < bboxes.size(); i++) {
+        BoundingBox & bbox = bboxes[i];
+        float dx = (float)(result(i, 0));
+        float dy = (float)(result(i, 1));
+        float dw = (float)(result(i, 2));
+        float dh = (float)(result(i, 3));
 
-     double refined_ctr_x = dx * w + ctr_x;
-     double refined_ctr_y = dy * h + ctr_y;
-     double refined_w = exp(dw) * w;
-     double refined_h = exp(dh) * h;
+        double ctr_x = bbox.get_center_x();
+        double ctr_y = bbox.get_center_y();
+        double w = bbox.get_width();
+        double h = bbox.get_height();
 
-     bbox.x1_ = refined_ctr_x - refined_w/2.0;
-     bbox.x2_ = refined_ctr_x + refined_w/2.0;
-     bbox.y1_ = refined_ctr_y - refined_h/2.0;
-     bbox.y2_ = refined_ctr_y + refined_h/2.0;
+        double refined_ctr_x = dx * w + ctr_x;
+        double refined_ctr_y = dy * h + ctr_y;
+        double refined_w = exp(dw) * w;
+        double refined_h = exp(dh) * h;
+
+        bbox.x1_ = refined_ctr_x - refined_w/2.0;
+        bbox.x2_ = refined_ctr_x + refined_w/2.0;
+        bbox.y1_ = refined_ctr_y - refined_h/2.0;
+        bbox.y2_ = refined_ctr_y + refined_h/2.0;
+     }
 }
 
 void BoundingBoxRegressor::trainModelUsingInitialFrameBboxes(std::vector<std::vector<float> > &features, const std::vector<BoundingBox> & bboxes, 

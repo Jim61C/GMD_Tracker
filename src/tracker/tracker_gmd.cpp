@@ -67,6 +67,34 @@ void TrackerGMD::Track(const cv::Mat& image_curr, RegressorBase* regressor, Boun
     regressor->PredictFast(image_curr, curr_search_region, target_tight, candidates_bboxes_, bbox_prev_tight_, 
         bbox_estimate_uncentered, &candidate_probabilities_, &sorted_idxes_, sd_trans_, cur_frame_);
 
+#ifdef BOUNDING_BOX_REGRESSION
+        if (IsSuccessEstimate()) {
+            // wrap in a vector to use get features API
+            std::vector<std::vector<float> > bbox_features;
+            std::vector<BoundingBox> top_bboxes;
+            for (int i = 0; i < TOP_ESTIMATES; i++) {
+                top_bboxes.push_back(candidates_bboxes_[sorted_idxes_[i]]);
+            }
+            
+            regressor->GetBBoxConvFeatures(image_curr, top_bboxes, bbox_features);
+
+            bbox_finetuner_.refineBoundingBox(top_bboxes, bbox_features);
+
+            // take direct average of regressed bboxes
+            BoundingBox bbox_avg(0, 0, 0, 0);
+            for (auto & bbox: top_bboxes) {
+                bbox_avg.x1_ += bbox.x1_;
+                bbox_avg.y1_ += bbox.y1_;
+                bbox_avg.x2_ += bbox.x2_;
+                bbox_avg.y2_ += bbox.y2_;
+            }
+            bbox_avg.x1_ /= float(top_bboxes.size());
+            bbox_avg.y1_ /= float(top_bboxes.size());
+            bbox_avg.x2_ /= float(top_bboxes.size());
+            bbox_avg.y2_ /= float(top_bboxes.size());
+            *bbox_estimate_uncentered = bbox_avg;
+        }
+#endif
 #ifdef DEBUG_SHOW_CANDIDATES
 
     double max_w = 0;
@@ -589,20 +617,6 @@ void TrackerGMD::UpdateState(const cv::Mat& image_curr, BoundingBox &bbox_estima
     else {
         sd_trans_ = SD_X;
     }
-
-#ifdef BOUNDING_BOX_REGRESSION
-    if (is_this_frame_success) {
-        // TODO: refine the top 5 bboxes and then take average
-
-        // wrap in a vector to use get features API
-        std::vector<std::vector<float> > bbox_features;
-        std::vector<BoundingBox> wrap_this_bbox_estimate;
-        wrap_this_bbox_estimate.push_back(bbox_estimate);
-        
-        regressor->GetBBoxConvFeatures(image_curr, wrap_this_bbox_estimate, bbox_features);
-        bbox_finetuner_.refineBoundingBox(bbox_estimate, bbox_features[0]);
-    }
-#endif
 
     // generate examples, if not success, just dummy values pushed in
     EnqueueOnlineTraningSamples(example_generator_, image_curr, bbox_estimate, is_this_frame_success);
