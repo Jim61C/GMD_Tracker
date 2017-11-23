@@ -82,8 +82,8 @@ public:
                                   const double sd_x = SD_X, const double sd_y = SD_Y, const double sd_scale = SD_SCALE, const double pos_iou_th = POS_IOU_TH );
 
   void MakeCandidatesNeg(vector<BoundingBox> *candidates, const int num = NEG_CANDIDATES,
-                                  const string method = "uniform", const double trans_range = 2 * SD_X, const double scale_range = POS_SCALE_RANGE,
-                                  const double sd_x = SD_X, const double sd_y = SD_Y, const double sd_scale = SD_SCALE);
+                                  const string method = "uniform", const double trans_range = NEG_TRANS_RANGE, const double scale_range = POS_SCALE_RANGE,
+                                  const double sd_x = SD_X, const double sd_y = SD_Y, const double sd_scale = SD_SCALE, const double neg_iou_th = NEG_IOU_TH);
 
   void set_indices(const int video_index, const int frame_index) {
     video_index_ = video_index; frame_index_ = frame_index;
