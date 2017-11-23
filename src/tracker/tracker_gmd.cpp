@@ -14,6 +14,7 @@
 // // #define VISUALIZE_FIRST_FRAME_SAMPLES
 // #define DEBUG_LOG
 // #define LOG_TIME
+// #define DEBUG_BBOX_REGRESSION
 
 TrackerGMD::TrackerGMD(const bool show_tracking, ExampleGenerator* example_generator,  RegressorTrainBase* regressor_train) :
     Tracker(show_tracking),
@@ -92,6 +93,12 @@ void TrackerGMD::Track(const cv::Mat& image_curr, RegressorBase* regressor, Boun
             bbox_avg.y1_ /= float(top_bboxes.size());
             bbox_avg.x2_ /= float(top_bboxes.size());
             bbox_avg.y2_ /= float(top_bboxes.size());
+#ifdef DEBUG_BBOX_REGRESSION
+            cout << "bbox before regression: " << bbox_estimate_uncentered->x1_ << ", " << bbox_estimate_uncentered->y1_ << ", " 
+            << bbox_estimate_uncentered->get_width() << ", " << bbox_estimate_uncentered->get_height() << endl; 
+            cout << "bbox after regression: " << bbox_avg.x1_ << ", " << bbox_avg.y1_ << ", " << bbox_avg.get_width() << ", " 
+            << bbox_avg.get_height() << endl;
+#endif
             *bbox_estimate_uncentered = bbox_avg;
         }
 #endif
@@ -183,9 +190,9 @@ bool TrackerGMD::ValidCandidate(BoundingBox &candidate_bbox, int W, int H) {
 void TrackerGMD::GetCandidates(BoundingBox &cur_bbox, int W, int H, std::vector<BoundingBox> &candidate_bboxes) {
     while(candidate_bboxes.size() < SAMPLE_CANDIDATES ) {
         BoundingBox this_candidate_bbox = GenerateOneGaussianCandidate(W, H, cur_bbox, sd_trans_, sd_trans_, sd_scale_, sd_ap_);
-        // // crop against W, H so that fit in image
-        // this_candidate_bbox.crop_against_width_height(W, H);
-        // if at boarder, do not crop, to avoid really thin candidates being fed in -> correspond to cropping gt in training, instead of cropping pos/neg samples
+        // crop against W, H so that fit in image
+        this_candidate_bbox.crop_against_width_height(W, H);
+        //// if at boarder, do not crop, to avoid really thin candidates being fed in -> correspond to cropping gt in training, instead of cropping pos/neg samples
         if (this_candidate_bbox.valid_bbox_against_width_height(W, H)) {
             candidate_bboxes.push_back(this_candidate_bbox);
         }
@@ -202,11 +209,11 @@ BoundingBox TrackerGMD::GenerateOneGaussianCandidate(int W, int H, BoundingBox &
 
   double r = round((w+h)/2.0);
 
-  double moved_centre_x = centre_x + sd_x * r * std::max(-KEEP_SD, std::min(KEEP_SD, gsl_ran_gaussian(rng_, 1.0))); // keep the range in [-KEEP_SD* SD, KEEP_SD*SD]
-  double moved_centre_y = centre_y + sd_y * r * std::max(-KEEP_SD, std::min(KEEP_SD, gsl_ran_gaussian(rng_, 1.0))); 
+  double moved_centre_x = centre_x + sd_x * r * std::max(-KEEP_SD, std::min(KEEP_SD, 0.5*gsl_ran_gaussian(rng_, 1.0))); // keep the range in [-KEEP_SD* SD, KEEP_SD*SD]
+  double moved_centre_y = centre_y + sd_y * r * std::max(-KEEP_SD, std::min(KEEP_SD, 0.5*gsl_ran_gaussian(rng_, 1.0))); 
 
-  double ds = pow(MOTION_SCALE_FACTOR, sd_scale * std::max(-KEEP_SD, std::min(KEEP_SD, gsl_ran_gaussian(rng_, 1.0))) );
-  double dap = pow(MOTION_AP_FACTOR, sd_ap * std::max(-KEEP_SD, std::min(KEEP_SD, gsl_ran_gaussian(rng_, 1.0))) );
+  double ds = pow(MOTION_SCALE_FACTOR, sd_scale * std::max(-KEEP_SD, std::min(KEEP_SD, 0.5*gsl_ran_gaussian(rng_, 1.0))) );
+  double dap = pow(MOTION_AP_FACTOR, sd_ap * std::max(-KEEP_SD, std::min(KEEP_SD, 0.5*gsl_ran_gaussian(rng_, 1.0))) );
   double moved_w = w * ds;
   double moved_h = moved_w * (ap * dap);
 
@@ -359,9 +366,12 @@ void TrackerGMD::EnqueueOnlineTraningSamples(ExampleGenerator* example_generator
         cout << "cur_frame_:" << cur_frame_<< " is success frame, enqueue pos and neg examples for later fine tuning" << endl;
 #endif
         example_generator->MakeCandidatesPos(&this_frame_candidates_pos, POS_CANDIDATES_FINETUNE, "gaussian", POS_TRANS_RANGE, POS_SCALE_RANGE, 
-                                             0.05, 0.05, 2.5); // trans sd 0.05, scale sd 2.5
-        example_generator->MakeCandidatesNeg(&this_frame_candidates_neg, NEG_CANDIDATES_FINETUNE, "uniform", 1.0, 2.5); // trans range 1, scale range 2.5
-        // example_generator->MakeCandidatesNeg(&this_frame_candidates_neg, NEG_CANDIDATES_FINETUNE/2, "whole", NEG_TRANS_RANGE, 5.0);
+                                             0.1, 0.1, 5); // POS_TRANS_RANGE, POS_SCALE_RANGE are passed in as dummy, not used
+        double neg_iou_th = cur_frame_ == 0 ? NEG_IOU_TH_INIT : NEG_IOU_TH;
+        example_generator->MakeCandidatesNeg(&this_frame_candidates_neg, NEG_CANDIDATES_FINETUNE, "uniform", NEG_TRANS_RANGE, 5.0,
+                                             SD_X, SD_Y, SD_SCALE, neg_iou_th); // SD_X, SD_Y, SD_SCALE are passed in as dummy, not used
+        // example_generator->MakeCandidatesNeg(&this_frame_candidates_neg, NEG_CANDIDATES_FINETUNE/2, "whole", NEG_TRANS_RANGE, 5.0,
+        //                                      SD_X, SD_Y, SD_SCALE, neg_iou_th); // SD_X, SD_Y, SD_SCALE are passed in as dummy, not used);
         example_generator->MakeTrueExampleTight(&image, &target, &bbox_gt_scaled);
 
         // enqueue this frame index
@@ -466,8 +476,8 @@ void TrackerGMD::Init(const cv::Mat& image_curr, const BoundingBox& bbox_gt,
                               image_curr);
     // Get the bbox conv features for training
     std::vector<BoundingBox> regress_bboxes;
-    example_generator_->MakeCandidatesPos(&regress_bboxes, 1000, "uniform_ap", POS_TRANS_RANGE, POS_SCALE_RANGE, \
-                                           SD_X, SD_Y, SD_SCALE, 0.6);
+    example_generator_->MakeCandidatesPos(&regress_bboxes, 1000, "uniform_ap", 0.3, 10, \
+                                           SD_X, SD_Y, SD_SCALE, BBOX_REGRESSION_TH);
     std::vector<std::vector<float> > features;
     regressor->GetBBoxConvFeatures(image_curr, regress_bboxes, features);
     bbox_finetuner_.trainModelUsingInitialFrameBboxes(features, regress_bboxes, bbox_gt);
@@ -510,9 +520,11 @@ void TrackerGMD::Init(const cv::Mat& image_curr, const BoundingBox& bbox_gt,
         // generate candidates and push to this_frame_candidates and this_frame_labels
         // example_generator_->MakeCandidatesAndLabels(&this_frame_candidates, &this_frame_labels, FIRST_FRAME_POS_SAMPLES, FIRST_FRAME_NEG_SAMPLES);
         example_generator_->MakeCandidatesPos(&this_frame_candidates_pos, FIRST_FRAME_POS_SAMPLES, "gaussian", POS_TRANS_RANGE, POS_SCALE_RANGE,
-                                              0.05, 0.05, 2.5); // 0.05, 2.5
-        example_generator_->MakeCandidatesNeg(&this_frame_candidates_neg, FIRST_FRAME_NEG_SAMPLES/2, "uniform", 0.5, 5); // 0.5, 5
-        example_generator_->MakeCandidatesNeg(&this_frame_candidates_neg, FIRST_FRAME_NEG_SAMPLES/2, "whole", NEG_TRANS_RANGE, 5.0);
+                                              0.1, 0.1, 5);
+        example_generator_->MakeCandidatesNeg(&this_frame_candidates_neg, FIRST_FRAME_NEG_SAMPLES/2, "uniform", 1, 10,
+                                              SD_X, SD_Y, SD_SCALE, NEG_IOU_TH_INIT);
+        example_generator_->MakeCandidatesNeg(&this_frame_candidates_neg, FIRST_FRAME_NEG_SAMPLES/2, "whole", NEG_TRANS_RANGE, 5.0,
+                                              SD_X, SD_Y, SD_SCALE, NEG_IOU_TH_INIT);
 
         // shuffling
         std::vector<std::pair<double, BoundingBox> > label_to_candidate;
@@ -612,7 +624,7 @@ void TrackerGMD::UpdateState(const cv::Mat& image_curr, BoundingBox &bbox_estima
 
     // update sd_trans_ in case of failure
     if (!is_this_frame_success) {
-        sd_trans_ = std::min(0.75, 1.1 * sd_trans_);
+        sd_trans_ = std::min(1.5, 1.1 * sd_trans_);
     }
     else {
         sd_trans_ = SD_X;

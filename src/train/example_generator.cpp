@@ -86,14 +86,15 @@ BoundingBox ExampleGenerator::GenerateOneRandomCandidate(BoundingBox &bbox, gsl_
                                                          const double sd_x, const double sd_y, const double sd_scale) {
   double w = bbox.x2_ - bbox.x1_;
   double h = bbox.y2_ - bbox.y1_;
+  double r = round((w+h)/2.0);
   
   double centre_x = bbox.x1_ + w/2.0;
   double centre_y = bbox.y1_ + h/2.0;
   BoundingBox moved_bbox;
   if (method.compare("uniform") == 0) {
 
-    double dx = (gsl_rng_uniform(rng) * 2.0 - 1.0) * w * trans_range;
-    double dy = (gsl_rng_uniform(rng) * 2.0 - 1.0) * h * trans_range;
+    double dx = (gsl_rng_uniform(rng) * 2.0 - 1.0) * r * trans_range;
+    double dy = (gsl_rng_uniform(rng) * 2.0 - 1.0) * r * trans_range;
 
     double moved_centre_x = centre_x + dx;
     double moved_centre_y = centre_y + dy;
@@ -108,8 +109,9 @@ BoundingBox ExampleGenerator::GenerateOneRandomCandidate(BoundingBox &bbox, gsl_
     moved_bbox.y2_ = moved_centre_y + moved_h/2.0;
   }
   else if (method.compare("uniform_ap") == 0) {
-    double dx = (gsl_rng_uniform(rng) * 2.0 - 1.0) * w * trans_range;
-    double dy = (gsl_rng_uniform(rng) * 2.0 - 1.0) * h * trans_range;
+
+    double dx = (gsl_rng_uniform(rng) * 2.0 - 1.0) * r * trans_range;
+    double dy = (gsl_rng_uniform(rng) * 2.0 - 1.0) * r * trans_range;
 
     double moved_centre_x = centre_x + dx;
     double moved_centre_y = centre_y + dy;
@@ -126,12 +128,10 @@ BoundingBox ExampleGenerator::GenerateOneRandomCandidate(BoundingBox &bbox, gsl_
   }
   else if (method.compare("gaussian") == 0) {
 
-    double r = round((w+h)/2.0);
+    double moved_centre_x = centre_x + sd_x * r * std::max(-KEEP_SD, std::min(KEEP_SD, 0.5*gsl_ran_gaussian(rng, 1.0))); // keep the range in [-KEEP_SD* SD, KEEP_SD*SD]
+    double moved_centre_y = centre_y + sd_y * r * std::max(-KEEP_SD, std::min(KEEP_SD, 0.5*gsl_ran_gaussian(rng, 1.0))); 
 
-    double moved_centre_x = centre_x + sd_x * r * std::max(-KEEP_SD, std::min(KEEP_SD, gsl_ran_gaussian(rng, 1.0))); // keep the range in [-KEEP_SD* SD, KEEP_SD*SD]
-    double moved_centre_y = centre_y + sd_y * r * std::max(-KEEP_SD, std::min(KEEP_SD, gsl_ran_gaussian(rng, 1.0))); 
-
-    double ds = pow(MOTION_SCALE_FACTOR, sd_scale * std::max(-KEEP_SD, std::min(KEEP_SD, gsl_ran_gaussian(rng, 1.0))) );
+    double ds = pow(SCALE_FACTOR, sd_scale * std::max(-KEEP_SD, std::min(KEEP_SD, 0.5*gsl_ran_gaussian(rng, 1.0))) );
     double moved_w = w * ds;
     double moved_h = h * ds;
 
@@ -271,7 +271,8 @@ void ExampleGenerator::MakeCandidatesPos(vector<BoundingBox> *candidates, const 
     BoundingBox this_box = ExampleGenerator::GenerateOneRandomCandidate(bbox_curr_gt_, rng_, image_curr_.size().width, image_curr_.size().height, 
                                                                         method, trans_range, scale_range, 
                                                                         sd_x, sd_y, sd_scale);
-    // no need to crop as the bbox_curr_gt_ is the current estimate, which will never go out of boundary
+    // crop then check if IOU satisfies
+    this_box.crop_against_width_height(image_curr_.size().width, image_curr_.size().height);
     if (this_box.valid_bbox_against_width_height(image_curr_.size().width, image_curr_.size().height) && bbox_curr_gt_.compute_IOU(this_box) >= pos_iou_th) {
       // enqueue
       candidates->push_back(this_box);
@@ -291,7 +292,7 @@ void ExampleGenerator::MakeCandidatesPos(vector<BoundingBox> *candidates, const 
 
 void ExampleGenerator::MakeCandidatesNeg(vector<BoundingBox> *candidates, const int num,
                                          const string method, const double trans_range, const double scale_range,
-                                         const double sd_x, const double sd_y, const double sd_scale) {
+                                         const double sd_x, const double sd_y, const double sd_scale, const double neg_iou_th) {
   int count = 0;
 #ifdef VISUALIZE_FINETUNE_SAMPLES
   Mat canvas = image_curr_.clone();
@@ -300,8 +301,9 @@ void ExampleGenerator::MakeCandidatesNeg(vector<BoundingBox> *candidates, const 
     BoundingBox this_box = ExampleGenerator::GenerateOneRandomCandidate(bbox_curr_gt_, rng_, image_curr_.size().width, image_curr_.size().height, 
                                                                         method, trans_range, scale_range,
                                                                         sd_x, sd_y, sd_scale);
-    // no need to crop as the bbox_curr_gt_ is the current estimate, which will never go out of boundary
-    if (this_box.valid_bbox_against_width_height(image_curr_.size().width, image_curr_.size().height) && bbox_curr_gt_.compute_IOU(this_box) <= NEG_IOU_TH) {
+    // crop then check if IOU satisfies
+    this_box.crop_against_width_height(image_curr_.size().width, image_curr_.size().height);
+    if (this_box.valid_bbox_against_width_height(image_curr_.size().width, image_curr_.size().height) && bbox_curr_gt_.compute_IOU(this_box) <= neg_iou_th) {
       // enqueue
       candidates->push_back(this_box);
       count ++;

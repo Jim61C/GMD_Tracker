@@ -12,28 +12,29 @@
 #define SAMPLE_CANDIDATES 256
 
 // for gaussian sampling
-#define SD_X 0.3 // translation std: mean(width,height)*SD_X
-#define SD_Y 0.3
-#define SD_SCALE 1.0 
-#define KEEP_SD 2.0
-#define MOTION_SCALE_FACTOR 1.05 // scaling std: MOTION_SCALE_FACTOR^(SD_SCALE)
+#define SD_X 0.6 // translation change: mean(width,height)*SD_X * [-1, 1]
+#define SD_Y 0.6
+#define SD_SCALE 1.0
+#define KEEP_SD 1.0
+#define MOTION_SCALE_FACTOR 1.05 // scaling change: MOTION_SCALE_FACTOR^(SD_SCALE * [-1, 1])
 
 #define SD_AP 1.0
-#define MOTION_AP_FACTOR 1.05
+#define MOTION_AP_FACTOR 1.05 // ap change: MOTION_AP_FACTOR^(SD_AP * [-1, 1])
 
 // for uniform sampling
 #define SCALE_FACTOR 1.05
 #define POS_SCALE_RANGE 5.0 // for positive sample 
 #define POS_TRANS_RANGE 0.1 // for positive sample
 
-#define NEG_SCALE_RANGE 10 // for negative sample
-#define NEG_TRANS_RANGE 2 // for negative sample 
+#define NEG_SCALE_RANGE 10.0 // for negative sample
+#define NEG_TRANS_RANGE 2.0 // for negative sample 
 
 // for IOU training sample generation
 const int POS_CANDIDATES = 50;
 const int NEG_CANDIDATES = 200;
 const double POS_IOU_TH = 0.7;
-const double NEG_IOU_TH = 0.5;
+const double NEG_IOU_TH = 0.3;
+const double NEG_IOU_TH_INIT = 0.5; // for frame 0
 
 // for inner mini batch in training
 const int INNER_BATCH_SIZE = 50;
@@ -101,6 +102,7 @@ const cv::Scalar mean_scalar(102.7170, 115.7726, 123.5094);
 // for BoundingBox Regression
 const int BBOX_REGRESSION_FEATURE_LENGTH = 3 * 3 * 512;
 const float LAMBDA = 1000.0;
+const float BBOX_REGRESSION_TH = 0.6;
 #define BOUNDING_BOX_REGRESSION
 
 #endif
