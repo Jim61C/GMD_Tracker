@@ -55,10 +55,14 @@ LoaderVOT::LoaderVOT(const std::string& vot_folder)
       Frame frame;
       frame.frame_num = frame_num;
       BoundingBox& bbox = frame.bbox;
-      bbox.x1_ = std::min(Ax, std::min(Bx, std::min(Cx, Dx))) - 1;
-      bbox.y1_ = std::min(Ay, std::min(By, std::min(Cy, Dy))) - 1;
-      bbox.x2_ = std::max(Ax, std::max(Bx, std::max(Cx, Dx))) - 1;
-      bbox.y2_ = std::max(Ay, std::max(By, std::max(Cy, Dy))) - 1;
+      // bbox.x1_ = std::min(Ax, std::min(Bx, std::min(Cx, Dx))) - 1;
+      // bbox.y1_ = std::min(Ay, std::min(By, std::min(Cy, Dy))) - 1;
+      // bbox.x2_ = std::max(Ax, std::max(Bx, std::max(Cx, Dx))) - 1;
+      // bbox.y2_ = std::max(Ay, std::max(By, std::max(Cy, Dy))) - 1;
+      bbox.x1_ = std::min(Ax, std::min(Bx, std::min(Cx, Dx)));
+      bbox.y1_ = std::min(Ay, std::min(By, std::min(Cy, Dy)));
+      bbox.x2_ = std::max(Ax, std::max(Bx, std::max(Cx, Dx)));
+      bbox.y2_ = std::max(Ay, std::max(By, std::max(Cy, Dy)));
 
       // Increment the frame number.
       frame_num++;
