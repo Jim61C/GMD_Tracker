@@ -96,10 +96,10 @@ public:
   double compute_center_distance(const BoundingBox & bbox) const;
 
   // check if bbox within the image range
-  bool check_within_image(cv::Mat &image);
+  bool check_within_image(const cv::Mat &image);
 
   // crops against the image, make sure within image boundary
-  void crop_against_image(cv::Mat &image);
+  void crop_against_image(const cv::Mat &image);
   
   // crops against the given W and H
   void crop_against_width_height(int W, int H);

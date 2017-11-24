@@ -385,7 +385,7 @@ double BoundingBox::compute_center_distance(const BoundingBox & bbox) const {
   return sqrt(pow(bbox.get_center_x() - this_center_x, 2) + pow(bbox.get_center_y() - this_center_y, 2));
 }
 
-bool BoundingBox::check_within_image(cv::Mat &image) {
+bool BoundingBox::check_within_image(const cv::Mat &image) {
   int W = image.size().width;
   int H = image.size().height;
 
@@ -400,7 +400,7 @@ bool BoundingBox::check_within_image(cv::Mat &image) {
   }
 }
 
-void BoundingBox::crop_against_image(cv::Mat &image) {
+void BoundingBox::crop_against_image(const cv::Mat &image) {
   int W = image.size().width;
   int H = image.size().height;
   crop_against_width_height(W, H);
