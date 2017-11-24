@@ -99,6 +99,8 @@ void TrackerGMD::Track(const cv::Mat& image_curr, RegressorBase* regressor, Boun
             cout << "bbox after regression: " << bbox_avg.x1_ << ", " << bbox_avg.y1_ << ", " << bbox_avg.get_width() << ", " 
             << bbox_avg.get_height() << endl;
 #endif
+            // make sure within image bounds
+            bbox_avg.crop_against_image(image_curr);
             *bbox_estimate_uncentered = bbox_avg;
         }
 #endif
