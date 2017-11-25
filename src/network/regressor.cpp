@@ -359,6 +359,7 @@ void Regressor::PredictFast(const cv::Mat& image_curr, const cv::Mat& image, con
                        const std::vector<BoundingBox> &candidate_bboxes, const BoundingBox & bbox_prev, 
                        BoundingBox* bbox,
                        std::vector<float> *return_probabilities, 
+                       std::vector<float> *return_scores, 
                        std::vector<int> *return_sorted_indexes, 
                        double sd_trans,
                        int cur_frame) {
@@ -384,6 +385,15 @@ void Regressor::PredictFast(const cv::Mat& image_curr, const cv::Mat& image, con
   int layer_flatten_fc6_idx = FindLayerIndexByName(layer_names, "flatten_fc6");
   net_->ForwardTo(layer_flatten_fc6_idx);
 
+  // get raw scores
+  vector<float> flatten_fc6_features;
+  GetFeatures("flatten_fc6", &flatten_fc6_features); // 2*n
+  vector<float> raw_scores;
+  raw_scores.resize(flatten_fc6_features.size()/2);
+  for (int i = 0; i < flatten_fc6_features.size()/2; i++) {
+    raw_scores[i] = flatten_fc6_features[2*i + 1];
+  }
+
   vector<float> probabilities;
   GetProbOutput(&probabilities);
 
@@ -393,6 +403,7 @@ void Regressor::PredictFast(const cv::Mat& image_curr, const cv::Mat& image, con
   }
 
   assert (positive_probabilities.size() == candidate_bboxes.size());
+  assert (raw_scores.size() == candidate_bboxes.size());
 
 
 #ifdef ADD_DISTANCE_PENALTY
@@ -488,6 +499,11 @@ void Regressor::PredictFast(const cv::Mat& image_curr, const cv::Mat& image, con
   for (int i = 0; i < positive_probabilities.size(); i++) {
     positive_probabilities[i] *= distance_scores[i];
   }
+
+  for (int i = 0; i < raw_scores.size(); i++) {
+    raw_scores[i] *= distance_scores[i];
+  }
+
 #endif
 
 #ifdef DEBUG_MDNET_INPUT
@@ -514,15 +530,31 @@ void Regressor::PredictFast(const cv::Mat& image_curr, const cv::Mat& image, con
   vector<int> idx(positive_probabilities.size());
   iota(idx.begin(), idx.end(), 0);
 
-  // sort indexes based on comparing values in v
-  sort(idx.begin(), idx.end(),
-       [&positive_probabilities](int i1, int i2) {return positive_probabilities[i1] > positive_probabilities[i2];});
-
   double x1_weighted = 0;
   double y1_weighted = 0;
   double x2_weighted = 0;
   double y2_weighted = 0;
   double denominator = 0;
+
+#ifdef USE_RAW_SCORE_INDICATOR
+  // sort indexes based on raw_scores, and do simple average
+  sort(idx.begin(), idx.end(),
+  [&raw_scores](int i1, int i2) {return raw_scores[i1] > raw_scores[i2];});
+  
+  for (int i = 0 ; i< TOP_ESTIMATES; i ++) {
+    
+    x1_weighted += candidate_bboxes[idx[i]].x1_ ;
+    y1_weighted += candidate_bboxes[idx[i]].y1_ ;
+    x2_weighted += candidate_bboxes[idx[i]].x2_ ;
+    y2_weighted += candidate_bboxes[idx[i]].y2_ ;
+
+    denominator += 1.0;
+  }
+
+#else
+  // sort indexes based on comparing values in v
+  sort(idx.begin(), idx.end(),
+  [&positive_probabilities](int i1, int i2) {return positive_probabilities[i1] > positive_probabilities[i2];});
 
   for (int i = 0 ; i< TOP_ESTIMATES; i ++) {
     double this_prob = positive_probabilities[idx[i]];
@@ -535,6 +567,8 @@ void Regressor::PredictFast(const cv::Mat& image_curr, const cv::Mat& image, con
     denominator += this_prob;
   }
 
+#endif
+
   x1_weighted /= denominator;
   y1_weighted /= denominator;
   x2_weighted /= denominator;
@@ -542,6 +576,7 @@ void Regressor::PredictFast(const cv::Mat& image_curr, const cv::Mat& image, con
 
   *bbox = BoundingBox(x1_weighted, y1_weighted, x2_weighted, y2_weighted);
   *return_probabilities = positive_probabilities;
+  *return_scores = raw_scores;
   *return_sorted_indexes = idx;
 
 #ifdef LOG_TIME

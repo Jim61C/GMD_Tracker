@@ -73,6 +73,7 @@ private:
 
   // this prediction scores for candidates
   std::vector<float> candidate_probabilities_;
+  std::vector<float> candidate_scores_;
   std::vector<BoundingBox> candidates_bboxes_;
   std::vector<int> sorted_idxes_; // the sorted indexes of probabilities from high to low
 

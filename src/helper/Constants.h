@@ -97,4 +97,7 @@ const float LAMBDA = 1000.0;
 const float BBOX_REGRESSION_TH = 0.6;
 #define BOUNDING_BOX_REGRESSION
 
+// use raw score < 0 or postitive probability < 0.5 as finetune indicator
+// #define USE_RAW_SCORE_INDICATOR
+
 #endif

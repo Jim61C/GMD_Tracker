@@ -68,6 +68,7 @@ class Regressor : public RegressorBase {
                        const std::vector<BoundingBox> &candidate_bboxes, const BoundingBox & bbox_prev, 
                        BoundingBox* bbox,
                        std::vector<float> *return_probabilities, 
+                       std::vector<float> *return_scores, 
                        std::vector<int> *return_sorted_indexes,
                        double sd_trans,
                        int cur_frame); // TODO: remove cur_frame after debugging

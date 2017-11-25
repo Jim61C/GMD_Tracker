@@ -63,10 +63,11 @@ void TrackerGMD::Track(const cv::Mat& image_curr, RegressorBase* regressor, Boun
 #endif
 
     candidate_probabilities_.clear();
+    candidate_scores_.clear();
     sorted_idxes_.clear(); // sorted indexes of candidates from highest positive prob to lowest
     // Estimate the bounding box location as the ML estimate of the candidate_bboxes
     regressor->PredictFast(image_curr, curr_search_region, target_tight, candidates_bboxes_, bbox_prev_tight_, 
-        bbox_estimate_uncentered, &candidate_probabilities_, &sorted_idxes_, sd_trans_, cur_frame_);
+        bbox_estimate_uncentered, &candidate_probabilities_, &candidate_scores_, &sorted_idxes_, sd_trans_, cur_frame_);
 
 #ifdef BOUNDING_BOX_REGRESSION
         if (IsSuccessEstimate()) {
@@ -94,6 +95,7 @@ void TrackerGMD::Track(const cv::Mat& image_curr, RegressorBase* regressor, Boun
             bbox_avg.x2_ /= float(top_bboxes.size());
             bbox_avg.y2_ /= float(top_bboxes.size());
 #ifdef DEBUG_BBOX_REGRESSION
+            cout << "cur_frame_:" << cur_frame_ << " uses bbox regressor" << endl;
             cout << "bbox before regression: " << bbox_estimate_uncentered->x1_ << ", " << bbox_estimate_uncentered->y1_ << ", " 
             << bbox_estimate_uncentered->get_width() << ", " << bbox_estimate_uncentered->get_height() << endl; 
             cout << "bbox after regression: " << bbox_avg.x1_ << ", " << bbox_avg.y1_ << ", " << bbox_avg.get_width() << ", " 
@@ -423,6 +425,17 @@ struct MyGreater
 
 bool TrackerGMD::IsSuccessEstimate() {
 
+#ifdef USE_RAW_SCORE_INDICATOR
+  double score_sum = 0;
+  for (int i = 0; i < TOP_ESTIMATES; i ++) {
+      score_sum += candidate_scores_[sorted_idxes_[i]];
+  }
+  double avg_score = score_sum / TOP_ESTIMATES;
+#ifdef DEBUG_LOG
+  cout <<"cur_frame_:" << cur_frame_ << " avg_score: " << avg_score << endl;
+#endif
+  return (avg_score > 0);
+#else
   double prob_sum = 0;
   // get top 5 score average 
   for (int i = 0 ; i< TOP_ESTIMATES; i ++) {
@@ -434,12 +447,8 @@ bool TrackerGMD::IsSuccessEstimate() {
 #ifdef DEBUG_LOG
   cout <<"cur_frame_:" << cur_frame_ << " avg_prob: " << avg_prob << endl;
 #endif
-  if (avg_prob <= SHORT_TERM_FINE_TUNE_TH) {
-      return false;
-  }
-  else {
-      return true;
-  }
+  return (avg_prob > SHORT_TERM_FINE_TUNE_TH);
+#endif
 
 }
 
