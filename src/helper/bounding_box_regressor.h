@@ -33,7 +33,7 @@ public:
     // Solve for Ax = y with ridge regression
     VectorXd Solve(MatrixXd A, VectorXd y, double lambda, string method = "normal");
 
-private:
+public:
     MatrixXd T_;
     MatrixXd T_inv_;
     VectorXd Y_mu_;

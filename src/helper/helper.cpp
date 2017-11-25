@@ -168,3 +168,73 @@ bool equalVector(std::vector<float> &a, std::vector<float> &b) {
 float sigmoid(float x) {
   return 0.5 * tanh(0.5 * x) + 0.5;
 }
+
+// load from file, assume space delimited
+void loadMatrix(const std::string & file_path, MatrixXd & m, int rows, int cols) {
+  m = MatrixXd::Constant(rows, cols, 0);
+
+  ifstream in(file_path.c_str());
+  string line;
+  int i = 0;
+  while (!in.eof()) {
+    getline(in, line);
+    if (line.length() != 0) {
+      // parse the line
+      istringstream iss(line);
+      for (int j = 0; j < cols; j ++) {
+        iss >> m(i, j);
+      }
+      i ++;
+    }
+  }
+
+  assert(i == rows);
+}
+
+void saveMatrix(const std::string & file_path, const MatrixXd & m) {
+  ofstream out(file_path.c_str());
+  for (int i = 0; i < m.rows(); i ++) {
+    for (int j = 0; j < m.cols(); j ++) {
+      out << m(i, j) << " ";
+    }
+    out << endl;
+  }
+  out.close();
+}
+
+void saveFeatures(const std::vector<std::vector<float> > &features, const std::string file_name) {
+  ofstream out(file_name.c_str());
+  for (auto feature: features) {
+    for (auto num: feature) {
+      out << num << " ";
+    }
+    out << endl;
+  }
+  out.close();
+}
+
+void saveBboxesOTBFormat(const std::vector<BoundingBox> &bboxes, const std::string file_name) {
+  ofstream out(file_name.c_str());
+  for (auto box: bboxes) {
+    out << box.x1_ << " " << box.y1_ <<" " <<box.get_width() << " " <<box.get_height() << endl;;
+  }
+  out.close();
+}
+
+void convertEigenToCVMat(const MatrixXd & src, cv::Mat & dst) {
+  dst = cv::Mat(src.rows(), src.cols(), CV_64F);
+  for(int i = 0; i < src.rows(); i ++) {
+    for (int j = 0; j < src.cols(); j ++) {
+      dst.at<double>(i, j) = src(i, j);
+    }
+  }
+}
+
+void convertCVToEigenMat(const cv::Mat & src, MatrixXd & dst) {
+  dst = MatrixXd(src.rows, src.cols);
+  for(int i = 0; i < src.rows; i ++) {
+    for (int j = 0; j < src.cols; j ++) {
+      dst(i, j) = src.at<double>(i, j);
+    }
+  } 
+}

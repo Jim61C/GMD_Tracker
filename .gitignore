@@ -43,3 +43,6 @@ loss_history/
 # images
 *.png
 *.jpg
+
+# data
+data/

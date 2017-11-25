@@ -10,6 +10,8 @@
 
 #include <string>
 #include <iostream>
+#include "Common.h"
+#include "bounding_box.h"
 
 #include <boost/filesystem.hpp>
 #include <boost/regex.hpp>
@@ -18,6 +20,9 @@
 #include <opencv/cv.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <Eigen/Dense>
+
+using Eigen::MatrixXd;
 
 // Convenience helper functions.
 
@@ -71,6 +76,18 @@ bool equalMat(cv::Mat &mat1, cv::Mat &mat2);
 bool equalVector(std::vector<float> &a, std::vector<float> &b);
 
 float sigmoid(float x);
+
+void loadMatrix(const std::string & file_path, MatrixXd & m, int rows, int cols);
+
+void saveMatrix(const std::string & file_path, const MatrixXd & m);
+
+void saveFeatures(const std::vector<std::vector<float> > &features, const std::string file_name);
+
+void saveBboxesOTBFormat(const std::vector<BoundingBox> &bboxes, const std::string file_name);
+
+void convertEigenToCVMat(const MatrixXd & src, cv::Mat & dst);
+
+void convertCVToEigenMat(const cv::Mat & src, MatrixXd & dst);
 
 #endif /* HELPER_H_ */
 

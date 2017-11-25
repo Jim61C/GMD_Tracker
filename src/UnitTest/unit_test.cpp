@@ -5,6 +5,8 @@
 #include <helper/bounding_box.h>
 #include <helper/CommonCV.h>
 #include <Eigen/Dense>
+#include <helper/bounding_box_regressor.h>
+#include <helper/helper.h>
 #include "../rapidxml/rapidxml.hpp"
 #include "../rapidxml/rapidxml_utils.hpp"
 #include <assert.h>
@@ -130,6 +132,75 @@ void populateTestRapidXml () {
     }
 }
 
+
+void populateTestBoundingBoxRegression() {
+  double tol = 1e-3;
+  
+  // load X, Y
+  MatrixXd X, Y;
+  loadMatrix("/home/jimxing/proj/MDNet/temp/test_X.txt", X, 1000, 4609);
+  loadMatrix("/home/jimxing/proj/MDNet/temp/test_Y.txt", Y, 1000, 4);
+
+  BoundingBoxRegressor bbox_regressor;
+  // train 4 regressors for dx, dy, dw, dh
+  MatrixXd W(4609, 4);
+  for (int j = 0; j < 4; j ++) {
+      cout << "solve for model " << j << " using cholesky" << endl;
+      W.col(j) = bbox_regressor.Solve(X, Y.col(j), 1000.0, "cholesky");
+  }
+
+  // compare with W (4609, 4) loaded
+  MatrixXd W_gt;
+  loadMatrix("/home/jimxing/proj/MDNet/temp/test_beta.txt", W_gt, 4609, 4);
+
+  assert(W.rows() == W_gt.rows());
+  assert(W.cols() == W_gt.cols());
+  
+  cout << "W:\n" << W << endl;
+  
+  double diff;
+  for (int i = 0; i < W.rows(); i ++) {
+    for (int j = 0; j < W.cols(); j ++) {
+      diff += abs(W(i, j) - W_gt(i, j));
+    }
+  }
+  cout << (diff < tol ? "success, within tolerance" : "fail, diff is " + std::to_string(diff)) << endl;
+}
+
+void populateTestReadMatlabFeatureBBoxAndRegress() {
+  MatrixXd X, bbox, gt;
+  loadMatrix("/home/jimxing/proj/MDNet/temp/test_X.txt", X, 1000, 4608); // just the raw features
+  loadMatrix("/home/jimxing/proj/MDNet/temp/test_bbox_OTB_format.txt", bbox, 1000, 4); // [x, y, w, h]
+  loadMatrix("/home/jimxing/proj/MDNet/temp/test_targetLoc.txt", gt, 1, 4);
+
+  // define bbox_gt
+  BoundingBox bbox_gt(gt(0), gt(1), gt(0) + gt(2), gt(1) + gt(3));
+
+  // define regress_bboxes
+  vector<BoundingBox> regress_bboxes;
+  for (int i = 0; i <bbox.rows(); i++) {
+    regress_bboxes.push_back(BoundingBox(bbox(i, 0), bbox(i, 1), bbox(i, 0) + bbox(i, 2), bbox(i, 1) + bbox(i, 3)));
+  }
+
+  // define features
+  vector<vector<float> > features;
+  features.resize(X.rows());
+  for (int i = 0; i < X.rows(); i ++) {
+    for (int j = 0; j < X.cols(); j ++) {
+      features[i].push_back(X(i, j));
+    }
+  }
+
+  BoundingBoxRegressor bbox_regressor;
+  bbox_regressor.trainModelUsingInitialFrameBboxes(features, regress_bboxes, bbox_gt);
+
+  // save T_inv, mu, Beta
+  saveMatrix("/home/jimxing/proj/MDNet/temp/CPP_beta.txt", bbox_regressor.Beta_);
+  saveMatrix("/home/jimxing/proj/MDNet/temp/CPP_T_inv.txt", bbox_regressor.T_inv_);
+  saveMatrix("/home/jimxing/proj/MDNet/temp/CPP_mu.txt", bbox_regressor.Y_mu_.transpose());
+}
+
+
 int main (int argc, char *argv[]) {
   boost::shared_ptr<BoundingBox> sp;  // empty
 
@@ -227,6 +298,12 @@ int main (int argc, char *argv[]) {
   // populateTestEigenMap();
   // populateTestEigenFunctions();
   populateTestRapidXml();
+
+  cout << "------------- Test populateTestBoundingBoxRegression ---------------" << endl;
+  populateTestBoundingBoxRegression();
+
+  // cout << "------------- Test populateTestReadMatlabFeatureBBoxAndRegress ---------------" << endl;
+  // populateTestReadMatlabFeatureBBoxAndRegress();
   
 
   return 0;
