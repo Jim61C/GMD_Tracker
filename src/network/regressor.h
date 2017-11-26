@@ -19,9 +19,9 @@
 
 using namespace std;
 
-// const string FREEZE_LAYER_PREFIX = "fc6_k";
-const string FREEZE_LAYER_PREFIX = "flatten_fc6_k";
-const string LOSS_LAYER_PREFIX = "loss_k";
+const string FREEZE_LAYER_PREFIX = "fc6_k";
+// const string FREEZE_LAYER_PREFIX = "flatten_fc6_k";
+// const string LOSS_LAYER_PREFIX = "loss_k";
 
 class Regressor : public RegressorBase {
  public:

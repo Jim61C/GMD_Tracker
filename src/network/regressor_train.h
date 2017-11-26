@@ -82,6 +82,10 @@ public:
   // Set the labels in the net_'s input[3]
   void set_labels(const std::vector<double>  &labels_flattened);
 
+  // Set labels for the multi domain training using setting diff as zero, correct binary class for domain k
+  // is 2k for neg class and 2k+1 for pos class
+  void set_labels_k(const std::vector<double>  &labels_flattened, int k);
+
   // Reset the solver's net to this->net_ initialised from regressor 
   void ResetSolverNet();
 
@@ -97,6 +101,8 @@ private:
   std::vector<std::vector<double> > loss_history_;
 
   const std::string loss_save_path_;
+
+  int K_ = -1; // default single domain
 };
 
 #endif // REGRESSOR_TRAIN_H

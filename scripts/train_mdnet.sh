@@ -6,8 +6,8 @@ if [ -z "$1" ]
 fi
 VIDEOS_FOLDER=$1
 CAFFE_MODEL=nets/models/weights_init/VGG_CNN_M.caffemodel
-TRAIN_PROTO=nets/mdnet_train.prototxt
-SOLVER=nets/solver_temp/solver_temp_mdnet_train.prototxt
+TRAIN_PROTO=nets/mdnet_train2.prototxt
+SOLVER=nets/solver_temp/solver_temp_mdnet_train2.prototxt
 LAMBDA_SHIFT=5
 LAMBDA_SCALE=15
 MIN_SCALE=-0.4
