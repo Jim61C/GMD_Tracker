@@ -69,7 +69,14 @@ void TrackerGMD::Track(const cv::Mat& image_curr, RegressorBase* regressor, Boun
         bbox_estimate_uncentered, &candidate_probabilities_, &sorted_idxes_, sd_trans_, cur_frame_);
 
 #ifdef BOUNDING_BOX_REGRESSION
-        if (IsSuccessEstimate()) {
+        // only use bbox regressor if the confidence is high
+        double confidence = 0.0;
+        for (int i = 0; i < TOP_ESTIMATES; i ++) {
+            confidence += candidate_probabilities_[sorted_idxes_[i]];
+        }
+        confidence /= (double)(TOP_ESTIMATES);
+
+        if (confidence > BBOX_REGRESSION_CONFIDENCE_TH) {
             // wrap in a vector to use get features API
             std::vector<std::vector<float> > bbox_features;
             std::vector<BoundingBox> top_bboxes;

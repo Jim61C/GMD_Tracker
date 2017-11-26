@@ -103,6 +103,7 @@ const cv::Scalar mean_scalar(102.7170, 115.7726, 123.5094);
 const int BBOX_REGRESSION_FEATURE_LENGTH = 3 * 3 * 512;
 const float LAMBDA = 1000.0;
 const float BBOX_REGRESSION_TH = 0.6;
+const float BBOX_REGRESSION_CONFIDENCE_TH = 0.7;
 #define BOUNDING_BOX_REGRESSION
 
 #endif
