@@ -20,8 +20,8 @@ using caffe::LayerParameter;
 // #define DEBUG_OBSERVE_PREDICTION
 // #define DEBUG_CROSS_FRAME_OHEM
 // #define DEBUG_MDNET_TRAIN
-#define DEBUG_TIME
-#define DEBUG_SET_DIFF_MULTI_DOMAIN
+// #define DEBUG_TIME
+// #define DEBUG_SET_DIFF_MULTI_DOMAIN
 
 RegressorTrain::RegressorTrain(const std::string& deploy_proto,
                                const std::string& caffe_model,
