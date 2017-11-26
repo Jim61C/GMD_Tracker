@@ -213,7 +213,7 @@ int main (int argc, char *argv[]) {
 
   // save the loss_history when done, TODO: save loss along training instead end of training
   string save_dir = "loss_history/";
-  string save_path = save_dir + "train_mdnet_" + std::to_string(NUM_CYCLES) + ".txt";
+  string save_path = save_dir + "train_mdnet_setdiff_" + std::to_string(NUM_CYCLES) + ".txt";
   if (!boost::filesystem::exists(save_dir)) {
     boost::filesystem::create_directories(save_dir);
   }

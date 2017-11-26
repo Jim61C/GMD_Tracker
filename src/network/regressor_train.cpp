@@ -21,6 +21,7 @@ using caffe::LayerParameter;
 // #define DEBUG_CROSS_FRAME_OHEM
 // #define DEBUG_MDNET_TRAIN
 #define DEBUG_TIME
+#define DEBUG_SET_DIFF_MULTI_DOMAIN
 
 RegressorTrain::RegressorTrain(const std::string& deploy_proto,
                                const std::string& caffe_model,
@@ -72,6 +73,8 @@ RegressorTrain::RegressorTrain(const std::string& deploy_proto,
   solver_.set_net(net_);
 
   loss_history_.resize((K == -1 ? 1: K));
+
+  K_ = K;
 }
 
 void RegressorTrain::ResetSolverNet() {
@@ -136,6 +139,27 @@ void RegressorTrain::set_labels(const std::vector<double>  &labels_flattened) {
   // set data
   for (int i = 0; i < num_labels; i++) {
     input_label_data[i] = labels_flattened[i];
+  }
+}
+
+void RegressorTrain::set_labels_k(const std::vector<double>  &labels_flattened, int k) {
+  assert(net_->phase() == caffe::TRAIN);
+
+  Blob<float> * input_label_blob = net_->input_blobs()[LABEL_NETWORK_INPUT_IDX];
+  const size_t num_labels = labels_flattened.size();
+
+  // reshape to (|R|, 1)
+  std::vector<int> shape;
+  shape.push_back(num_labels);
+  shape.push_back(1);
+  input_label_blob->Reshape(shape);
+  
+  // get a pointer to the label input blob memory.
+  float* input_label_data = input_label_blob->mutable_cpu_data();
+
+  // set data
+  for (int i = 0; i < num_labels; i++) {
+    input_label_data[i] = labels_flattened[i] + 2*k; // pos class is 2k + 1, neg class is 2k, labels_flattened[i] is 0 or 1
   }
 }
 
@@ -704,24 +728,12 @@ void RegressorTrain::Train(const cv::Mat &image_curr,
     assert(candidates_bboxes.size() == labels_flattened.size());
 
     if (k != -1) {
-      // Usual Training, need to freeze layers
-      string this_layer_name = FREEZE_LAYER_PREFIX + std::to_string(k);
-
-      // unlock this layer
-      const boost::shared_ptr<Layer<float> > layer_pt = net_->layer_by_name(this_layer_name);
-
-      if (!layer_pt->param_propagate_down(0)) {
-        layer_pt->set_param_propagate_down(0, true);
-      }
-      if (!layer_pt->param_propagate_down(1)) {
-        layer_pt->set_param_propagate_down(1, true);
-      }
 
       // Set the candidates
       set_candidate_images(image_curr, candidates_bboxes);
 
       // Set the labels
-      set_labels(labels_flattened);
+      set_labels_k(labels_flattened, k);
 
 #ifdef DEBUG_MDNET_TRAIN
       vector<vector<cv::Mat> > input_candidate_images_splitted;
@@ -752,22 +764,51 @@ void RegressorTrain::Train(const cv::Mat &image_curr,
       }
 #endif
 
-      // Train the network.
-      Step();
-        
-      //lock this layer back
-      // cout << this_layer_name << " freeze back" << endl;
-      if (layer_pt->param_propagate_down(0)) {
-        layer_pt->set_param_propagate_down(0, false);
+      // forward to loss layer
+      const std::vector<string> & layer_names = net_->layer_names();
+      int layer_loss_idx = FindLayerIndexByName(layer_names, "loss");
+      int layer_flatten_fc6_idx = FindLayerIndexByName(layer_names, "flatten_fc6");
+      // TODO: check Matlab code base if need to forward to flatten_fc6 first, 
+      //then mannually set others to -inf, then forward to SoftmaxWithLoss
+      net_->ForwardTo(layer_loss_idx);
+      
+      // backward on loss layer, so that its bottom diffs are set
+      net_->BackwardFromTo(layer_loss_idx, layer_loss_idx);
+
+      // get ptr to the diff of blob flatten_fc6
+      string fc6_flatten_blob_name = "flatten_fc6";
+      const boost::shared_ptr<Blob<float> > blob_to_set_diff = net_->blob_by_name(fc6_flatten_blob_name.c_str());
+      float * diff_begin = blob_to_set_diff->mutable_cpu_diff();
+      float * diff_end = diff_begin + blob_to_set_diff->count();
+
+#ifdef DEBUG_SET_DIFF_MULTI_DOMAIN
+      std::vector<float> flatten_fc6_diff_val(diff_begin, diff_end);
+      cout << "flatten_fc6_diff_val.size():" << flatten_fc6_diff_val.size() << endl;
+      for (auto num: flatten_fc6_diff_val) {
+        cout << num << " ";
       }
-      if (layer_pt->param_propagate_down(1)) {
-        layer_pt->set_param_propagate_down(1, false);
+      cout << endl;
+      cout << "blob_to_set_diff->count():" << blob_to_set_diff->count() << endl;
+#endif
+
+      // set all diff to 0, leave non zero only at 2*k and 2*k + 1
+      for (int b = 0; b < candidates_bboxes.size(); b++) {
+        // for each sample, set the corresponding other domains to have diff 0
+        for (int i = 0; i < K_; i ++) {
+            // set the gradients to be zero for other domains
+            if (i != k) {
+              diff_begin[2*i + b*K_] = 0;
+              diff_begin[2*i + 1 + b*K_] = 0;
+            }
+        }
       }
+      net_->BackwardFrom(layer_flatten_fc6_idx);
 
       // save loss
       if (loss_save_path_.length() != 0 && loss_history_.size() > k ) {
         std::vector<float> this_loss_output;
-        GetFeatures(LOSS_LAYER_PREFIX + std::to_string(k), &this_loss_output);
+        GetFeatures("loss", &this_loss_output);
+        cout << "domain "<< k << " this_loss_output.size()" << this_loss_output.size() << endl;
         loss_history_[k].push_back(this_loss_output[0]);
         InvokeSaveLossIfNeeded();
       }

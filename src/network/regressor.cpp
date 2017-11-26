@@ -121,10 +121,10 @@ void Regressor::SetupNetwork(const string& deploy_proto,
   // Load the binaryproto mean file.
   SetMean();
 
-  if (do_train && K_ != -1) {
-    // Only if training and model has K domains, Lock the domain specific layers, will be opened each time during training
-    LockDomainLayers();
-  }
+  // if (do_train && K_ != -1) {
+  //   // Only if training and model has K domains, Lock the domain specific layers, will be opened each time during training
+  //   LockDomainLayers();
+  // }
 }
 
 void Regressor::SetMean() {
