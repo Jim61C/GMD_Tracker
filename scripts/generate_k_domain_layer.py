@@ -13,7 +13,7 @@ def main():
 	bottom_label_layer = "label_flat"
 
 	lr_mult_weights = 10
-	decay_mult_weights = 1
+	decay_mult_weights = 0
 
 	lr_mult_bias = 20
 	decay_mult_bias = 0

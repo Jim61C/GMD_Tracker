@@ -1,263 +1,3 @@
-name: "MDNet"
-
-input: "candidate"
-input: "label"
-
-#candidate
-input_dim: 1
-input_dim: 3
-input_dim: 107
-input_dim: 107
-
-#label
-input_dim: 1
-input_dim: 1
-input_dim: 1
-input_dim: 1
-
-layer {
-  name: "conv1"
-  type: "Convolution"
-  bottom: "candidate"
-  top: "conv1"
-  param {
-  	name: "conv1_w"
-    lr_mult: 1
-    decay_mult: 1
-  }
-  param {
-  	name: "conv1_b"
-    lr_mult: 2
-    decay_mult: 0
-  }
-  convolution_param {
-    num_output: 96
-    kernel_size: 7
-    stride: 2
-    weight_filler {
-      type: "gaussian"
-      std: 0.01
-    }
-    bias_filler {
-      type: "constant"
-      value: 0
-    }
-  }
-}
-layer {
-  name: "relu1"
-  type: "ReLU"
-  bottom: "conv1"
-  top: "conv1"
-}
-layer {
-  name: "norm1"
-  type: "LRN"
-  bottom: "conv1"
-  top: "norm1"
-  lrn_param {
-    local_size: 5
-    alpha: 0.0005
-    beta: 0.75
-    k: 2
-  }
-}
-layer {
-  name: "pool1"
-  type: "Pooling"
-  bottom: "norm1"
-  top: "pool1"
-  pooling_param {
-    pool: MAX
-    kernel_size: 3
-    stride: 2
-  }
-}
-layer {
-  name: "conv2"
-  type: "Convolution"
-  bottom: "pool1"
-  top: "conv2"
-  param {
-  	name: "conv2_w"
-    lr_mult: 1
-    decay_mult: 1
-  }
-  param {
-  	name: "conv2_b"
-    lr_mult: 2
-    decay_mult: 0
-  }
-  convolution_param {
-    num_output: 256
-    kernel_size: 5
-    stride: 2
-    weight_filler {
-      type: "gaussian"
-      std: 0.01
-    }
-    bias_filler {
-      type: "constant"
-      value: 1
-    }
-  }
-}
-layer {
-  name: "relu2"
-  type: "ReLU"
-  bottom: "conv2"
-  top: "conv2"
-}
-layer {
-  name: "norm2"
-  type: "LRN"
-  bottom: "conv2"
-  top: "norm2"
-  lrn_param {
-    local_size: 5
-    alpha: 0.0005
-    beta: 0.75
-    k: 2
-  }
-}
-layer {
-  name: "pool2"
-  type: "Pooling"
-  bottom: "norm2"
-  top: "pool2"
-  pooling_param {
-    pool: MAX
-    kernel_size: 3
-    stride: 2
-  }
-}
-layer {
-  name: "conv3"
-  type: "Convolution"
-  bottom: "pool2"
-  top: "conv3"
-  param {
-  	name: "conv3_w"
-    lr_mult: 1
-    decay_mult: 1
-  }
-  param {
-  	name: "conv3_b"
-    lr_mult: 2
-    decay_mult: 0
-  }
-  convolution_param {
-    num_output: 512
-    kernel_size: 3
-    weight_filler {
-      type: "gaussian"
-      std: 0.01
-    }
-    bias_filler {
-      type: "constant"
-      value: 0
-    }
-  }
-}
-layer {
-  name: "relu3"
-  type: "ReLU"
-  bottom: "conv3"
-  top: "conv3"
-}
-
-layer {
-  name: "fc4"
-  type: "Convolution"
-  bottom: "conv3"
-  top: "fc4"
-  param {
-    lr_mult: 10
-    decay_mult: 1
-  }
-  param {
-    lr_mult: 20
-    decay_mult: 0
-  }
-  convolution_param {
-    num_output: 512
-    kernel_size: 3
-    weight_filler {
-      type: "gaussian"
-      std: 0.01
-    }
-    bias_filler {
-      type: "constant"
-      value: 0
-    }
-  }
-}
-layer {
-  name: "relu4"
-  type: "ReLU"
-  bottom: "fc4"
-  top: "fc4"
-}
-layer {
-  name: "drop4"
-  type: "Dropout"
-  bottom: "fc4"
-  top: "fc4"
-  dropout_param {
-    dropout_ratio: 0.5
-  }
-}
-
-layer {
-  name: "fc5"
-  type: "Convolution"
-  bottom: "fc4"
-  top: "fc5"
-  param {
-    lr_mult: 10
-    decay_mult: 1
-  }
-  param {
-    lr_mult: 20
-    decay_mult: 0
-  }
-  convolution_param {
-    num_output: 512
-    kernel_size: 1
-    weight_filler {
-      type: "gaussian"
-      std: 0.01
-    }
-    bias_filler {
-      type: "constant"
-      value: 0
-    }
-  }
-}
-layer {
-  name: "relu5"
-  type: "ReLU"
-  bottom: "fc5"
-  top: "fc5"
-}
-layer {
-  name: "drop5"
-  type: "Dropout"
-  bottom: "fc5"
-  top: "fc5"
-  dropout_param {
-    dropout_ratio: 0.5
-  }
-}
-
-# flatten label
-layer {
-  name: "flatten"
-  type: "Flatten"
-  bottom: "label"
-  top: "label_flat"
-}
-
 # k domains
 # domain 0
 layer {
@@ -267,7 +7,7 @@ layer {
   top: "fc6_k0" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -307,7 +47,7 @@ layer {
   top: "fc6_k1" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -347,7 +87,7 @@ layer {
   top: "fc6_k2" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -387,7 +127,7 @@ layer {
   top: "fc6_k3" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -427,7 +167,7 @@ layer {
   top: "fc6_k4" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -467,7 +207,7 @@ layer {
   top: "fc6_k5" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -507,7 +247,7 @@ layer {
   top: "fc6_k6" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -547,7 +287,7 @@ layer {
   top: "fc6_k7" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -587,7 +327,7 @@ layer {
   top: "fc6_k8" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -627,7 +367,7 @@ layer {
   top: "fc6_k9" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -667,7 +407,7 @@ layer {
   top: "fc6_k10" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -707,7 +447,7 @@ layer {
   top: "fc6_k11" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -747,7 +487,7 @@ layer {
   top: "fc6_k12" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -787,7 +527,7 @@ layer {
   top: "fc6_k13" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -827,7 +567,7 @@ layer {
   top: "fc6_k14" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -867,7 +607,7 @@ layer {
   top: "fc6_k15" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -907,7 +647,7 @@ layer {
   top: "fc6_k16" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -947,7 +687,7 @@ layer {
   top: "fc6_k17" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -987,7 +727,7 @@ layer {
   top: "fc6_k18" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -1027,7 +767,7 @@ layer {
   top: "fc6_k19" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -1067,7 +807,7 @@ layer {
   top: "fc6_k20" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -1107,7 +847,7 @@ layer {
   top: "fc6_k21" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -1147,7 +887,7 @@ layer {
   top: "fc6_k22" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -1187,7 +927,7 @@ layer {
   top: "fc6_k23" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -1227,7 +967,7 @@ layer {
   top: "fc6_k24" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -1267,7 +1007,7 @@ layer {
   top: "fc6_k25" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -1307,7 +1047,7 @@ layer {
   top: "fc6_k26" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -1347,7 +1087,7 @@ layer {
   top: "fc6_k27" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -1387,7 +1127,7 @@ layer {
   top: "fc6_k28" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -1427,7 +1167,7 @@ layer {
   top: "fc6_k29" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -1467,7 +1207,7 @@ layer {
   top: "fc6_k30" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -1507,7 +1247,7 @@ layer {
   top: "fc6_k31" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -1547,7 +1287,7 @@ layer {
   top: "fc6_k32" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -1587,7 +1327,7 @@ layer {
   top: "fc6_k33" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -1627,7 +1367,7 @@ layer {
   top: "fc6_k34" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -1667,7 +1407,7 @@ layer {
   top: "fc6_k35" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -1707,7 +1447,7 @@ layer {
   top: "fc6_k36" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -1747,7 +1487,7 @@ layer {
   top: "fc6_k37" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -1787,7 +1527,7 @@ layer {
   top: "fc6_k38" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -1827,7 +1567,7 @@ layer {
   top: "fc6_k39" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -1867,7 +1607,7 @@ layer {
   top: "fc6_k40" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -1907,7 +1647,7 @@ layer {
   top: "fc6_k41" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -1947,7 +1687,7 @@ layer {
   top: "fc6_k42" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -1987,7 +1727,7 @@ layer {
   top: "fc6_k43" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -2027,7 +1767,7 @@ layer {
   top: "fc6_k44" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -2067,7 +1807,7 @@ layer {
   top: "fc6_k45" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -2107,7 +1847,7 @@ layer {
   top: "fc6_k46" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -2147,7 +1887,7 @@ layer {
   top: "fc6_k47" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -2187,7 +1927,7 @@ layer {
   top: "fc6_k48" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -2227,7 +1967,7 @@ layer {
   top: "fc6_k49" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -2267,7 +2007,7 @@ layer {
   top: "fc6_k50" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -2307,7 +2047,7 @@ layer {
   top: "fc6_k51" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -2347,7 +2087,7 @@ layer {
   top: "fc6_k52" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -2387,7 +2127,7 @@ layer {
   top: "fc6_k53" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -2427,7 +2167,7 @@ layer {
   top: "fc6_k54" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -2467,7 +2207,7 @@ layer {
   top: "fc6_k55" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -2507,7 +2247,7 @@ layer {
   top: "fc6_k56" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -2547,7 +2287,7 @@ layer {
   top: "fc6_k57" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -2587,7 +2327,7 @@ layer {
   top: "fc6_k58" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -2627,7 +2367,7 @@ layer {
   top: "fc6_k59" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -2667,7 +2407,7 @@ layer {
   top: "fc6_k60" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -2707,7 +2447,7 @@ layer {
   top: "fc6_k61" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -2747,7 +2487,7 @@ layer {
   top: "fc6_k62" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -2787,7 +2527,7 @@ layer {
   top: "fc6_k63" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -2827,7 +2567,7 @@ layer {
   top: "fc6_k64" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -2867,7 +2607,7 @@ layer {
   top: "fc6_k65" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -2907,7 +2647,7 @@ layer {
   top: "fc6_k66" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -2947,7 +2687,7 @@ layer {
   top: "fc6_k67" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -2987,7 +2727,7 @@ layer {
   top: "fc6_k68" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -3027,7 +2767,7 @@ layer {
   top: "fc6_k69" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -3067,7 +2807,7 @@ layer {
   top: "fc6_k70" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -3107,7 +2847,7 @@ layer {
   top: "fc6_k71" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -3147,7 +2887,7 @@ layer {
   top: "fc6_k72" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -3187,7 +2927,7 @@ layer {
   top: "fc6_k73" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -3227,7 +2967,7 @@ layer {
   top: "fc6_k74" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -3267,7 +3007,7 @@ layer {
   top: "fc6_k75" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -3307,7 +3047,7 @@ layer {
   top: "fc6_k76" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -3347,7 +3087,7 @@ layer {
   top: "fc6_k77" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -3387,7 +3127,7 @@ layer {
   top: "fc6_k78" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -3427,7 +3167,7 @@ layer {
   top: "fc6_k79" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -3467,7 +3207,7 @@ layer {
   top: "fc6_k80" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -3507,7 +3247,7 @@ layer {
   top: "fc6_k81" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -3547,7 +3287,7 @@ layer {
   top: "fc6_k82" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -3587,7 +3327,7 @@ layer {
   top: "fc6_k83" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -3627,7 +3367,7 @@ layer {
   top: "fc6_k84" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -3667,7 +3407,7 @@ layer {
   top: "fc6_k85" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -3707,7 +3447,7 @@ layer {
   top: "fc6_k86" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -3747,7 +3487,7 @@ layer {
   top: "fc6_k87" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -3787,7 +3527,7 @@ layer {
   top: "fc6_k88" 
   param {
   lr_mult: 10 
-  decay_mult: 1 
+  decay_mult: 0 
   }
   param {
   lr_mult: 20 
@@ -3819,5 +3559,3 @@ layer {
   bottom: "label_flat"
   top: "loss_k88"
 }
-
-
