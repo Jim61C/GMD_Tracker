@@ -496,7 +496,8 @@ void RegressorTrain::Train(const cv::Mat &image_curr,
     assert(candidates_bboxes.size() == labels_flattened.size());
 
     if (k != -1) {
-
+      net_->ClearParamDiffs(); // clear the previous param diff
+      
       // Set the candidates
       set_candidate_images(image_curr, candidates_bboxes);
 
@@ -572,11 +573,15 @@ void RegressorTrain::Train(const cv::Mat &image_curr,
       }
       net_->BackwardFrom(layer_flatten_fc6_idx);
 
+      // mannualy apply parameter update
+      solver_.apply_update();
+      solver_.increment_iter_save_snapshot();
+
       // save loss
       if (loss_save_path_.length() != 0 && loss_history_.size() > k ) {
         std::vector<float> this_loss_output;
         GetFeatures("loss", &this_loss_output);
-        cout << "domain "<< k << " this_loss_output.size()" << this_loss_output.size() << endl;
+        // cout << "domain "<< k << " this_loss_output.size()" << this_loss_output.size() << endl;
         loss_history_[k].push_back(this_loss_output[0]);
         InvokeSaveLossIfNeeded();
       }
