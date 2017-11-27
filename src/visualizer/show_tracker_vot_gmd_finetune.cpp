@@ -24,9 +24,9 @@ using std::string;
 const bool show_intermediate_output = false;
 
 int main (int argc, char *argv[]) {
-  if (argc < 9) {
+  if (argc < 10) {
     std::cerr << "Usage: " << argv[0]
-              << " deploy.prototxt network.caffemodel solver_file videos_folder LAMBDA_SHIFT LAMBDA_SCALE MIN_SCALE MAX_SCALE"
+              << " deploy.prototxt network.caffemodel mean_file solver_file videos_folder LAMBDA_SHIFT LAMBDA_SCALE MIN_SCALE MAX_SCALE"
               << " [gpu_id] [video_num] [pauseval] [output_folder]" << std::endl;
     return 1;
   }
@@ -38,44 +38,47 @@ int main (int argc, char *argv[]) {
   // caffe::Caffe::set_random_seed(800); 
   srandom(time(NULL));
 
-  const string& model_file   = argv[1];
-  const string& trained_file = argv[2];
-  const string& solver_file = argv[3];
-  const string& videos_folder = argv[4];
-  const double lambda_shift   = atof(argv[5]);
-  const double lambda_scale   = atof(argv[6]);
-  const double min_scale      = atof(argv[7]);
-  const double max_scale      = atof(argv[8]);
+  int arg_index = 1;
+  const string& model_file   = argv[arg_index++];
+  const string& trained_file = argv[arg_index++];
+  const string& mean_file = argv[arg_index++];
+  const string& solver_file = argv[arg_index++];
+  const string& videos_folder = argv[arg_index++];
+  const double lambda_shift   = atof(argv[arg_index++]);
+  const double lambda_scale   = atof(argv[arg_index++]);
+  const double min_scale      = atof(argv[arg_index++]);
+  const double max_scale      = atof(argv[arg_index++]);
 
   int gpu_id = 0;
-  if (argc >= 10) {
-    gpu_id = atoi(argv[9]);
+  if (argc > arg_index) {
+    gpu_id = atoi(argv[arg_index++]);
   }
 
   int start_video_num = 0;
-  if (argc >= 11) {
-    start_video_num = atoi(argv[10]);
+  if (argc > arg_index) {
+    start_video_num = atoi(argv[arg_index++]);
   }
 
   int pause_val = 1;
-  if (argc >= 12) {
-    pause_val = atoi(argv[11]);
+  if (argc > arg_index) {
+    pause_val = atoi(argv[arg_index++]);
   }
 
   string output_folder = "nets/tracker_output/GOTURN_MDNet";
-  if (argc >= 13) {
-    output_folder = argv[12];
+  if (argc > arg_index) {
+    output_folder = argv[arg_index++];
   }
 
   bool show_result = true;
-  if (argc >=14) {
-    istringstream(argv[13]) >> show_result;
+  if (argc > arg_index) {
+    istringstream(argv[arg_index++]) >> show_result;
   }
 
   // Set up the neural network.
   const bool do_train = true;
   RegressorTrain regressor_train(model_file,
                                trained_file,
+                               mean_file,
                                gpu_id,
                                solver_file,
                                3,

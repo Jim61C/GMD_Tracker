@@ -11,6 +11,7 @@ class RegressorTrain : public Regressor, public RegressorTrainBase
 public:
   RegressorTrain(const std::string& deploy_proto,
                  const std::string& caffe_model,
+                 const string& mean_file,
                  const int gpu_id,
                  const std::string& solver_file,
                  const int num_input,
@@ -18,17 +19,20 @@ public:
 
   RegressorTrain(const std::string& deploy_proto,
                  const std::string& caffe_model,
+                 const string& mean_file,
                  const int gpu_id,
                  const std::string& solver_file,
                  const bool do_train);            
 
   RegressorTrain(const std::string& deploy_proto,
                  const std::string& caffe_model,
+                 const string& mean_file,
                  const int gpu_id,
                  const std::string& solver_file);
 
   RegressorTrain(const std::string& deploy_proto,
                                const std::string& caffe_model,
+                               const string& mean_file,
                                const int gpu_id,
                                const string& solver_file,
                                const string& loss_save_path,

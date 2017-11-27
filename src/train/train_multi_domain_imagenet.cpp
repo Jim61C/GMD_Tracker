@@ -98,11 +98,12 @@ void train_video(const std::vector<VideoImageNet>& videos, TrackerTrainerMultiDo
 } // namespace
 
 int main (int argc, char *argv[]) {
-  if (argc < 12) {
+  if (argc < 13) {
     std::cerr << "Usage: " << argv[0]
               << " imagenet_video_data_folder"
               << " imagenet_video_annotation_folder"
               << " network.caffemodel train.prototxt"
+              << " mean_file"
               << " solver_file"
               << " lambda_shift lambda_scale min_scale max_scale"
               << " gpu_id"
@@ -120,6 +121,7 @@ int main (int argc, char *argv[]) {
   const string& imagenet_video_annotation_folder  = argv[arg_index++];
   const string& caffe_model   = argv[arg_index++];
   const string& train_proto   = argv[arg_index++];
+  const string& mean_file     = argv[arg_index++];
   const string& solver_file  = argv[arg_index++];
   const double lambda_shift        = atof(argv[arg_index++]);
   const double lambda_scale        = atof(argv[arg_index++]);
@@ -164,7 +166,7 @@ int main (int argc, char *argv[]) {
   }
 
   // Set up network.
-  RegressorTrain regressor_train(train_proto, caffe_model,
+  RegressorTrain regressor_train(train_proto, caffe_model, mean_file
                                  gpu_id, solver_file, save_path, K);
 
   // Set up trainer.

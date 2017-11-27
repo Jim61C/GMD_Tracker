@@ -20,9 +20,9 @@ using std::string;
 // Desired number of training batches.
 const int kNumBatches = 500000;
 
-// Desired number of iterations, within each iteration, each of K domains is passed 1 batch
-// const int NUM_CYCLES = 800;
-const int NUM_CYCLES = 3200;
+// // Desired number of iterations, within each iteration, each of K domains is passed 1 batch
+// // const int NUM_CYCLES = 800;
+// const int NUM_CYCLES = 3200;
 
 namespace {
 
@@ -163,10 +163,10 @@ void train_video(const std::vector<Video>& videos, TrackerTrainerMultiDomain* tr
 } // namespace
 
 int main (int argc, char *argv[]) {
-  if (argc < 11) {
+  if (argc < 12) {
     std::cerr << "Usage: " << argv[0]
               << " otb_videos_folder"
-              << " network.caffemodel train.prototxt"
+              << " network.caffemodel train.prototxt mean_file"
               << " solver_file"
               << " lambda_shift lambda_scale min_scale max_scale"
               << " gpu_id"
@@ -183,6 +183,7 @@ int main (int argc, char *argv[]) {
   const string& otb_videos_folder      = argv[arg_index++];
   const string& caffe_model   = argv[arg_index++];
   const string& train_proto   = argv[arg_index++];
+  const string& mean_file   = argv[arg_index++];
   const string& solver_file  = argv[arg_index++];
   const double lambda_shift        = atof(argv[arg_index++]);
   const double lambda_scale        = atof(argv[arg_index++]);
@@ -217,7 +218,7 @@ int main (int argc, char *argv[]) {
 
   // save the loss_history when done, TODO: save loss along training instead end of training
   string save_dir = "loss_history/";
-  string save_path = save_dir + "train_single_domain_loss_no_middle_batch_no_pool_avg_history_cycle" + std::to_string(NUM_CYCLES) + ".txt";
+  string save_path = save_dir + "train_single_domain_no_middle_batch_no_pool_avg_OTB_loss_history.txt";
   if (!boost::filesystem::exists(save_dir)) {
     boost::filesystem::create_directories(save_dir);
   }
@@ -227,7 +228,7 @@ int main (int argc, char *argv[]) {
   }
 
   // Set up network.
-  RegressorTrain regressor_train(train_proto, caffe_model,
+  RegressorTrain regressor_train(train_proto, caffe_model, mean_file, 
                                  gpu_id, solver_file, save_path, K);
 
   // Set up trainer.

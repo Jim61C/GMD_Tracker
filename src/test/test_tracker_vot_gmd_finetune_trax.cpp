@@ -23,9 +23,9 @@
 const bool show_intermediate_output = false;
 
 int main (int argc, char *argv[]) {
-   if (argc < 8) {
+   if (argc < 9) {
     std::cerr << "Usage: " << argv[0]
-              << " deploy.prototxt network.caffemodel solver_file LAMBDA_SHIFT LAMBDA_SCALE MIN_SCALE MAX_SCALE"
+              << " deploy.prototxt network.caffemodel mean_file solver_file LAMBDA_SHIFT LAMBDA_SCALE MIN_SCALE MAX_SCALE"
               << " [gpu_id]" << std::endl;
     return 1;
   }
@@ -34,24 +34,26 @@ int main (int argc, char *argv[]) {
 
   ::google::InitGoogleLogging(argv[0]);
 //   caffe::Caffe::set_random_seed(800); 
-
-  const string& model_file   = argv[1];
-  const string& trained_file = argv[2];
-  const string& solver_file = argv[3];
-  const double lambda_shift   = atof(argv[4]);
-  const double lambda_scale   = atof(argv[5]);
-  const double min_scale      = atof(argv[6]);
-  const double max_scale      = atof(argv[7]);
+  int arg_idx = 1;
+  const string& model_file   = argv[arg_idx++];
+  const string& trained_file = argv[arg_idx++];
+  const string& mean_file = argv[arg_idx++];
+  const string& solver_file = argv[arg_idx++];
+  const double lambda_shift   = atof(argv[arg_idx++]);
+  const double lambda_scale   = atof(argv[arg_idx++]);
+  const double min_scale      = atof(argv[arg_idx++]);
+  const double max_scale      = atof(argv[arg_idx++]);
 
   int gpu_id = 0;
-  if (argc >= 9) {
-    gpu_id = atoi(argv[8]);
+  if (argc > arg_idx ) {
+    gpu_id = atoi(argv[arg_idx++]);
   }
 
   // Set up the neural network.
   const bool do_train = true;
   RegressorTrain regressor_train(model_file,
                                trained_file,
+                               mean_file,
                                gpu_id,
                                solver_file,
                                4,

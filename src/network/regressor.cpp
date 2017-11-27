@@ -32,6 +32,7 @@ const int kNumInputs = 2;
 
 Regressor::Regressor(const string& deploy_proto,
                      const string& caffe_model,
+                     const string& mean_file,
                      const int gpu_id,
                      const int num_inputs,
                      const bool do_train,
@@ -44,11 +45,14 @@ Regressor::Regressor(const string& deploy_proto,
     hrt_("Regressor")
 
 {
+  loadMeanScalar(mean_file, mean_scalar_);
+  cout << "mean_scalar_ loaded:" << mean_scalar_ << endl;
   SetupNetwork(deploy_proto, caffe_model, gpu_id, do_train);
 }
 
 Regressor::Regressor(const string& deploy_proto,
                      const string& caffe_model,
+                     const string& mean_file,
                      const int gpu_id,
                      const int num_inputs,
                      const bool do_train)
@@ -60,11 +64,14 @@ Regressor::Regressor(const string& deploy_proto,
     hrt_("Regressor")
 
 {
+  loadMeanScalar(mean_file, mean_scalar_);
+  cout << "mean_scalar_ loaded:" << mean_scalar_ << endl;
   SetupNetwork(deploy_proto, caffe_model, gpu_id, do_train);
 }
 
 Regressor::Regressor(const string& deploy_proto,
                      const string& caffe_model,
+                     const string& mean_file,
                      const int gpu_id,
                      const bool do_train)
   : num_inputs_(kNumInputs),
@@ -74,6 +81,8 @@ Regressor::Regressor(const string& deploy_proto,
     K_(-1),
     hrt_("Regressor")
 {
+  loadMeanScalar(mean_file, mean_scalar_);
+  cout << "mean_scalar_ loaded:" << mean_scalar_ << endl;
   SetupNetwork(deploy_proto, caffe_model, gpu_id, do_train);
 }
 
@@ -127,7 +136,7 @@ void Regressor::SetupNetwork(const string& deploy_proto,
 
 void Regressor::SetMean() {
   // Set the mean image.
-  mean_ = cv::Mat(input_geometry_, CV_32FC3, mean_scalar);
+  mean_ = cv::Mat(input_geometry_, CV_32FC3, mean_scalar_);
 }
 
 void Regressor::Init() {
@@ -211,7 +220,7 @@ void Regressor::PreForwardFast(const cv::Mat image_curr,
   WrapOutputBlob("target", &target_splitted);
   cv:: Mat target_merged;
   cv::merge(target_splitted, target_merged);
-  cv::add(target_merged, cv::Mat(target_merged.size(), CV_32FC3, mean_scalar), target_merged);
+  cv::add(target_merged, cv::Mat(target_merged.size(), CV_32FC3, mean_scalar_), target_merged);
   target_merged.convertTo(target_merged, CV_8UC3);
   imshow("t-1 target in PreforwardFast before reshape target input", target_merged);
   waitKey(1);
@@ -314,7 +323,7 @@ void Regressor::PreForwardFast(const cv::Mat image_curr,
     WrapOutputBlob("target", &target_splitted);
     cv:: Mat target_merged;
     cv::merge(target_splitted[0], target_merged);
-    cv::add(target_merged, cv::Mat(target_merged.size(), CV_32FC3, mean_scalar), target_merged);
+    cv::add(target_merged, cv::Mat(target_merged.size(), CV_32FC3, mean_scalar_), target_merged);
     target_merged.convertTo(target_merged, CV_8UC3);
     imshow("t-1 target end of PreForwardFast", target_merged);
     waitKey(0);
@@ -405,11 +414,11 @@ void Regressor::PredictFast(const cv::Mat& image_curr, const cv::Mat& image, con
   cv::Mat target_origin;
   cv::merge(target_in, target_origin);
 
-  cv::add(target_origin, cv::Mat(target_origin.size(), CV_32FC3, mean_scalar), target_origin);
+  cv::add(target_origin, cv::Mat(target_origin.size(), CV_32FC3, mean_scalar_), target_origin);
   target_origin.convertTo(target_origin, CV_8UC3);
  
   cv::Mat image_curr_scale_origin;
-  cv::add(image_curr_scale, cv::Mat(image_curr_scale.size(), CV_32FC3, mean_scalar), image_curr_scale_origin);
+  cv::add(image_curr_scale, cv::Mat(image_curr_scale.size(), CV_32FC3, mean_scalar_), image_curr_scale_origin);
   image_curr_scale_origin.convertTo(image_curr_scale_origin, CV_8UC3);
 
   vector<float> rois_in;
@@ -1231,7 +1240,7 @@ void Regressor::Preprocess(const cv::Mat& img,
 #endif
   // Subtract the image mean to try to make the input 0-mean.
   cv::Mat sample_normalized;
-  cv::subtract(sample_float, cv::Mat(sample_float.size(), CV_32FC3, mean_scalar), sample_normalized);
+  cv::subtract(sample_float, cv::Mat(sample_float.size(), CV_32FC3, mean_scalar_), sample_normalized);
 
 #ifdef DEBUG_PREPROCESS_SAMPLE
   std::cout << "after subtract mean: " << sample_normalized << endl;

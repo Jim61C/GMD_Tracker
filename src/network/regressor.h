@@ -30,6 +30,7 @@ class Regressor : public RegressorBase {
 
   Regressor(const string& deploy_proto,
             const string& caffe_model,
+            const string& mean_file,
             const int gpu_id,
             const int num_inputs,
             const bool do_train,
@@ -37,12 +38,14 @@ class Regressor : public RegressorBase {
 
   Regressor(const std::string& train_deploy_proto,
             const std::string& caffe_model,
+            const string& mean_file,
             const int gpu_id,
             const int num_inputs,
             const bool do_train);
 
   Regressor(const std::string& train_deploy_proto,
             const std::string& caffe_model,
+            const string& mean_file,
             const int gpu_id,
             const bool do_train);
 
@@ -164,6 +167,9 @@ protected:
 
   // lock the domain layers
   virtual void LockDomainLayers();
+
+protected:
+  cv::Scalar mean_scalar_;
 
  private:
   // Set up a network with the architecture specified in deploy_proto,

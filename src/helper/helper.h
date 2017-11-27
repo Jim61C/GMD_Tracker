@@ -10,6 +10,7 @@
 
 #include <string>
 #include <iostream>
+#include "Common.h"
 
 #include <boost/filesystem.hpp>
 #include <boost/regex.hpp>
@@ -71,6 +72,9 @@ bool equalMat(cv::Mat &mat1, cv::Mat &mat2);
 bool equalVector(std::vector<float> &a, std::vector<float> &b);
 
 float sigmoid(float x);
+
+// assume mean_file is space delimited
+void loadMeanScalar(const std::string &mean_file, cv::Scalar & loaded_scalar);
 
 #endif /* HELPER_H_ */
 

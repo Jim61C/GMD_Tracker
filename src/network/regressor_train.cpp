@@ -18,11 +18,12 @@ using caffe::LayerParameter;
 
 RegressorTrain::RegressorTrain(const std::string& deploy_proto,
                                const std::string& caffe_model,
+                               const string& mean_file,
                                const int gpu_id,
                                const string& solver_file,
                                const int num_input,
                                const bool do_train)
-  : Regressor(deploy_proto, caffe_model, gpu_id, num_input, do_train),
+  : Regressor(deploy_proto, caffe_model, mean_file, gpu_id, num_input, do_train),
     RegressorTrainBase(solver_file),
     loss_save_path_("")
 {
@@ -32,10 +33,11 @@ RegressorTrain::RegressorTrain(const std::string& deploy_proto,
 
 RegressorTrain::RegressorTrain(const std::string& deploy_proto,
                                const std::string& caffe_model,
+                               const string& mean_file,
                                const int gpu_id,
                                const string& solver_file,
                                const bool do_train)
-  : Regressor(deploy_proto, caffe_model, gpu_id, kNumInputs, do_train),
+  : Regressor(deploy_proto, caffe_model, mean_file, gpu_id, kNumInputs, do_train),
     RegressorTrainBase(solver_file),
     loss_save_path_("")
 {
@@ -44,9 +46,10 @@ RegressorTrain::RegressorTrain(const std::string& deploy_proto,
 
 RegressorTrain::RegressorTrain(const std::string& deploy_proto,
                                const std::string& caffe_model,
+                               const string& mean_file,
                                const int gpu_id,
                                const string& solver_file)
-  : Regressor(deploy_proto, caffe_model, gpu_id, kNumInputs, kDoTrain),
+  : Regressor(deploy_proto, caffe_model, mean_file, gpu_id, kNumInputs, kDoTrain),
     RegressorTrainBase(solver_file),
     loss_save_path_("")
 {
@@ -55,11 +58,12 @@ RegressorTrain::RegressorTrain(const std::string& deploy_proto,
 
 RegressorTrain::RegressorTrain(const std::string& deploy_proto,
                                const std::string& caffe_model,
+                               const string& mean_file,
                                const int gpu_id,
                                const string& solver_file,
                                const string& loss_save_path,
                                const int K)
-  : Regressor(deploy_proto, caffe_model, gpu_id, kNumInputs, kDoTrain, K),
+  : Regressor(deploy_proto, caffe_model, mean_file, gpu_id, kNumInputs, kDoTrain, K),
     RegressorTrainBase(solver_file),
     loss_save_path_(loss_save_path)
 {
@@ -228,7 +232,7 @@ void RegressorTrain::TrainForwardBackwardWorker(const cv::Mat & image_curr,
   WrapOutputBlob("target", &target_splitted);
   cv:: Mat target_merged;
   cv::merge(target_splitted, target_merged);
-  cv::add(target_merged, cv::Mat(target_merged.size(), CV_32FC3, mean_scalar), target_merged);
+  cv::add(target_merged, cv::Mat(target_merged.size(), CV_32FC3, mean_scalar_), target_merged);
   target_merged.convertTo(target_merged, CV_8UC3);
   imshow("t-1 target", target_merged);
 
@@ -238,7 +242,7 @@ void RegressorTrain::TrainForwardBackwardWorker(const cv::Mat & image_curr,
   // // cout << image_curr_scale << endl;
  
   cv::Mat image_curr_scale_origin;
-  cv::add(image_curr_scale, cv::Mat(image_curr_scale.size(), CV_32FC3, mean_scalar), image_curr_scale_origin);
+  cv::add(image_curr_scale, cv::Mat(image_curr_scale.size(), CV_32FC3, mean_scalar_), image_curr_scale_origin);
   image_curr_scale_origin.convertTo(image_curr_scale_origin, CV_8UC3);
 
   std::vector<float> labels_in;
@@ -337,7 +341,7 @@ void RegressorTrain::TrainForwardBackwardWorker(const cv::Mat & image_curr,
     cv::merge(image_curr_scaled_splitted, image_curr_scale);
    
     cv::Mat image_curr_scale_origin;
-    cv::add(image_curr_scale, cv::Mat(image_curr_scale.size(), CV_32FC3, mean_scalar), image_curr_scale_origin);
+    cv::add(image_curr_scale, cv::Mat(image_curr_scale.size(), CV_32FC3, mean_scalar_), image_curr_scale_origin);
     image_curr_scale_origin.convertTo(image_curr_scale_origin, CV_8UC3);
   
     std::vector<float> labels_in;

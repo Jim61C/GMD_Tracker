@@ -89,8 +89,8 @@ const double MAX_SIZE = 1000.0; // make sure the image_curr does not exceed this
 #define ROIS_NETWORK_INPUT_IDX 2
 #define LABEL_NETWORK_INPUT_IDX 3
 
-// training image mean 
-const cv::Scalar mean_scalar(104, 117, 123);
+// // training image mean 
+// const cv::Scalar mean_scalar(104, 117, 123);
 
 // distance penalty padding
 #define ADD_DISTANCE_PENALTY

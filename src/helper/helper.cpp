@@ -168,3 +168,12 @@ bool equalVector(std::vector<float> &a, std::vector<float> &b) {
 float sigmoid(float x) {
   return 0.5 * tanh(0.5 * x) + 0.5;
 }
+
+
+void loadMeanScalar(const std::string &mean_file, cv::Scalar & loaded_scalar) {
+  ifstream in(mean_file.c_str());
+  loaded_scalar = cv::Scalar(0, 0, 0);
+  in >>loaded_scalar[0];
+  in >>loaded_scalar[1];
+  in >>loaded_scalar[2];
+}
