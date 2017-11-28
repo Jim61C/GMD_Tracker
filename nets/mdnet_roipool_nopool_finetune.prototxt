@@ -1,0 +1,329 @@
+name: "MDNet_ROIPool_NOPOOL"
+
+input: "candidate"
+input: "rois"
+input: "label"
+
+#candidate, full image, size W, H to be changed on the fly
+input_dim: 1
+input_dim: 3
+input_dim: 95
+input_dim: 95
+
+#rois
+input_dim: 1
+input_dim: 5
+input_dim: 1
+input_dim: 1
+
+#label
+input_dim: 1
+input_dim: 1
+input_dim: 1
+input_dim: 1
+
+layer {
+  name: "conv1"
+  type: "Convolution"
+  bottom: "candidate"
+  top: "conv1"
+  param {
+  	name: "conv1_w"
+    lr_mult: 0
+    decay_mult: 1
+  }
+  param {
+  	name: "conv1_b"
+    lr_mult: 0
+    decay_mult: 0
+  }
+  convolution_param {
+    num_output: 96
+    kernel_size: 7
+    stride: 2
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "relu1"
+  type: "ReLU"
+  bottom: "conv1"
+  top: "conv1"
+}
+layer {
+  name: "norm1"
+  type: "LRN"
+  bottom: "conv1"
+  top: "norm1"
+  lrn_param {
+    local_size: 5
+    alpha: 0.0005
+    beta: 0.75
+    k: 2
+  }
+}
+
+layer {
+  name: "conv2"
+  type: "Convolution"
+  bottom: "norm1"
+  top: "conv2"
+  param {
+  	name: "conv2_w"
+    lr_mult: 0
+    decay_mult: 1
+  }
+  param {
+  	name: "conv2_b"
+    lr_mult: 0
+    decay_mult: 0
+  }
+  convolution_param {
+    num_output: 256
+    kernel_size: 5
+    stride: 2
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 1
+    }
+  }
+}
+layer {
+  name: "relu2"
+  type: "ReLU"
+  bottom: "conv2"
+  top: "conv2"
+}
+layer {
+  name: "norm2"
+  type: "LRN"
+  bottom: "conv2"
+  top: "norm2"
+  lrn_param {
+    local_size: 5
+    alpha: 0.0005
+    beta: 0.75
+    k: 2
+  }
+}
+
+layer {
+  name: "conv3"
+  type: "Convolution"
+  bottom: "norm2"
+  top: "conv3"
+  param {
+  	name: "conv3_w"
+    lr_mult: 0
+    decay_mult: 1
+  }
+  param {
+  	name: "conv3_b"
+    lr_mult: 0
+    decay_mult: 0
+  }
+  convolution_param {
+    num_output: 512
+    kernel_size: 3
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "relu3"
+  type: "ReLU"
+  bottom: "conv3"
+  top: "conv3"
+}
+
+
+layer {
+  name: "roi_pool3"
+  type: "ROIPooling"
+  bottom: "conv3"
+  bottom: "rois"
+  top: "roi_pool3"
+  roi_pooling_param {
+    pooled_w: 21
+    pooled_h: 21
+    spatial_scale: 0.25 # 1/16, such that input size if 95 x 95
+  }
+}
+
+layer {
+  name: "pool4"
+  type: "Pooling"
+  bottom: "roi_pool3"
+  top: "pool4"
+  pooling_param {
+    pool: AVE
+    kernel_size: 5
+    stride: 4 # result in 5 x 5 feature map
+  }
+}
+
+
+
+layer {
+  name: "fc4"
+  type: "Convolution"
+  bottom: "pool4"
+  top: "fc4"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  convolution_param {
+    num_output: 512
+    kernel_size: 5
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "relu4"
+  type: "ReLU"
+  bottom: "fc4"
+  top: "fc4"
+}
+layer {
+  name: "drop4"
+  type: "Dropout"
+  bottom: "fc4"
+  top: "fc4"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+}
+
+layer {
+  name: "fc5"
+  type: "Convolution"
+  bottom: "fc4"
+  top: "fc5"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  convolution_param {
+    num_output: 512
+    kernel_size: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "relu5"
+  type: "ReLU"
+  bottom: "fc5"
+  top: "fc5"
+}
+layer {
+  name: "drop5"
+  type: "Dropout"
+  bottom: "fc5"
+  top: "fc5"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+}
+
+# One domain for online finetuning
+layer {
+  name: "fc6-new" 
+  type: "Convolution" 
+  bottom: "fc5" 
+  top: "fc6" 
+  param {
+  lr_mult: 10 
+  decay_mult: 1 
+  }
+  param {
+  lr_mult: 20 
+  decay_mult: 0 
+  }
+  convolution_param {
+  num_output: 2
+  kernel_size: 1
+  weight_filler {
+  type: "gaussian"
+  std: 0.01
+  }
+  bias_filler {
+  type: "constant"
+  value: 0
+  }
+  }
+}
+layer {
+  name: "flatten_fc6"
+  type: "Flatten"
+  bottom: "fc6"
+  top: "flatten_fc6"
+}
+
+
+# flatten label
+layer {
+  name: "flatten"
+  type: "Flatten"
+  bottom: "label"
+  top: "label_flat"
+}
+
+
+# loss for finetuning
+layer {
+  name: "prob"
+  type: "Softmax"
+  bottom: "flatten_fc6"
+  top: "prob"
+  include { phase: TEST }
+}
+
+
+layer {
+  name: "loss"
+  type: "SoftmaxWithLoss"
+  bottom: "flatten_fc6"
+  bottom: "label_flat"
+  top: "loss"
+  include { phase: TRAIN }
+}
