@@ -159,7 +159,7 @@ void train_video(const std::vector<Video>& videos, TrackerTrainerMultiDomain* tr
 } // namespace
 
 int main (int argc, char *argv[]) {
-  if (argc < 11) {
+  if (argc < 12) {
     std::cerr << "Usage: " << argv[0]
               << " otb_videos_folder"
               << " network.caffemodel train.prototxt"
@@ -167,6 +167,7 @@ int main (int argc, char *argv[]) {
               << " lambda_shift lambda_scale min_scale max_scale"
               << " gpu_id"
               << " random_seed"
+              << " loss_save_file"
               << std::endl;
     return 1;
   }
@@ -186,6 +187,7 @@ int main (int argc, char *argv[]) {
   const double max_scale           = atof(argv[arg_index++]);
   const int gpu_id          = atoi(argv[arg_index++]);
   const int random_seed          = atoi(argv[arg_index++]);
+  const string& loss_save_file  = argv[arg_index++];
 
   caffe::Caffe::set_random_seed(random_seed);
   printf("Using random seed: %d\n", random_seed);
@@ -213,7 +215,7 @@ int main (int argc, char *argv[]) {
 
   // save the loss_history when done, TODO: save loss along training instead end of training
   string save_dir = "loss_history/";
-  string save_path = save_dir + "train_mdnet_setdiff_" + std::to_string(NUM_CYCLES) + ".txt";
+  string save_path = save_dir + loss_save_file;
   if (!boost::filesystem::exists(save_dir)) {
     boost::filesystem::create_directories(save_dir);
   }
