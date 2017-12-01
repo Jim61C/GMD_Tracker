@@ -265,9 +265,9 @@ layer {
   }
 }
 
-# One domain for online finetuning
+# multi-domain training
 layer {
-  name: "fc6-new" 
+  name: "fc6-multi-domain" 
   type: "Convolution" 
   bottom: "fc5" 
   top: "fc6" 
@@ -280,7 +280,7 @@ layer {
   decay_mult: 0 
   }
   convolution_param {
-  num_output: 2
+  num_output: 178
   kernel_size: 1
   weight_filler {
   type: "gaussian"

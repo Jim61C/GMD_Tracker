@@ -346,12 +346,12 @@ void Regressor::GetBBoxConvFeatures(const cv::Mat& image_curr,
 
       SetCandidates(this_candidate_images);
       const vector<string> & layer_names = net_->layer_names();
-      int layer_relu3_idx = FindLayerIndexByName(layer_names, "relu3");
+      int layer_relu3_idx = FindLayerIndexByName(layer_names, "pool4");
       net_->ForwardTo(layer_relu3_idx);
 
-      // get the conv3 data blob features
+      // get the pool4 data blob features, 5*5*512
       vector<vector<float> > output_features;
-      WrapOutputBlob("conv3", &output_features);
+      WrapOutputBlob("pool4", &output_features);
       features.insert(features.end(), output_features.begin(), output_features.begin() + output_features.size());
     }
 }
