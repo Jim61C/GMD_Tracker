@@ -1,0 +1,15 @@
+net: "/home/jimxing/proj/volvo_tracker/nets/tracker_new_finetune.prototxt"
+base_lr: 0.0001
+lr_policy: "step"
+gamma: 0.1
+stepsize: 100000
+display: 40
+max_iter: 450000
+momentum: 0.9
+weight_decay: 0.0005
+snapshot: 0
+snapshot_prefix: "/home/jimxing/proj/volvo_tracker/nets/solverstate/GOTURN_MDNET/caffenet_train"
+random_seed: 800
+device_id: 0
+solver_mode: GPU
+snapshot_format: HDF5
