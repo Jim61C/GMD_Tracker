@@ -32,8 +32,10 @@ For troubleshooting, please refer to the comments in install.sh
 
 Instructions for running different models
 ======================
-Note that the source for different models is associated with different tags, checkout to the specific tag to run the specific tracker model. The trained models can be downloaded from here.
-
+Note that the source for different models is associated with different tags, checkout to the specific tag to run the specific tracker model. The trained models can be downloaded with
+```
+bash ./scripts/download_trained_model.sh
+```
 
 Questions
 ======================
