@@ -81,15 +81,14 @@ const double SHORT_TERM_FINE_TUNE_TH = 0.5; // if want less frequent short term 
 
 
 // ROI Pooling
-const double TARGET_SIZE = 900.0; // compare to min (W, H)
-const double MAX_SIZE = 1500.0; // make sure the image_curr does not exceed this size
-const double INPUT_BBOX_SIZE = 48.0; // so that the 3x3 feature tensor is guaranteed
+const double TARGET_SIZE = 600.0; // compare to min (W, H)
+const double MAX_SIZE = 1000.0; // make sure the image_curr does not exceed this size
 
 // network input index
 #define CANDIDATE_NETWORK_INPUT_IDX 0
-#define ROIS_NETWORK_INPUT_IDX 1
-#define LABEL_NETWORK_INPUT_IDX 2
+#define LABEL_NETWORK_INPUT_IDX 1
 #define TARGET_NETWORK_INPUT_IDX -1 // dummy values
+#define ROIS_NETWORK_INPUT_IDX -1 // dummy values
 
 // // training image mean, CaffeNet
 // const cv::Scalar mean_scalar(104, 117, 123);

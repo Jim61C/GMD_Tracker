@@ -12,7 +12,7 @@
 // // #define DEBUG_FINETUNE_WORKER
 // #define FISRT_FRAME_PAUSE
 // // #define VISUALIZE_FIRST_FRAME_SAMPLES
-#define DEBUG_LOG
+// #define DEBUG_LOG
 // #define LOG_TIME
 // #define DEBUG_BBOX_REGRESSION
 

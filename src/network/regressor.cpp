@@ -28,7 +28,6 @@ using namespace std;
 // #define DEBUG_CANDIDATE_IN_PREDICTFAST
 // #define INSPECT_TARGET_IN_PREFORWARD
 // #define DEBUG_TARGET_PREDICT_FAST
-// #define DEBUG_MINIMUM_SCALE_REQUIRED
 
 // We need 2 inputs: one for the current frame and one for the previous frame.
 const int kNumInputs = 2;
@@ -377,7 +376,7 @@ void Regressor::PredictFast(const cv::Mat& image_curr, const cv::Mat& image, con
 #endif
 
 
-  // feed in the image_curr as batch size 1 and the bboxes as rois
+  // feed in the input bbox cropped image regions
   set_candidate_images(image_curr, candidate_bboxes);
   const vector<string> & layer_names = net_->layer_names();
   // forward to the flatten_fc6 layer, shape (B, 2)
@@ -1044,72 +1043,16 @@ void Regressor::set_rois(const std::vector<BoundingBox>& candidate_bboxes, const
 /* For MDNet, set_candidate_images
 */
 void Regressor::set_candidate_images(const cv::Mat & image_curr, const std::vector<BoundingBox> & candidates_bboxes) {
-  // Process the candidate, full image's input, i.e., image_curr, just one! Also record the scales
-  // TODO: check if better to make square input
-  int im_min_size = std::min(image_curr.size().width, image_curr.size().height);
-  int im_max_size = std::max(image_curr.size().width, image_curr.size().height);
-
-  double scale_curr = TARGET_SIZE / im_min_size;
-
-#ifdef DEBUG_MINIMUM_SCALE_REQUIRED
-  // need to make sure scale >= INPUT_BBOX_SIZE/(min(bbox_w, bbox_h))
-  double scale_needed = 0.0;
-  for (auto &bbox: candidates_bboxes) {
-    double this_scale = INPUT_BBOX_SIZE/std::min(bbox.get_width(), bbox.get_height());
-    scale_needed = std::max(scale_needed, this_scale);
+  // crop out the B candidate images
+  vector<cv::Mat> candidate_images;
+  for (auto bbox: candidates_bboxes) {
+    cv::Mat this_candidate_image;
+    bbox.CropBoundingBoxOutImage(image_curr, &this_candidate_image);
+    candidate_images.push_back(this_candidate_image);
   }
-  scale_curr = std::max(scale_curr, scale_needed);
-#endif
-
-  // make sure don't get too large to fit in memory
-  if (round(scale_curr * im_max_size) > MAX_SIZE) {
-    scale_curr = MAX_SIZE / im_max_size;
-  }
-
-#ifdef DEBUG_MINIMUM_SCALE_REQUIRED
-  if (scale_curr < scale_needed) {
-    cout << "scale needed is >= " << scale_needed << ", but scale_curr is " << scale_curr << endl;
-  }
-#endif
-
-  cv::Mat image_scaled;
-  cv::resize(image_curr, image_scaled, cv::Size(), scale_curr, scale_curr);
-
-  // Reshape Candidate input, full image's input, i.e., image_curr
-  Blob<float>* input_candidate = net_->input_blobs()[CANDIDATE_NETWORK_INPUT_IDX];
-  input_candidate->Reshape(1, num_channels_,
-                       image_scaled.size().height, image_scaled.size().width);
-
-  // Reshape the labels, TODO: check if this and net_->Reshape() is necessary
-  Blob<float> * input_label_blob = net_->input_blobs()[LABEL_NETWORK_INPUT_IDX];
-  const size_t num_labels = candidates_bboxes.size();
-  // reshape to (|R|, 1)
-  vector<int> shape_label;
-  shape_label.push_back(num_labels);
-  shape_label.push_back(1);
-  input_label_blob->Reshape(shape_label);
-
-  // Reshape the rois
-  Blob<float> * input_rois_blob = net_->input_blobs()[ROIS_NETWORK_INPUT_IDX];
-  const size_t num_rois = candidates_bboxes.size();
-  // reshape to (|R|, 5)
-  vector<int> shape_rois;
-  shape_rois.push_back(num_rois);
-  shape_rois.push_back(5);
-  input_rois_blob->Reshape(shape_rois);
-
-  // Forward dimension change to all layers.
-  net_->Reshape();
-
-  // Put image_curr
-  std::vector<cv::Mat> image_curr_channels;
-  WrapInputLayerGivenIndex(&image_curr_channels, CANDIDATE_NETWORK_INPUT_IDX);
-
-  // Set the inputs to the network.
-  Preprocess(image_scaled, &image_curr_channels, true); // set retain the original image size
-
-  // Put the ROIs
-  set_rois(candidates_bboxes, scale_curr);
+ 
+  // call the worker function
+  SetCandidates(candidate_images);
 }
 
 void Regressor::Estimate(const std::vector<cv::Mat>& images,
