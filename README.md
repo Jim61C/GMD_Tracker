@@ -92,7 +92,7 @@ To train the model2.0, checkout to right tag, then
 
 Performance Comparison
 ======================
-The following table shows the performance and speed summary of the different models.
+The following table shows the performance and speed summary of the different models on VOT2014 Benchmark.
 
 | Metric          | Model1.0      | Model1.1 | Model2.0  | Model3.0 | DSST | MDNet Matlab | GOTURN |
 | :-------------: |:-------------:| :-----:  |:--------: |:--------:| :---:| :-----------:| :-----:|
