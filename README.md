@@ -30,6 +30,11 @@ Note that the binaries 'trax_tracker_no_middle_batch_single_no_pool_avg' and 'li
 Running ./install.sh should install the necessary dependencies, please make sure you have sudo access to the machine as some of the dependencies will be built in /usr/local/include, /usr/include and /usr/lib/x86_64-linux-gnu.
 For troubleshooting, please refer to the comments in install.sh
 
+Instructions for running different models
+======================
+Note that the source for different models is associated with different tags, checkout to the specific tag to run the specific tracker model. The trained models can be downloaded from here.
+
+
 Questions
 ======================
 For further questions, please contact <yxing1@andrew.cmu.edu>
