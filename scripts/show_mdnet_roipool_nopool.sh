@@ -20,13 +20,13 @@ SHOW_RESULT=0
 
 VIDEOS_FOLDER=$1
 DEPLOY=nets/mdnet_roipool_nopool_finetune.prototxt
-CAFFE_MODEL=/mnt/sdb1/yxing1/caffe_snapshots/MDNET_ROIPOOL_NOPOOL/caffenet_train_iter_400000.caffemodel.h5
+CAFFE_MODEL=nets/solverstate/MDNET_ROIPOOL_NOPOOL/caffenet_train_MDNET_ROIPOOL_NOPOOL_OTB-VOT2014.caffemodel.h5
 SOLVER_FILE=nets/solver_temp/solver_temp_mdnet_roipool_nopool_finetune.prototxt
 LAMBDA_SHIFT=5
 LAMBDA_SCALE=15
 MIN_SCALE=-0.4
 MAX_SCALE=0.4
-OUTPUT_FOLDER=nets/tracker_output/mdnet_C++_ROIPOOL_NOPOOL
+OUTPUT_FOLDER=nets/tracker_output/mdnet_C++_ROIPOOL_NOPOOL_VOT2014
 
 build/show_mdnet_roipool_nopool $DEPLOY $CAFFE_MODEL $SOLVER_FILE $VIDEOS_FOLDER \
 $LAMBDA_SHIFT $LAMBDA_SCALE $MIN_SCALE $MAX_SCALE $GPU_ID $START_VIDEO_NUM $PAUSE_VAL $OUTPUT_FOLDER $SHOW_RESULT
