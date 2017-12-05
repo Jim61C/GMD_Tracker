@@ -36,6 +36,14 @@ cp ./volvo_tracker/install.sh .
 ```
 Running ./install.sh should install the necessary dependencies, please make sure you have sudo access to the machine as some of the dependencies will be built in /usr/local/include, /usr/include and /usr/lib/x86_64-linux-gnu.
 For troubleshooting, please refer to the comments in install.sh
+Finally, to compile the source:
+```
+cd volvo_tracker
+mkdir build
+cd build
+cmake ..
+make
+```
 
 Instructions for running different models
 ======================
