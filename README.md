@@ -45,7 +45,7 @@ cmake ..
 make
 ```
 
-Instructions for running different models
+Instructions for running pretrained models
 ======================
 Note that the source for different models is associated with different tags, checkout to the specific tag to run the specific tracker model. The trained models can be downloaded with
 ```
@@ -77,6 +77,13 @@ To run Model3.0 against VOT2014 Benchmark, check out to tag model3.0 and then:
 ./scripts/show_tracker_single_domain_two_stream_roi_batch.sh <path to vot2014 dataset folder>
 ```
 
+Dataset
+======================
+1. The first dataset used is the ImageNet ILSVRC 2015 Video Object Detection Dataset as describe [here](http://image-net.org/challenges/LSVRC/2015/#vid). To use it, register and download on the ImageNet Challenge Official website. After zipping, you should be able to see three folders, Annotations, Data and ImageSets respectively.
+
+2. The second type of dataset used is the same as in [MDNet](https://github.com/HyeonseobNam/MDNet). For instance, the training is performed on OTB-VOT2014(all sequences in OTB-100 excluding the ones that appear in VOT2014 list) sequences for testing of VOT2014 benchmark.
+
+
 Instructions for training the models
 ======================
 Firstly, initial CaffeNet and VGG-M net models in caffe needs to be downloaded.
@@ -84,9 +91,9 @@ Firstly, initial CaffeNet and VGG-M net models in caffe needs to be downloaded.
 bash ./scripts/download_model_init.sh
 ```
 Then, check out to the specific tag and then run the training script for that particular model.
-For example, to train the model3.0, checkout to tag model3.0, then
+For example, to train the model3.0, checkout to tag model3.0. Then, locate the ImageNet Video Detection Dataset, call the root folder of the downloaded dataset as IMAGENET_VIDEO_DETECTION_DATA_PATH:
 ```
-./scripts/train_single_domain_two_stream_rois_batch.sh <IMAGENET_VIDEO_DETECTION_VIDEO_FOLDER> <IMAGENET_VIDEO_DETECTION_ANNOTATION_FOLDER>
+./scripts/train_single_domain_two_stream_rois_batch.sh <IMAGENET_VIDEO_DETECTION_DATA_PATH/Data/VID/Train> <IMAGENET_VIDEO_DETECTION_DATA_PATH/Annotations/VID/Train>
 ```
 To train the model1.0/1.1, checkout to right tags, then
 ```
