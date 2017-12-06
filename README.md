@@ -115,15 +115,15 @@ The following table shows the performance and speed summary of the different mod
 | FPS             |   1.5         | 1.5      | 17.2      |  15.6    | 25.4 | 1.0          |> 100   |
 
 
-The shows Model1.0 on VOT2014 Benchmark
+The following shows Model1.0 on VOT2014 Benchmark
 
-The shows Model1.1 on VOT2014 Benchmark
+The following shows Model1.1 on VOT2014 Benchmark
 
-The shows Model1.1 on VOT2016 Benchmark
+The following shows Model1.1 on VOT2016 Benchmark
 
-The shows Model2.0 on VOT2014 Benchmark
+The following shows Model2.0 on VOT2014 Benchmark
 
-The shows Model3.0 on VOT2014 Benchmark
+The following shows Model3.0 on VOT2014 Benchmark
 
 The following is the video result on VOT2014 Benchmark (Model1.0, MDNet C++)
 [![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/IRY7MwfJIR0/0.jpg)](https://www.youtube.com/watch?v=IRY7MwfJIR0)
