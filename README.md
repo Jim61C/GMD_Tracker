@@ -1,4 +1,4 @@
-GOTURN_MDNET-Tracker Dependencies information
+Volvo Casptone Tracker Dependencies information
 ======================
 OS: Ubuntu16.04
 
