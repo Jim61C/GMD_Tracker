@@ -112,7 +112,7 @@ The following table shows the performance and speed summary of the different mod
 | Metric          | Model1.0      | Model1.1 | Model2.0  | Model3.0 | DSST | MDNet Matlab | GOTURN |
 | :-------------: |:-------------:| :-----:  |:--------: |:--------:| :---:| :-----------:| :-----:|
 | Expected Overlap| 0.4404        | 0.4178   |0.3516     | 0.2909   |0.2810| 0.4534       |0.2409  |
-| FPS             |   1.5         | 1.5      | 6.3      |  15.6    | 25.4 | 1.0          |> 100   |
+| FPS             |   1.5         | 1.5      | 17.2      |  15.6    | 25.4 | 1.0          |> 100   |
 
 ## VOT2014 Benchmark:
 ### Tracker Legends:
