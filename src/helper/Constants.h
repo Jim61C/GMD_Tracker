@@ -55,7 +55,7 @@ const int NEG_CANDIDATES_FINETUNE = 200;
 // long/short term update
 #define LONG_TERM_BAG_SIZE 50
 #define SHORT_TERM_BAG_SIZE 20
-#define LONG_TERM_UPDATE_INTERVAL 10
+#define LONG_TERM_UPDATE_INTERVAL 50
 #define LONG_TERM_POS_CANDIDATE_UPPER_BOUND 50
 #define LONG_TERM_NEG_CANDIDATE_UPPER_BOUND 200 // number of examples for forwarding, backward only does NOHEM_FINETUNE number of negative sampels
 const double SHORT_TERM_FINE_TUNE_TH = 0.5; // if want less frequent short term fine tune when distance window is applied, make it < 0.5
@@ -81,8 +81,8 @@ const double SHORT_TERM_FINE_TUNE_TH = 0.5; // if want less frequent short term 
 
 
 // ROI Pooling
-const double TARGET_SIZE = 900.0; // compare to min (W, H)
-const double MAX_SIZE = 1500.0; // make sure the image_curr does not exceed this size
+const double TARGET_SIZE = 600.0; // compare to min (W, H)
+const double MAX_SIZE = 1000.0; // make sure the image_curr does not exceed this size
 const double INPUT_BBOX_SIZE = 48.0; // so that the 3x3 feature tensor is guaranteed
 
 // network input index
