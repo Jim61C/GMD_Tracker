@@ -1,4 +1,4 @@
-Volvo Casptone Tracker Dependencies information
+GMD Tracker Dependencies information
 ======================
 OS: Ubuntu16.04
 
@@ -55,7 +55,7 @@ The four models are summarized in the following:
 - Model1.0: MDNet C++ implementation, tag: model1.0
 - Model1.1: MDNet C++ implementation with custom online update scheme, tag: model1.1
 - Model2.0: MDNet C++ with ROI Pooling, tag: model2.0
-- Model3.0: Siamese CNN racker (GOTURN + MDNET), tag: model3.0
+- Model3.0: GMD Siamese CNN tracker (GOTURN + MDNET), tag: model3.0
 
 For example, to run Model1.0 against VOT2014 Benchmark, check out to tag model1.0 and then:
 ```
@@ -95,11 +95,11 @@ For example, to train the model3.0, checkout to tag model3.0. Then, locate the I
 ```
 ./scripts/train_single_domain_two_stream_rois_batch.sh <IMAGENET_VIDEO_DETECTION_DATA_PATH/Data/VID/Train> <IMAGENET_VIDEO_DETECTION_DATA_PATH/Annotations/VID/Train>
 ```
-To train the model1.0/1.1, checkout to right tags, then
+To train the model1.0/1.1, checkout to the right tag, then
 ```
 ./scripts/train_mdnet.sh <path to OTB-VOT2014/15/16 folder>
 ```
-To train the model2.0, checkout to right tag, then
+To train the model2.0, checkout to the right tag, then
 ```
 ./scripts/train_mdnet_roipool.sh <path to OTB-VOT2014/15/16 folder>
 ```
@@ -109,13 +109,17 @@ Performance Comparison
 ======================
 The following table shows the performance and speed summary of the different models on VOT2014 Benchmark.
 
-| Metric          | Model1.0      | Model1.1 | Model2.0  | Model3.0 | DSST | MDNet Matlab | GOTURN |
+| Metric          | Model1.0 (Ours)      | Model1.1 (Ours) | Model2.0 (Ours)  | Model3.0 (Ours) | DSST | MDNet | GOTURN |
 | :-------------: |:-------------:| :-----:  |:--------: |:--------:| :---:| :-----------:| :-----:|
 | Expected Overlap| 0.4404        | 0.4178   |0.3516     | 0.2909   |0.2810| 0.4534       |0.2409  |
 | FPS             |   1.5         | 1.5      | 17.2      |  15.6    | 25.4 | 1.0          |> 100   |
 
 ## VOT2014 Benchmark:
-### Tracker Legends:
+
+### GMD Tracker (Ours) Legend:
+![alt text][gmd_legend]
+
+### All tracker Legends:
 ![alt text][vot2014_legend]
 
 The following shows Model1.0 on VOT2014 Benchmark
@@ -147,7 +151,7 @@ The following is the vidoe result on VOT2016 Benchmark (Model1.1, MDNet C++ Cust
 
 Questions
 ======================
-For further questions, please contact <yxing1@andrew.cmu.edu>
+For further questions, please contact <xyf.jim@gmail.com>
 
 
 [vot2016_model1_1]:https://raw.githubusercontent.com/Jim61C/Volvo_Capstone_Tracker/master/imgs/rankingplot_baseline_mean_vot2016_model1.1.png "vot2016 model1.1"
@@ -157,3 +161,4 @@ For further questions, please contact <yxing1@andrew.cmu.edu>
 [vot2014_model3_0]:https://raw.githubusercontent.com/Jim61C/Volvo_Capstone_Tracker/master/imgs/rankingplot_region_noise_mean_vot2014_model3.0.png "vot2014 model3.0"
 [vot2014_legend]:https://raw.githubusercontent.com/Jim61C/Volvo_Capstone_Tracker/master/imgs/tracker_legend_vot2014.png "vot2014 legend"
 [vot2016_legend]:https://raw.githubusercontent.com/Jim61C/Volvo_Capstone_Tracker/master/imgs/tracker_legend_vot2016.png "vot2016 legend"
+[gmd_legend]:https://raw.githubusercontent.com/Jim61C/Volvo_Capstone_Tracker/master/imgs/GMD_logo.png "gmd legend"
