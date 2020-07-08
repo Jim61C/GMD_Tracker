@@ -1,5 +1,8 @@
-GMD Tracker Dependencies information
+GMD Tracker
 ======================
+We participated in the visual object tracking vot2017 challenge (<a href="https://openaccess.thecvf.com/content_ICCV_2017_workshops/w28/html/Kristan_The_Visual_Object_ICCV_2017_paper.html" target="_blank">VOT017</a>) and our method is described in section A.29. as GOTURN MDNet Tracker (GMD) of the VOT2017 results paper. 
+
+# Dependencies and platform
 OS: Ubuntu16.04
 
 Language: C++
@@ -122,23 +125,23 @@ The following table shows the performance and speed summary of the different mod
 ### All tracker Legends:
 ![alt text][vot2014_legend]
 
-The following shows Model1.0 on VOT2014 Benchmark
+The following shows Model1.0 on VOT2014 Benchmark  
 ![alt text][vot2014_model1_0]
 
-The following shows Model1.1 on VOT2014 Benchmark
+The following shows Model1.1 on VOT2014 Benchmark  
 ![alt text][vot2014_model1_1]
 
-The following shows Model2.0 on VOT2014 Benchmark
+The following shows Model2.0 on VOT2014 Benchmark  
 ![alt text][vot2014_model2_0]
 
-The following shows Model3.0 on VOT2014 Benchmark
+The following shows Model3.0 on VOT2014 Benchmark  
 ![alt text][vot2014_model3_0]
 
 ## VOT2016 Benchmark
 ### Tracker Legends:
 ![alt text][vot2016_legend]
 
-The following shows Model1.1 on VOT2016 Benchmark
+The following shows Model1.1 on VOT2016 Benchmark  
 ![alt text][vot2016_model1_1]
 
 ## Video Comparison
