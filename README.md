@@ -28,20 +28,20 @@ Hardware:
 
 Instructions for Compilation
 ======================
-Firstly, clone the respository to folder 'volvo_tracker':
+Firstly, clone the respository to folder 'GMD_tracker':
 ```
-git clone https://github.com/Jim61C/Volvo_Capstone_Tracker.git volvo_tracker
+git clone https://github.com/Jim61C/GMD_Tracker.git GMD_tracker
 ```
-Then, copy out the installation script to the same directory level as volvo_tracker
+Then, copy out the installation script to the same directory level as GMD_tracker
 ```
-cp ./volvo_tracker/install.sh .
+cp ./GMD_tracker/install.sh .
 ./install.sh
 ```
 Running ./install.sh should install the necessary dependencies, please make sure you have sudo access to the machine as some of the dependencies will be built in /usr/local/include, /usr/include and /usr/lib/x86_64-linux-gnu.
 For troubleshooting, please refer to the comments in install.sh
 Finally, to compile the source:
 ```
-cd volvo_tracker
+cd GMD_tracker
 mkdir build
 cd build
 cmake ..
@@ -157,11 +157,11 @@ Questions
 For further questions, please contact <xyf.jim@gmail.com>
 
 
-[vot2016_model1_1]:https://raw.githubusercontent.com/Jim61C/Volvo_Capstone_Tracker/master/imgs/rankingplot_baseline_mean_vot2016_model1.1.png "vot2016 model1.1"
-[vot2014_model1_0]:https://raw.githubusercontent.com/Jim61C/Volvo_Capstone_Tracker/master/imgs/rankingplot_region_noise_mean_vot2014_model1.0.png "vot2014 model1.0"
-[vot2014_model1_1]:https://raw.githubusercontent.com/Jim61C/Volvo_Capstone_Tracker/master/imgs/rankingplot_region_noise_mean_vot2014_model1.1.png "vot2014 model1.1"
-[vot2014_model2_0]:https://raw.githubusercontent.com/Jim61C/Volvo_Capstone_Tracker/master/imgs/rankingplot_region_noise_mean_vot2014_model2.0.png "vot2014 model2.0"
-[vot2014_model3_0]:https://raw.githubusercontent.com/Jim61C/Volvo_Capstone_Tracker/master/imgs/rankingplot_region_noise_mean_vot2014_model3.0.png "vot2014 model3.0"
-[vot2014_legend]:https://raw.githubusercontent.com/Jim61C/Volvo_Capstone_Tracker/master/imgs/tracker_legend_vot2014.png "vot2014 legend"
-[vot2016_legend]:https://raw.githubusercontent.com/Jim61C/Volvo_Capstone_Tracker/master/imgs/tracker_legend_vot2016.png "vot2016 legend"
-[gmd_legend]:https://raw.githubusercontent.com/Jim61C/Volvo_Capstone_Tracker/master/imgs/GMD_logo.png "gmd legend"
+[vot2016_model1_1]:https://raw.githubusercontent.com/Jim61C/GMD_tracker/master/imgs/rankingplot_baseline_mean_vot2016_model1.1.png "vot2016 model1.1"
+[vot2014_model1_0]:https://raw.githubusercontent.com/Jim61C/GMD_tracker/master/imgs/rankingplot_region_noise_mean_vot2014_model1.0.png "vot2014 model1.0"
+[vot2014_model1_1]:https://raw.githubusercontent.com/Jim61C/GMD_tracker/master/imgs/rankingplot_region_noise_mean_vot2014_model1.1.png "vot2014 model1.1"
+[vot2014_model2_0]:https://raw.githubusercontent.com/Jim61C/GMD_tracker/master/imgs/rankingplot_region_noise_mean_vot2014_model2.0.png "vot2014 model2.0"
+[vot2014_model3_0]:https://raw.githubusercontent.com/Jim61C/GMD_tracker/master/imgs/rankingplot_region_noise_mean_vot2014_model3.0.png "vot2014 model3.0"
+[vot2014_legend]:https://raw.githubusercontent.com/Jim61C/GMD_tracker/master/imgs/tracker_legend_vot2014.png "vot2014 legend"
+[vot2016_legend]:https://raw.githubusercontent.com/Jim61C/GMD_tracker/master/imgs/tracker_legend_vot2016.png "vot2016 legend"
+[gmd_legend]:https://raw.githubusercontent.com/Jim61C/GMD_tracker/master/imgs/GMD_logo.png "gmd legend"
